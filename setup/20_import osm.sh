@@ -4,22 +4,22 @@ if [ ! $INSCRIPT ]; then
 	exit 1
 fi
 
-DATABASE="spritsim"
-
-# Check if database exists. if so drop it and create it again
 DBEXISTS=`psql -At -c "SELECT count(*) FROM pg_database where datname='$DATABASE'" -d postgres -U $USER`
-if [ $DBEXISTS == 1 ]; then
-	echo "Dropping database \"$DATABASE\" ..."
-	dropdb -U $USER --if-exists $DATABASE
+if [ ! $DBEXISTS ]; then
+	echo
+	echo -e "\e[31m##########################################"
+	echo -e "\e[39mPlease run PostgreSQL configuration first!"
+	echo -e "\e[31m##########################################\e[39m"
+	echo
+	exit
 fi
 
-echo "Creating Database for OpenStreetMap Data ..."
-createdb -U $USER -E UTF8 -O $USER $DATABASE
+echo "Preparing Database for OpenStreetMap Data ..."
 psql -q -c "CREATE EXTENSION postgis" -d $DATABASE -U $USER
 psql -q -c "CREATE EXTENSION hstore" -d $DATABASE -U $USER
 
 PS3="Choose OSM File for import: "
-osmfile_choices=($BASE/src/*.osm*)
+osmfile_choices=($TMPDIR/*.osm*)
 select choice in $osmfile_choices
 do
 	if (( $REPLY > 0 && $REPLY <= ${#osmfile_choices[@]} )); then
@@ -32,9 +32,9 @@ do
 		fi
 		OSMFILE=$choice
 		break
-		;;
 	else
 		echo "Invailid choice, please select a OSM File"
+		REPLY=
 	fi
 done
 

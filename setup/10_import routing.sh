@@ -4,52 +4,57 @@ if [ ! $INSCRIPT ]; then
 	exit 1
 fi
 
-DATABASE="spritsim"
-
-# Check if database exists. if so drop it and create it again
 DBEXISTS=`psql -At -c "SELECT count(*) FROM pg_database where datname='$DATABASE'" -d postgres -U $USER`
-if [ $DBEXISTS == 1 ]; then
-	echo "Dropping database \"$DATABASE\" ..."
-	dropdb -U $USER --if-exists $DATABASE
+if [ ! $DBEXISTS ]; then
+	echo
+	echo -e "\e[31m##########################################"
+	echo -e "\e[39mPlease run PostgreSQL configuration first!"
+	echo -e "\e[31m##########################################\e[39m"
+	echo
+	exit
 fi
 
-echo "Creating Database for routing ..."
-createdb -U $USER -E UTF8 -O $USER $DATABASE
+echo "Preparing Database for routing ..."
 psql -c "CREATE EXTENSION postgis" -d $DATABASE -U $USER
 psql -c "CREATE EXTENSION pgrouting" -d $DATABASE -U $USER
 
 function f_osm2pgrouting {
 	echo "Might FAIL!!!"
-	osm2pgrouting -file $1 -conf /usr/share/osm2pgrouting/mapconfig_for_cars.xml -dbname $DATABASE -user $USER -host localhost
+	
+	read -p "Please enter password for Postgreql user  \"$USER\": " password
+	osm2pgrouting -file $1 -conf /usr/share/osm2pgrouting/mapconfig_for_cars.xml -dbname $DATABASE -user $USER -host localhost -passwd $password
 }
 
 function f_osm2po {
-	OSM2PO_HOME=$BASE/osm2po
-	read -e -p "Please input path to OSM2PO. [$OSM2PO_HOME]: " input
-	OSM2PO_HOME=${input:-$OSM2PO_HOME}
+	OSM2PO_HOME=$BASE/bin/osm2po
+	while /bin/true
+	do
+		if [ ! -d $OSM2PO_HOME ]; then
+			echo "OSM2PO was not found!"
+			read -e -p "Please input path to OSM2PO. [$OSM2PO_HOME]: " input
+			OSM2PO_HOME=${input}
+		else
+			break
+		fi
+	done
 
-	if [ ! -d $OSM2PO_HOME ]; then
-		echo "OSM2PO was not found!"
-		exit 1
-	fi
-
-	java -Xmx12g -jar $OSM2PO_HOME/osm2po-core-4.8.8-signed.jar prefix=de cmd=tjspg tileSize=x workDir=$BASE/src/osm2po_import $1
+	time java -Xmx12g -jar $OSM2PO_HOME/osm2po-core-4.8.8-signed.jar prefix=de cmd=tjspg tileSize=x workDir=$TMPDIR/osm2po_import $1
 	echo; echo;
 	echo "Importing OSM2PO network into database ..."
 	time psql -U $USER -d $DATABASE -q -f "/home/benjamin/Dokumente/Masterthesis/src/osm2po_import/de_2po_4pgr.sql"
 }
 
 PS3="Choose OSM File for import: "
-osmfile_choices=($BASE/src/*.osm*)
+osmfile_choices=($TMPDIR/*.osm*)
 select choice in $osmfile_choices
 do
 	if (( $REPLY > 0 && $REPLY <= ${#osmfile_choices[@]} )); then
 		OSMFILE=$choice
 		break
-		;;
 	else
 		echo "Invailid choice, please select a OSM File"
 	fi
+	REPLY=
 done
 
 PS3="Choose method to import OSM data for routing: "
@@ -70,6 +75,8 @@ do
 			;;
 		*)
 			echo "WAZZZUP with you?! No Choice? Try again!"
+			echo
+			REPLY=
 			;;
 	esac
 done
