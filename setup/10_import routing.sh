@@ -41,12 +41,12 @@ function f_osm2po {
 	time java -Xmx12g -jar $OSM2PO_HOME/osm2po-core-4.8.8-signed.jar prefix=de cmd=tjspg tileSize=x workDir=$TMPDIR/osm2po_import $1
 	echo; echo;
 	echo "Importing OSM2PO network into database ..."
-	time psql -U $USER -d $DATABASE -q -f "/home/benjamin/Dokumente/Masterthesis/src/osm2po_import/de_2po_4pgr.sql"
+	time psql -U $USER -d $DATABASE -q -f "$TMPDIR/osm2po_import/de_2po_4pgr.sql"
 }
 
 PS3="Choose OSM File for import: "
 osmfile_choices=($TMPDIR/*.osm*)
-select choice in $osmfile_choices
+select choice in $TMPDIR/*.osm*
 do
 	if (( $REPLY > 0 && $REPLY <= ${#osmfile_choices[@]} )); then
 		OSMFILE=$choice

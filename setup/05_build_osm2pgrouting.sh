@@ -5,7 +5,7 @@ if [ ! $INSCRIPT ]; then
 fi
 
 function buildOsm2pgrouting {
-	apt-get install git cmake libexpat1-dev libboost-dev libpq-dev
+	sudo apt-get -y install git cmake libexpat1-dev libboost-dev libpq-dev
 	
 	cd $TMPDIR
 	git clone https://github.com/pgRouting/osm2pgrouting.git
@@ -20,7 +20,11 @@ echo; echo;
 echo "Do you want to build osm2pgrouting from sources?"
 select yn in "Yes" "No"; do
     case "$yn" in
-        Yes) buildOsm2pgrouting;;
+        Yes) buildOsm2pgrouting
+        	break
+        	;;
         No) exit;;
     esac
 done
+
+cd $BASE

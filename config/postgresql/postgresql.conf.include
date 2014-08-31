@@ -26,5 +26,8 @@ checkpoint_segments = 32
 
 random_page_cost = 2.8
 
-# off for import, on otherwise
-synchronous_commit = off
+# Import only!
+#autovacuum = off
+#fsync = off
+#synchronous_commit = off
+#full_page_writes = off

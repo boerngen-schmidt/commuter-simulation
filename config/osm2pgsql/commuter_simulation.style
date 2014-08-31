@@ -6,35 +6,27 @@
 
 # OsmType   Tag                     Type    Flags
 # Insert your own columns here, or change phstore to polygon below
-way         abandoned:aeroway       text    phstore
-way         abandoned:amenity       text    phstore
-way         abandoned:building      text    phstore
-way         abandoned:landuse       text    phstore
-way         abandoned:power         text    phstore
-way         area:highway            text    phstore
-node,way    aeroway                 text    phstore
-node,way    amenity                 text    phstore
-node,way    building                text    phstore
-way         building:part           text    phstore
-node,way    harbour                 text    phstore
-node,way    historic                text    phstore
-node,way    landuse                 text    phstore
-node,way    leisure                 text    phstore
-node,way    man_made                text    phstore
-node,way    military                text    phstore
-node,way    natural                 text    phstore
-node,way    office                  text    phstore
-node,way    place                   text    phstore
-node,way    power                   text    phstore
-node,way    public_transport        text    phstore
-node,way    shop                    text    phstore
-node,way    sport                   text    phstore
-node,way    tourism                 text    phstore
-node,way    water                   text    phstore
-node,way    waterway                text    phstore
-node,way    wetland                 text    phstore
-node,way    z_order                 int4    linear  # This is calculated during import
-way         way_area                real            # This is calculated during import
+node,way	admin_level 					int4	linear
+node,way    aeroway							text	phstore
+node,way    amenity							text	phstore
+way			area:highway					text    phstore
+node,way	boundary    					text	linear
+node,way	boundary_type   				text	linear
+node,way	building						text	phstore
+way			building:part					text	phstore
+node,way	de:amtlicher_gemeindeschluessel text	linear
+node,way	de:regionalschluessel   		int		linear
+node,way	de:*        					text	phstore
+node,way	highway							text	linear
+node,way	name:de       					text	linear
+node,way    office							text	phstore
+node,way	place       					text	linear
+node,way	population  					int		linear
+node,way	route							text	linear
+node,way	type        					text	linear
+node,way	is_in:*     					text	phstore
+node,way    z_order							int4	linear  # This is calculated during import
+way         way_area						real            # This is calculated during import
 
 # Deleted tags
 # These are tags that are generally regarded as useless for most rendering.
