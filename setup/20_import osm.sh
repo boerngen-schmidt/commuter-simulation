@@ -44,7 +44,7 @@ echo $OSMFILE
 	exit 1
 fi
 
-OSM2PGSQL_OPTIONS="--number-processes 4 -c -d $DATABASE -U $USER -p de_osm -C 16384 -S $BASE/config/osm2pgsql/commuter_simulation.style --cache-strategy sparse $OSM_OPTS"
+OSM2PGSQL_OPTIONS="--number-processes 4 -c -d $DATABASE -U $USER -p de_osm -I -C 20480 -S $BASE/config/osm2pgsql/commuter_simulation.style --cache-strategy sparse --hstore-match-only $OSM_OPTS"
 
 if [ -e $BASE/bin/osm2pgsql ]; then
 	echo -e "\e[36mRunnung local version of osm2pgsql \e[39m..."
