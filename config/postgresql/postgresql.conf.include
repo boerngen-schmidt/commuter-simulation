@@ -24,7 +24,7 @@ checkpoint_completion_target = 0.9
 checkpoint_timeout = 20min
 checkpoint_segments = 32
 
-random_page_cost = 2.8
+random_page_cost = 1.1
 
 # Import only!
 #autovacuum = off
