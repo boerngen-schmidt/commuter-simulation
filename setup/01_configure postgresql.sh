@@ -20,12 +20,12 @@ sudo /etc/init.d/postgresql start
 
 echo; echo;
 echo -e "\e[92mEnter Password for user \"postgres\" :\e[39m"
-sudo -u postgres psql postgres -c "\password"
+sudo su -c "psql -c \"\password\"" postgres
 echo;
 echo -e "\e[92mCreating user \"$USER\" \e[39m..."
-sudo -u postgres createuser --superuser $USER
+sudo su -c "createuser --superuser $USER" postgres
 echo -e "\e[92mPlease enter password for \"$USER\"\e[39m"
-sudo -u postgres psql -c "\password $USER"
+sudo su -c "psql -c \"\password $USER\"" postgres
 	
 echo; echo;
 echo -e "\e[92mChecking if database \"$DATABASE\" exists \e[39m..."
@@ -49,6 +49,6 @@ if [ $DBEXISTS == 1 ]; then
 			;;
 	esac
 else
-	echo -e "\e[31mCreating Database for routing \e[39m..."
+	echo -e "\e[92mCreating Database for routing \e[39m..."
 	createdb -U $USER -E UTF8 -O $USER $DATABASE
 fi

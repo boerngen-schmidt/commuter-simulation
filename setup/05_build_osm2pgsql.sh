@@ -5,7 +5,7 @@ if [ ! $INSCRIPT ]; then
 fi
 
 function buildOSM2PGSQL {
-	sudo apt-get install git libxml2-dev libgeos-dev libgeos++-dev libpq-dev libbz2-dev libproj-dev protobuf-c-compiler libprotobuf-c0-dev autoconf automake libtool make g++ libbz2-dev
+	sudo apt-get install -y git libxml2-dev libgeos-dev libgeos++-dev libpq-dev libbz2-dev libproj-dev protobuf-c-compiler libprotobuf-c0-dev autoconf automake libtool make g++ libbz2-dev
 	
 	# remove old stuff
 	rm -rf $TMPDIR/osm2pgsql

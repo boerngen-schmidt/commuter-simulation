@@ -5,7 +5,7 @@ if [ ! $INSCRIPT ]; then
 fi
 
 function buildOsm2pgrouting {
-	sudo apt-get -y install git cmake libexpat1-dev libboost-dev libpq-dev
+	sudo apt-get -y install git cmake build-essential libexpat1-dev libboost-dev libpq-dev
 	
 	cd $TMPDIR
 	git clone https://github.com/pgRouting/osm2pgrouting.git
