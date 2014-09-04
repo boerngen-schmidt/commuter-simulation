@@ -16,7 +16,7 @@ read -p "Download latest OSM Germany Map? [y/N]: " yn
 case $yn in
 	[Yy]* ) 
 		wget http://download.geofabrik.de/europe/germany-latest.osm.pbf -P $TMPDIR -N
-		wget http://download.geofabrik.de/europe/germany-latest.osm.bz2 -p $TMPDIR -N
+		wget http://download.geofabrik.de/europe/germany-latest.osm.bz2 -P $TMPDIR -N
 		;;
 	* ) echo "  Skipped downloading OSM Data";;
 esac
