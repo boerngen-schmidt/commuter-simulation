@@ -30,7 +30,7 @@ function f_osm2po {
 	while /bin/true
 	do
 		if [ ! -d $OSM2PO_HOME ]; then
-			echo "OSM2PO was not found!"
+			echo -e "\e[31mOSM2PO was not found!\e[39m"
 			read -e -p "Please input path to OSM2PO. [$OSM2PO_HOME]: " input
 			OSM2PO_HOME=${input}
 		else
@@ -40,13 +40,13 @@ function f_osm2po {
 
 	time java -Xmx12g -jar $OSM2PO_HOME/osm2po-core-4.8.8-signed.jar prefix=de cmd=tjspg tileSize=x workDir=$TMPDIR/osm2po_import $1
 	echo; echo;
-	echo "Importing OSM2PO network into database ..."
+	echo -e "\e[92mImporting OSM2PO network into database \e[39m..."
 	time psql -U $USER -d $DATABASE -q -f "$TMPDIR/osm2po_import/de_2po_4pgr.sql"
 }
 
 PS3="Choose OSM File for import: "
-osmfile_choices=($TMPDIR/*.osm*)
-select choice in $TMPDIR/*.osm*
+osmfile_choices=( $(find $TMPDIR -type f -iname "*.osm*") )
+select choice in ${osmfile_choices[@]}
 do
 	if (( $REPLY > 0 && $REPLY <= ${#osmfile_choices[@]} )); then
 		OSMFILE=$choice
@@ -54,6 +54,7 @@ do
 	else
 		echo "Invailid choice, please select a OSM File"
 	fi
+	echo
 	REPLY=
 done
 
