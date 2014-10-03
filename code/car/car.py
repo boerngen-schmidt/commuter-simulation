@@ -27,5 +27,21 @@ class Car(object):
         '''
         pass
     
+    def isHeadingHome(self):
+        '''
+        Returns the direction in which the car is heading
+        
+        @return: true if car is heading home, false if heading for work
+        '''
+        pass
+    
+    def findNearestFuelstation(self):
+        '''
+        Takes current car posijtion and direction to search for the nearest fuelstation
+        '''
+        pass
+    
+    
+    
     
         
