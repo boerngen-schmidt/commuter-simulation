@@ -56,3 +56,4 @@ docs/_build/
 tmp/
 
 /python3-venv/
+/python2-venv/
