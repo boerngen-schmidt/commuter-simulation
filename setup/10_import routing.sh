@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash	
 
 if [ ! $INSCRIPT ]; then
 	exit 1
@@ -38,8 +38,11 @@ function f_osm2po {
 		fi
 	done
 	
+	infoMsg "Copying osm2po.config file"
+	cp $BASE/config/osm2po/osm2po.config $OSM2PO_HOME
+	
 	infoMsg "Creating road network"
-	time java -Xmx12g -jar $OSM2PO_HOME/osm2po-core-4.8.8-signed.jar prefix=de cmd=tjspg tileSize=x workDir=$TMPDIR/osm2po_import $1
+	time java -Xmx12g -jar $OSM2PO_HOME/osm2po-core-4.8.8-signed.jar prefix=de cmd=tjspg workDir=$TMPDIR/osm2po_import $1
 	infoMsg "Importing OSM2PO network into database"
 	time psql -U $USER -d $DATABASE -q -f "$TMPDIR/osm2po_import/de_2po_4pgr.sql"
 }
