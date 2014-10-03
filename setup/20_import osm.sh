@@ -33,7 +33,7 @@ do
 		OSMFILE=$choice
 		break
 	else
-		echo "Invailid choice, please select a OSM File"
+		warnMsg "Invailid choice, please select a OSM File"
 		REPLY=
 	fi
 done
@@ -47,9 +47,9 @@ fi
 OSM2PGSQL_OPTIONS="--number-processes 4 -c -d $DATABASE -U $USER -p de_osm -I -C 20480 -S $BASE/config/osm2pgsql/commuter_simulation.style --cache-strategy sparse -k --hstore-match-only $OSM_OPTS"
 
 if [ -e $BASE/bin/osm2pgsql ]; then
-	echo -e "\e[36mRunnung local version of osm2pgsql \e[39m..."
+	infoMsg "Runnung local version of osm2pgsql"
 	time $BASE/bin/osm2pgsql $OSM2PGSQL_OPTIONS $OSMFILE
 else
-	echo -e "\e[36mRunnung system version of osm2pgsql \e[39m..."
+	infoMsg "Runnung system version of osm2pgsql"
 	time osm2pgsql $OSM2PGSQL_OPTIONS $OSMFILE
 fi
