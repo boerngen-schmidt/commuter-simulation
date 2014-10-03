@@ -6,16 +6,16 @@ fi
 
 cd $BASE
 
-apt-get install python-virtualenv python-pip
-virtualenv -p /usr/bin/python2.7 python2-venv
+sudo apt-get -q -y install python-virtualenv python-pip libyaml-dev
+virtualenv -p /usr/bin/python2.7 --clear $BASE/python2-venv/
 
 infoMsg "Activating Python 2 Virtual Environment"
 source $BASE/python2-venv/bin/activate
 
 infoMsg "Installing Python 2 packages"
-pip py-mysql2pgsql
+pip install py-mysql2pgsql
 
-if [ ! -f $BASE/config/py-mysql2pgsql.yml ] 
+if [ ! -f $BASE/config/py-mysql2pgsql.yml ]; then
 	infoMsg "Creating default py-mysql2pgsql config file"
 	py-mysql2pgsql -f $BASE/config/py-mysql2pgsql.yml
 	warnMsg "Please configure connection settings"

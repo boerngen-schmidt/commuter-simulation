@@ -25,7 +25,8 @@ function infoMsg {
 function warnMsg {
 	echo -e "$COLOR_RED$1 $COLOR_NC..."
 }
-
+export -f infoMsg
+export -f warnMsg
 export INSCRIPT=1
 export BASE=$PWD
 export DATABASE="spritsim"

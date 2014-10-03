@@ -53,3 +53,7 @@ else
 	infoMsg "Runnung system version of osm2pgsql"
 	time osm2pgsql $OSM2PGSQL_OPTIONS $OSMFILE
 fi
+
+infoMsg "Running post-import SQL scripts"
+psql -q -f $BASE/config/postgresql/post-import_de_osm_polygon.sql -d $DATABASE -U $USER
+psql -q -f $BASE/config/postgresql/post-import_de_osm_roads.sql -d $DATABASE -U $USER
