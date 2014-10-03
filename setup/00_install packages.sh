@@ -16,8 +16,8 @@ infoMsg "Fetching OSM data"
 read -p "Download latest OSM Germany Map? [y/N]: " yn
 case $yn in
 	[Yy]* ) 
-		wget http://download.geofabrik.de/europe/germany-latest.osm.pbf -P $TMPDIR -N
-		wget http://download.geofabrik.de/europe/germany-latest.osm.bz2 -P $TMPDIR -N
+		wget http://download.geofabrik.de/europe/germany-latest.osm.pbf -P $BASE/data/osm -N
+		wget http://download.geofabrik.de/europe/germany-latest.osm.bz2 -P $BASE/data/osm -N
 		;;
 	* ) warnMsg "Skipped downloading OSM Data";;
 esac

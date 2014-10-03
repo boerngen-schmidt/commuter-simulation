@@ -45,7 +45,7 @@ function f_osm2po {
 }
 
 PS3="Choose OSM File for import: "
-osmfile_choices=( $(find $TMPDIR -type f -iname "*.osm*") )
+osmfile_choices=( $(find $BASE/data/osm -type f -iname "*.osm*") )
 select choice in ${osmfile_choices[@]}
 do
 	if (( $REPLY > 0 && $REPLY <= ${#osmfile_choices[@]} )); then
