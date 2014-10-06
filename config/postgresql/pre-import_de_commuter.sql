@@ -20,15 +20,15 @@ SELECT AddGeometryColumn('de_commuter', 'geom', 900913, 'POLYGON', 2);
   
 CREATE TABLE de_commuter_kreise()
 WITH (OIDS=FALSE)
-INHERITS (de_communter);
+INHERITS (de_commuter);
 
 CREATE TABLE de_commuter_gemeinden()
 WITH (OIDS=FALSE)
-INHERITS (de_communter);
+INHERITS (de_commuter);
 
 CREATE TABLE de_commuter_other()
 WITH (OIDS=FALSE)
-INHERITS (de_communter);
+INHERITS (de_commuter);
 
 CREATE OR REPLACE FUNCTION #spritsim'.trigger_insert_de_commuter()
     RETURNS trigger AS
