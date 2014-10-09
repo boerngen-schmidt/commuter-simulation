@@ -44,11 +44,14 @@ echo $OSMFILE
 	exit 1
 fi
 
-OSM2PGSQL_OPTIONS="--number-processes 8 -c -d $DATABASE -U $USER -p de_osm -C 12000 -S $BASE/config/osm2pgsql/commuter_simulation.style -x --cache-strategy sparse $OSM_OPTS"
+OSM2PGSQL_OPTIONS="--number-processes 8 -c -d $DATABASE -U $USER -p de_osm -C 12000 \
+					-S $BASE/config/osm2pgsql/commuter_simulation.style \
+					-x --cache-strategy sparse $OSM_OPTS"
 
 if [ -e $BASE/bin/osm2pgsql ]; then
 	infoMsg "Runnung local version of osm2pgsql"
-	time $BASE/bin/osm2pgsql $OSM2PGSQL_OPTIONS $OSMFILE
+	time $BASE/bin/osm2pgsql $OSM2PGSQL_OPTION
+OSM2PGSQL_OPTIONS="--number-processes 8 -c -d $DATABASE -U $USER -p de_osm -C 12000 -S $BASE/config/osm2pgsql/commuter_simulation.style -x --cache-strategy sparseS $OSMFILE
 else
 	infoMsg "Runnung system version of osm2pgsql"
 	time osm2pgsql $OSM2PGSQL_OPTIONS $OSMFILE

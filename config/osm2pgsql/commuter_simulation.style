@@ -6,7 +6,7 @@
 # Insert your own columns here, or change phstore to polygon below
 #node,way	osm_user						text
 #node,way	osm_uid							text
-#node,way	osm_version						int4	linear
+node,way	osm_version						int4	linear
 #node,way	osm_timestamp						text
 
 node,way	access							text	linear
