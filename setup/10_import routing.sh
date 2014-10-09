@@ -38,8 +38,8 @@ function f_osm2po {
 		fi
 	done
 	
-	infoMsg "Copying osm2po.config file"
-	cp $BASE/config/osm2po/osm2po.config $OSM2PO_HOME
+	# Change to dir where config file is located
+	cd $BASE/config/osm2po
 	
 	infoMsg "Creating road network"
 	time java -Xmx12g -jar $OSM2PO_HOME/osm2po-core-4.8.8-signed.jar prefix=de cmd=tjspg workDir=$TMPDIR/osm2po_import $1
@@ -85,5 +85,5 @@ do
 	esac
 done
 	
-	
+cd $BASE
 
