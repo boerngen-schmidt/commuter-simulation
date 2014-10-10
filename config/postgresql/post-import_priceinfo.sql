@@ -22,3 +22,7 @@ CREATE INDEX index_station_id
    ON de_tt_priceinfo (station_id ASC NULLS LAST);
 
 INSERT INTO de_tt_priceinfo (SELECT id, station_id, received::timestamptz AT TIME ZONE 'Europe/Berlin', e5, e10, diesel from priceinfo);
+
+
+-- Drop old table
+DROP TABLE priceinfo;

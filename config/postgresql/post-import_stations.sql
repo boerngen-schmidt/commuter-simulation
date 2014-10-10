@@ -47,3 +47,6 @@ INSERT INTO de_tt_stations (
   holiday_identifier, opening_times, opening_times_extended, override_opening_times,
   ST_Transform(ST_SetSRID(ST_POINT(longitude, latitude), 4326), 900913) AS geom
   FROM stations;
+  
+-- DROP old table
+DROP TABLE stations;  

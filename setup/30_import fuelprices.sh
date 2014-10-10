@@ -4,8 +4,8 @@ if [ ! $INSCRIPT ]; then
 	exit 1
 fi
 
+infoMsg "Droping mySQL database for fuelprices"
 read -s -p "Please enter password for mysql user 'root': " MYSQL_PASSWD
-
 mysqladmin -uroot -p$MYSQL_PASSWD drop spritsim
 mysqladmin -uroot -p$MYSQL_PASSWD create spritsim
 
