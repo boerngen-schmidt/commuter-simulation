@@ -13,7 +13,7 @@ def init_logging():
     '''
     Initialize logging module
     '''
-    logger = logging.getLogger('sprit_sim')
+    logger = logging.getLogger('spritsim')
     logger.setLevel(logging.DEBUG)
     
     # FileHandler for log file

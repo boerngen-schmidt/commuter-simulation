@@ -4,27 +4,28 @@ Created on 11.09.2014
 @author: benjamin@boerngen-schmidt.de
 '''
 from routing.route import Route
+import logging
 
 class Car(object):
     '''
     Represents a car
     '''
-    
-    currentSpeed = 0
-    tankFilling = 0.05
-    
-
 
     def __init__(self, Route):
         '''
         Constructor
         '''
+        self.currentSpeed = 0
+        self.tankFilling = 0.05
+        self.logger = logging.getLogger('spritsim.Car')
         pass
     
     def randomTankFilling(self):
         '''
         Method for initializing a car with a random tank filling
         '''
+        
+        self.logger.info('Random Tank filling')
         pass
     
     def isHeadingHome(self):
