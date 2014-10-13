@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash	
 
 if [ ! $INSCRIPT ]; then
 	exit 1
@@ -14,12 +14,12 @@ if [ ! $DBEXISTS ]; then
 	exit
 fi
 
-echo "Preparing Database for routing ..."
+infoMsg "Preparing Database for routing"
 psql -c "CREATE EXTENSION postgis" -d $DATABASE -U $USER
 psql -c "CREATE EXTENSION pgrouting" -d $DATABASE -U $USER
 
 function f_osm2pgrouting {
-	echo "Might FAIL!!!"
+	warnMsg "Might FAIL!!!"
 	
 	read -p "Please enter password for Postgreql user  \"$USER\": " password
 	osm2pgrouting -file $1 -conf /usr/share/osm2pgrouting/mapconfig_for_cars.xml -dbname $DATABASE -user $USER -host localhost -passwd $password
@@ -30,22 +30,25 @@ function f_osm2po {
 	while /bin/true
 	do
 		if [ ! -d $OSM2PO_HOME ]; then
-			echo -e "\e[31mOSM2PO was not found!\e[39m"
+			warnMsg "OSM2PO was not found!"
 			read -e -p "Please input path to OSM2PO. [$OSM2PO_HOME]: " input
 			OSM2PO_HOME=${input}
 		else
 			break
 		fi
 	done
-
-	time java -Xmx12g -jar $OSM2PO_HOME/osm2po-core-4.8.8-signed.jar prefix=de cmd=tjspg tileSize=x workDir=$TMPDIR/osm2po_import $1
-	echo; echo;
-	echo -e "\e[92mImporting OSM2PO network into database \e[39m..."
+	
+	# Change to dir where config file is located
+	cd $BASE/config/osm2po
+	
+	infoMsg "Creating road network"
+	time java -Xmx12g -jar $OSM2PO_HOME/osm2po-core-4.8.8-signed.jar prefix=de cmd=tjspg workDir=$TMPDIR/osm2po_import $1
+	infoMsg "Importing OSM2PO network into database"
 	time psql -U $USER -d $DATABASE -q -f "$TMPDIR/osm2po_import/de_2po_4pgr.sql"
 }
 
 PS3="Choose OSM File for import: "
-osmfile_choices=( $(find $TMPDIR -type f -iname "*.osm*") )
+osmfile_choices=( $(find $BASE/data/osm -type f -iname "*.osm*") )
 select choice in ${osmfile_choices[@]}
 do
 	if (( $REPLY > 0 && $REPLY <= ${#osmfile_choices[@]} )); then
@@ -82,5 +85,5 @@ do
 	esac
 done
 	
-	
+cd $BASE
 

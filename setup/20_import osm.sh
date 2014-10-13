@@ -19,7 +19,7 @@ psql -q -c "CREATE EXTENSION postgis" -d $DATABASE -U $USER
 psql -q -c "CREATE EXTENSION hstore" -d $DATABASE -U $USER
 
 PS3="Choose OSM File for import: "
-osmfile_choices=( $(find $TMPDIR -type f -iname "*.osm*") )
+osmfile_choices=( $(find $BASE/data/osm -type f -iname "*.osm*") )
 select choice in ${osmfile_choices[@]}
 do
 	if (( $REPLY > 0 && $REPLY <= ${#osmfile_choices[@]} )); then
@@ -33,7 +33,7 @@ do
 		OSMFILE=$choice
 		break
 	else
-		echo "Invailid choice, please select a OSM File"
+		warnMsg "Invailid choice, please select a OSM File"
 		REPLY=
 	fi
 done
@@ -44,12 +44,19 @@ echo $OSMFILE
 	exit 1
 fi
 
-OSM2PGSQL_OPTIONS="--number-processes 4 -c -d $DATABASE -U $USER -p de_osm -I -C 20480 -S $BASE/config/osm2pgsql/commuter_simulation.style --cache-strategy sparse -k --hstore-match-only $OSM_OPTS"
+OSM2PGSQL_OPTIONS="--number-processes 8 -c -d $DATABASE -U $USER -p de_osm -C 12000 \
+					-S $BASE/config/osm2pgsql/commuter_simulation.style \
+					-x --cache-strategy sparse $OSM_OPTS"
 
 if [ -e $BASE/bin/osm2pgsql ]; then
-	echo -e "\e[36mRunnung local version of osm2pgsql \e[39m..."
-	time $BASE/bin/osm2pgsql $OSM2PGSQL_OPTIONS $OSMFILE
+	infoMsg "Runnung local version of osm2pgsql"
+	time $BASE/bin/osm2pgsql $OSM2PGSQL_OPTION
+OSM2PGSQL_OPTIONS="--number-processes 8 -c -d $DATABASE -U $USER -p de_osm -C 12000 -S $BASE/config/osm2pgsql/commuter_simulation.style -x --cache-strategy sparseS $OSMFILE
 else
-	echo -e "\e[36mRunnung system version of osm2pgsql \e[39m..."
+	infoMsg "Runnung system version of osm2pgsql"
 	time osm2pgsql $OSM2PGSQL_OPTIONS $OSMFILE
 fi
+
+infoMsg "Running post-import SQL scripts"
+psql -q -f $BASE/config/postgresql/post-import_de_osm_polygon.sql -d $DATABASE -U $USER
+psql -q -f $BASE/config/postgresql/post-import_de_osm_roads.sql -d $DATABASE -U $USER
