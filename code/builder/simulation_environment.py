@@ -14,4 +14,9 @@ class SimulationEnvironmentBuilder(object):
         '''
         Constructor
         '''
+        self.logger = 
+        SELECT * FROM de_commuter_gemeinden WHERE ST_WithIn(geom, (SELECT geom FROM de_commuter_kreise WHERE name LIKE 'Vogelsberg%'))
+        
+    def buildEvnvironment(self):
+        
         

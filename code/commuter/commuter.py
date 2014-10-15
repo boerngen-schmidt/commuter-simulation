@@ -4,6 +4,7 @@ Created on 09.10.2014
 @author: benjamin
 '''
 import simpy
+from car.car import Car
 
 class Commuter(object):
     '''
@@ -11,8 +12,18 @@ class Commuter(object):
     '''
 
 
-    def __init__(self, params):
+    def __init__(self, commuter_id, route):
         '''
         Constructor
         '''
+        self.route = route
+        self.car = Car(commuter_id, route)
+        
+        return
+    
+    def run(self):
+        '''
+        Simpy run function
+        '''
+        
         
