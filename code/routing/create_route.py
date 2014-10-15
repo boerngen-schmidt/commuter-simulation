@@ -3,6 +3,7 @@ Created on 03.10.2014
 
 @author: Benjamin
 '''
+import psycopg2
 
 class CreateRoute(object):
     '''
@@ -14,13 +15,15 @@ class CreateRoute(object):
         '''
         Constructor
         '''
+        self.startPoint
+        self.destPoint
         pass
     
     def saveToDatabase(self):
         '''
         saves created route to database
         '''
-        conn = psycopg2 
+        conn = psycopg2.connect()
         pass
     
     def createRoute(self):

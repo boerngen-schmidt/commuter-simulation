@@ -12,13 +12,16 @@ class Car(object):
     Represents a car
     '''
 
-    def __init__(self, Route):
+    def __init__(self, commuter_id, route):
         '''
         Constructor
         '''
         self.currentSpeed = 0
         self.tankFilling = self.randomTankFilling()
-        self.logger = logging.getLogger('spritsim.Car')
+        self.logger = logging.getLogger('spritsim.Car' % commuter_id)
+        self.currentPosition
+        self.currentDirection
+        self.route = route
         pass
     
     def randomTankFilling(self):
