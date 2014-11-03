@@ -6,8 +6,12 @@ fi
 
 cd $BASE
 
-sudo apt-get -q -y install python-virtualenv python-pip libyaml-dev
-virtualenv -p /usr/bin/python2.7 --clear $BASE/python2-venv/
+if currentDistribution -eq $DIST_DEBIAN; then
+	sudo apt-get -q -y install python-virtualenv python-pip libyaml-dev
+elif currentDistribution -eq $DIST_GENTOO; then
+	emerge dev-python/pip dev-python/virtualenv dev-libs/libyaml
+fi
+virtualenv -p /usr/bin/python2.7 --clear $BASE/pyt	hon2-venv/
 
 infoMsg "Activating Python 2 Virtual Environment"
 source $BASE/python2-venv/bin/activate

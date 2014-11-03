@@ -4,13 +4,27 @@ if [ ! $INSCRIPT ]; then
 	exit 1
 fi
 
-
 infoMsg "Installing nessesary Packages"
-sudo add-apt-repository -y ppa:georepublic/pgrouting >/dev/null 2>&1
-sudo apt-get -q update >/dev/null
-
-PACKAGES="postgresql postgresql-contrib postgis postgresql-9.3-pgrouting osm2pgrouting osm2pgsql pgadmin3 python-dev mysql-server mysql-client libmysqlclient-dev"
-sudo apt-get -q -y install $PACKAGES
+case currentDistribution in
+	$DIST_DEBIAN)
+		sudo add-apt-repository -y ppa:georepublic/pgrouting >/dev/null 2>&1
+		sudo apt-get -q update >/dev/null
+		
+		PACKAGES="postgresql postgresql-contrib postgis postgresql-9.3-pgrouting osm2pgrouting osm2pgsql pgadmin3 python-dev mysql-server mysql-client libmysqlclient-dev"
+		sudo apt-get -q -y install $PACKAGES
+		;;
+	$DIST_GENTOO)
+		PACKAGES="postgres-server postgis pgrouting	mysql"
+		emerge $PACKAGES
+		if [ $? -ne 0 ]; then
+			errorMsg "Please fix emerge errors"
+			exit 1
+		;;
+	*)
+		errorMsg "Could not determine Linux distribution for installing needed packages"
+		exit 1
+		;;
+esac		
 
 infoMsg "Fetching OSM data"
 read -p "Download latest OSM Germany Map? [y/N]: " yn
