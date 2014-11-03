@@ -29,24 +29,25 @@ function ynQuestion {
 	read -p "$1 [y/N]: " yn
 	case $yn in
 		[Yy]* ) 
-			return true
-		* )
-			return false
+			return 1
+			;;
+		*)
+			return 0
+			;;
 	esac
 }
-export -f infoMsg
-export -f warnMsg
 
 #### Services
 
 DIST=`gawk -F= '/^NAME/{print tolower($2)}' /etc/os-release`
 DIST_GENTOO="gentoo"
 # All debian based systems
-DIST_DEBIAN="debian" 
+DIST_DEBIAN="debian"
 
 function currentDistribution {
-	return $DIST
+	echo $DIST
 }
+export -f currentDistribution
 
 function PostgresService {
 	
@@ -57,18 +58,20 @@ function PostgresService {
 		$DIST_DEBIAN)
 			PostgresServiceDebian $1
 			;;
+	esac
 }
+export -f PostgresService
 
 function PostgresServiceGentoo {
 	case $1 in
 		start)
-			systemctl start postgresql-9.3.service
+			sudo systemctl start postgresql-9.3.service
 			;;
 		stop)
-			systemctl stop postgresql-9.3.service
+			sudo systemctl stop postgresql-9.3.service
 			;;
 		restart)
-			systemctl restart postgresql-9.3.service
+			sudo systemctl restart postgresql-9.3.service
 			;;
 	esac
 }
@@ -76,13 +79,13 @@ function PostgresServiceGentoo {
 function PostgresServiceDebian {
 	case $1 in
 		start)
-			/etc/init.d/postgresql start
+			sudo /etc/init.d/postgresql start
 			;;
 		stop)
-			/etc/init.d/postgresql stop
+			sudo /etc/init.d/postgresql stop
 			;;
 		restart)
-			/etc/init.d/postgresql restart
+			sudo /etc/init.d/postgresql restart
 			;;
 	esac
 }

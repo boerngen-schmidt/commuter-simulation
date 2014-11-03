@@ -11,7 +11,7 @@ if currentDistribution -eq $DIST_DEBIAN; then
 elif currentDistribution -eq $DIST_GENTOO; then
 	emerge dev-python/pip dev-python/virtualenv dev-libs/libyaml
 fi
-virtualenv -p /usr/bin/python2.7 --clear $BASE/pyt	hon2-venv/
+virtualenv -p /usr/bin/python2.7 --clear $BASE/python2-venv/
 
 infoMsg "Activating Python 2 Virtual Environment"
 source $BASE/python2-venv/bin/activate

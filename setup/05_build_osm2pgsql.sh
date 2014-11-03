@@ -40,8 +40,8 @@ function buildOSM2PGSQLCPP {
 	cp osm2pgsql $BASE/bin												
 }
 
-
-if [ ynQuestion "Do you want to build osm2pgsql from sources?" ]; then
+$(ynQuestion "Do you want to build osm2pgsql from sources?")
+if [ $? -eq 1 ]; then
 	# remove old stuff
 	rm -rf $TMPDIR/osm2pgsql
 	select type in "C Version" "C++ Version"; do

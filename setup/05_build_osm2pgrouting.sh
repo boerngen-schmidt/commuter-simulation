@@ -31,7 +31,8 @@ function buildOsm2pgrouting {
 	fi
 }
 
-if [ ynQuestion "Do you want to build osm2pgrouting from sources?" ]; then
+$(ynQuestion "Do you want to build osm2pgrouting from sources?")
+if [ $? -eq 1]; then
     buildOsm2pgrouting
 fi
 
