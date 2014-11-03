@@ -3,7 +3,7 @@ Created on 03.10.2014
 
 @author: Benjamin
 '''
-import psycopg2
+from database.connection import DatabaseConnection as db
 
 class CreateRoute(object):
     '''
@@ -17,6 +17,11 @@ class CreateRoute(object):
         '''
         self.startPoint
         self.destPoint
+        self.cursor = 
+        
+        connection = psycopg2.connect(database = 'test', user = 'test')
+        self.cursor = connection.cursor()
+        
         pass
     
     def saveToDatabase(self):
