@@ -39,8 +39,8 @@ do
 done
 
 if [ ! -f $OSMFILE ]; then
-echo $OSMFILE
-	echo "OSM File was not found!"
+	echo $OSMFILE
+	warnMsg "OSM File was not found!"
 	exit 1
 fi
 
@@ -50,8 +50,7 @@ OSM2PGSQL_OPTIONS="--number-processes 8 -c -d $DATABASE -U $USER -p de_osm -C 12
 
 if [ -e $BASE/bin/osm2pgsql ]; then
 	infoMsg "Runnung local version of osm2pgsql"
-	time $BASE/bin/osm2pgsql $OSM2PGSQL_OPTION
-OSM2PGSQL_OPTIONS="--number-processes 8 -c -d $DATABASE -U $USER -p de_osm -C 12000 -S $BASE/config/osm2pgsql/commuter_simulation.style -x --cache-strategy sparseS $OSMFILE
+	time $BASE/bin/osm2pgsql $OSM2PGSQL_OPTIONS $OSMFILE
 else
 	infoMsg "Runnung system version of osm2pgsql"
 	time osm2pgsql $OSM2PGSQL_OPTIONS $OSMFILE

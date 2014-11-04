@@ -37,6 +37,14 @@ function ynQuestion {
 	esac
 }
 
+function doemerge {
+	sudo emerge -uav $1
+	if [ $? -ne 0 ]; then
+		warnMsg "Please fix emerge errors"
+		exit 1
+	fi
+}
+
 #### Services
 
 DIST=`gawk -F= '/^NAME/{print tolower($2)}' /etc/os-release`
@@ -47,7 +55,6 @@ DIST_DEBIAN="debian"
 function currentDistribution {
 	echo $DIST
 }
-export -f currentDistribution
 
 function PostgresService {
 	
@@ -60,7 +67,6 @@ function PostgresService {
 			;;
 	esac
 }
-export -f PostgresService
 
 function PostgresServiceGentoo {
 	case $1 in

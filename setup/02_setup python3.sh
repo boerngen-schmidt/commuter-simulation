@@ -32,15 +32,15 @@ function installPython3Gentoo {
 	source $BASE/python3-venv/bin/activate
 }
 
-infoMsq "Installing Python 3"
-if [ currentDistribution -eq $DIST_DEBIAN ]; then
+infoMsg "Installing Python 3"
+if [ $(currentDistribution) == $DIST_DEBIAN ]; then
 	installPython3Debian
-elif [ currentDistribution -eq $DIST_GENTOO ]; then
+elif [ $(currentDistribution) == $DIST_GENTOO ]; then
 	installPython3Gentoo
 fi
 
 infoMsg "Installing Packages"
-pip install psycopg2 simpy > /dev/null
+pip install psycopg2 simpy
 
 infoMsg "Exiting Python 3 Virtual Environment"
 deactivate

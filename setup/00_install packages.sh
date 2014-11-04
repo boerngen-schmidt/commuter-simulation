@@ -15,11 +15,7 @@ case $(currentDistribution) in
 		;;
 	$DIST_GENTOO)
 		PACKAGES="postgresql-server postgis pgrouting mysql virtualenv dev-python/pip"
-		sudo emerge $PACKAGES
-		if [ $? -ne 0 ]; then
-			warnMsg "Please fix emerge errors"
-			exit 1
-		fi
+		doemerge $PACKAGES
 		;;
 	*)
 		warnMsg "Could not determine Linux distribution for installing needed packages"
@@ -37,5 +33,12 @@ else
 fi
 
 infoMsg "Downloading OSM2PO"
+if [ -d $BASE/bin/osm2po ]; then
+	rm -rf $BASE/bin/osm2po
+fi
+#wget -P $TMPDIR "http://osm2po.de/download.php?lnk=osm2po-4.9.1.zip" --referer http://osm2po.de --content-disposition -N
+#unzip -q $TMPDIR/osm2po-4.9.1.zip -d $BASE/bin/osm2po
 wget -P $TMPDIR "http://osm2po.de/download.php?lnk=osm2po-4.8.8.zip" --referer http://osm2po.de --content-disposition -N
-unzip $TMPDIR/osm2po-4.8.8.zip -d $BASE/bin/osm2po
+unzip -q $TMPDIR/osm2po-4.8.8.zip -d $BASE/bin/osm2po
+cd $BASE/bin/osm2po
+ln -s osm2po-core-*-signed.jar osm2po.jar

@@ -6,10 +6,10 @@ fi
 
 cd $BASE
 
-if currentDistribution -eq $DIST_DEBIAN; then
+if [ $(currentDistribution) == $DIST_DEBIAN ]; then
 	sudo apt-get -q -y install python-virtualenv python-pip libyaml-dev
-elif currentDistribution -eq $DIST_GENTOO; then
-	emerge dev-python/pip dev-python/virtualenv dev-libs/libyaml
+elif [ $(currentDistribution) == $DIST_GENTOO ]; then
+	doemerge "dev-python/pip dev-python/virtualenv dev-libs/libyaml"
 fi
 virtualenv -p /usr/bin/python2.7 --clear $BASE/python2-venv/
 

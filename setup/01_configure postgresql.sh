@@ -9,9 +9,7 @@ infoMsg "Stoping PostgreSQL Server"
 PostgresService stop
 
 postgres_conf=$(sudo find /etc/ -name postgresql.conf)
-echo $postgres_conf
 postgres_dir=$(dirname $postgres_conf)
-echo $postgres_dir
 infoMsg "Copying configuration files"
 if ! sudo grep -q postgresql.conf.include $postgres_conf; then
 	echo -e "\n\ninclude = 'postgresql.conf.include'" | sudo tee --append $postgres_conf >/dev/null
@@ -37,14 +35,14 @@ infoMsg "Checking if database \"$DATABASE\" exists"
 DBEXISTS=`psql -At -c "SELECT count(*) FROM pg_database where datname='$DATABASE'" -d postgres -U $USER`
 if [ $DBEXISTS == 1 ]; then
 	$(ynQuestion "Do you want to drop the database?")
-	if [ $? ]; then
-			$(ynQuestion "Do you REALLY want to drop the database?")
-			if [ $? -eq 1 ]; then
-				infoMsg "Dropping database \"$DATABASE\""
-				dropdb -U $USER --if-exists $DATABASE
-				infoMsg "Creating Database for routing"
-				createdb -U $USER -E UTF8 -O $USER $DATABASE
-			fi
+	if [ $? -eq 1 ]; then
+		$(ynQuestion "Do you REALLY want to drop the database?")
+		if [ $? -eq 1 ]; then
+			infoMsg "Dropping database \"$DATABASE\""
+			dropdb -U $USER --if-exists $DATABASE
+			infoMsg "Creating Database for routing"
+			createdb -U $USER -E UTF8 -O $USER $DATABASE
+		fi
 	else
 		infoMsg "Skipped dropping database"
 	fi

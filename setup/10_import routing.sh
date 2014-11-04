@@ -42,7 +42,7 @@ function f_osm2po {
 	cd $BASE/config/osm2po
 	
 	infoMsg "Creating road network"
-	time java -Xmx12g -jar $OSM2PO_HOME/osm2po-core-4.8.8-signed.jar prefix=de cmd=tjspg workDir=$TMPDIR/osm2po_import $1
+	time java -Xmx12g -jar $OSM2PO_HOME/osm2po.jar prefix=de cmd=tjspg workDir=$TMPDIR/osm2po_import $1
 	infoMsg "Importing OSM2PO network into database"
 	time psql -U $USER -d $DATABASE -q -f "$TMPDIR/osm2po_import/de_2po_4pgr.sql"
 }
