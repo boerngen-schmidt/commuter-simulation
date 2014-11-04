@@ -46,7 +46,7 @@ fi
 
 OSM2PGSQL_OPTIONS="--number-processes 8 -c -d $DATABASE -U $USER -p de_osm -C 12000 \
 					-S $BASE/config/osm2pgsql/commuter_simulation.style \
-					-x --cache-strategy sparse $OSM_OPTS"
+					--cache-strategy sparse $OSM_OPTS"
 
 if [ -e $BASE/bin/osm2pgsql ]; then
 	infoMsg "Runnung local version of osm2pgsql"
