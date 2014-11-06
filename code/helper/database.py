@@ -8,6 +8,7 @@ from os.path import abspath
 from configparser import ConfigParser, NoSectionError, NoOptionError
 import psycopg2.extensions
 import psycopg2.pool
+from helper.file_finder import find
 
 # module Stuff
 databaseConfig = None
@@ -110,7 +111,10 @@ def loadConfig(file_name=DEFAULT_DATABASE_CONFIGURATION_FILE_NAME):
         http://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-PARAMKEYWORDS
     """
     # find configuration file
-    file_name = find_file
+    file_name = find(file_name)
     # create configuration
     global databaseConfig #IGNORE:W0603
     databaseConfig = _Psycopg2ConnectionPoolConfig(abspath(file_name))
+
+if __name__ == '__main__':
+    loadConfig()

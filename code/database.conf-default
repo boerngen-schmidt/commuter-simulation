@@ -1,5 +1,7 @@
 [database]
 pool:
+minconn:
+maxconn:
 host: 
 port:
 dbname:
