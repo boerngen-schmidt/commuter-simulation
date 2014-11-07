@@ -1,23 +1,40 @@
-'''
+"""
 Created on 29.09.2014
 
 @author: Benjamin Börngen-Schmidt
-'''
+"""
 import logging
-from os.path import abspath
-from configparser import ConfigParser, NoSectionError, NoOptionError
+import atexit
+from contextlib import contextmanager
+from configparser import ConfigParser, NoSectionError
+from threading import RLock
+
+import os
 import psycopg2.extensions
-import psycopg2.pool
+from psycopg2.pool import ThreadedConnectionPool
 from helper.file_finder import find
+
 
 # module Stuff
 databaseConfig = None
+""" Holds the configuration
+:type databaseConfig: _Psycopg2ConnectionPoolConfig
+"""
+
 DEFAULT_DATABASE_CONFIGURATION_FILE_NAME='database.conf'
+"""Default name for the configuration file
+:type DEFAULT_DATABASE_CONFIGURATION_FILE_NAME: string
+"""
+
+_logger = logging.getLogger('helper.database')
+
+_database_config_lock = RLock()
+
 
 class LoggingCursor(psycopg2.extensions.cursor):
-    '''
+    """
     Logging cursor does log any SQL statement that is executed.
-    '''
+    """
     def execute(self, sql, args=None):
         logger = logging.getLogger('database.sql_debug')
         logger.info(self.mogrify(sql, args))
@@ -30,10 +47,10 @@ class LoggingCursor(psycopg2.extensions.cursor):
 
 
 class _Psycopg2ConnectionPoolConfig(object):
-    '''
+    """
     Private class which holds the configuration for a postgresql connection.
     It also registers the 
-    '''
+    """
     
     __slots__ = ('cp', 'logger', 'pool')
     
@@ -43,44 +60,55 @@ class _Psycopg2ConnectionPoolConfig(object):
         
         self.cp = ConfigParser()
         self.cp.read(configFile)
-        
-        self.pool = self._createPool()
+
+        with _database_config_lock:
+            self.pool = self._create_pool()
     
-    def _createPool(self):
-        '''
+    def _create_pool(self):
+        """
         Method creates a connection pool
-        '''
+        """
         if not self.cp.has_section('database'):
             self.logger.critical('Missing [database] section in configuration file.')
             raise NoSectionError('database')
         
-        common_dsn = self._getLibpqConnectionString()
-        
-        try :
-            minconn = self.cp.getint('database', 'minconn')
-        except NoOptionError:
-            minconn = 0
-            
-        try :
-            maxconn = self.cp.getint('database', 'maxconn')
-        except NoOptionError:
-            maxconn = 10
-           
-        try:     
-            _class = getattr(psycopg2.pool, self.cp.get('database', 'pool'))
-        except NoOptionError:
-            self.logger.error('Missing "pool" in configuration file')
-            raise
-        except AttributeError:
-            self.logger.error('Pool class with name "%s" does not exist.', self.cp.get('database', 'pool'))
-            raise
-            
-        return _class(minconn, maxconn, common_dsn) or None
+        common_dsn = self._get_libpq_connection_string()
 
-    def  _getLibpqConnectionString(self):
-        exclude = ('dsn', 'minconn', 'maxconn', 'pool')
+        min_conn = self.cp.getint(section='database', option='minconn', fallback=0)
+        max_conn = self.cp.getint(section='database', option='maxconn', fallback=10)
+        cursor_factory = self.cp.get(section='database', option='cursor_factory', fallback=None)
+           
+        # try:
+        #     _class = getattr(psycopg2.pool, self.cp.get('database', 'pool'))
+        # except NoOptionError:
+        #     self.logger.error('Missing "pool" in configuration file')
+        #     raise
+        # except AttributeError:
+        #     self.logger.error('Pool class with name "%s" does not exist.', self.cp.get('database', 'pool'))
+        #     raise
+        #
+        # return _class(minconn, maxconn, common_dsn) or None
+        atexit.register(self._at_exit_close)
+        return ThreadedConnectionPool(min_conn, max_conn, dsn=common_dsn, cursor_factory=cursor_factory)
+
+    def _get_libpq_connection_string(self):
+        """
+        Generates a libpg compatible connection string.
+
+        http://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-CONNSTRING
+        http://www.postgresql.org/docs/current/static/libpq-connect.html#LIBPQ-PARAMKEYWORDS
+        """
+        exclude = ('dsn', 'minconn', 'maxconn', 'pool', 'cursor_factory')
         return ' '.join( '{0[0]}={0[1]}'.format(item) for item in self.cp.items('database') if item[0].lower() not in exclude )
-        
+
+    def get_pool(self):
+        return self.pool
+
+    def _at_exit_close(self):
+        if self.pool is not None:
+            self.pool.closeall()
+
+
 def loadConfig(file_name=DEFAULT_DATABASE_CONFIGURATION_FILE_NAME):
     """
     Configure database pools from the given configuration file. 
@@ -113,8 +141,49 @@ def loadConfig(file_name=DEFAULT_DATABASE_CONFIGURATION_FILE_NAME):
     # find configuration file
     file_name = find(file_name)
     # create configuration
-    global databaseConfig #IGNORE:W0603
-    databaseConfig = _Psycopg2ConnectionPoolConfig(abspath(file_name))
+    global databaseConfig
+    databaseConfig = _Psycopg2ConnectionPoolConfig(os.path.abspath(file_name))
 
-if __name__ == '__main__':
-    loadConfig()
+
+def get_connection_pool():
+    """Returns the connection pool.
+
+    If no database is configured, :py:fc:loadConfig will be called to setup the database connection pool.
+    :return: The connection pool
+    :rtype: ThreadedConnectionPool
+    """
+    if databaseConfig is None:
+        loadConfig()
+    return databaseConfig.get_pool()
+
+
+@contextmanager
+def get_connection(key=None):
+    """Returns a connection from the connection pool to be used within a context
+
+    :param key: Key for the connection
+    :return: A connection cursor
+    :rtype: connection
+    """
+    pool = get_connection_pool()
+    conn = pool.getconn(key)
+    try:
+        yield conn
+    except Exception:
+        conn.rollback()
+        _logger.error('Transaction for connection with key "%s" was rolled back.' % (key,))
+        raise
+    else:
+        conn.commit()
+    finally:
+        pool.putconn(conn)
+
+
+# if __name__ is "__main__":
+#     loadConfig()
+#
+#     with get_connection() as conn:
+#         curs = conn.cursor()
+#         curs.execute('SELECT 1')
+#         r = curs.fetchone()
+#         print(curs.statusmessage, r)
