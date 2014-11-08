@@ -24,8 +24,7 @@ case $(currentDistribution) in
 esac		
 
 infoMsg "Fetching OSM data"
-$(ynQuestion "Download latest OSM Germany Map?")
-if [ $? -eq 1 ]; then
+if [ $(ynQuestion "Download latest OSM Germany Map?") ]; then
 	wget http://download.geofabrik.de/europe/germany-latest.osm.pbf -P $BASE/data/osm -N
 	wget http://download.geofabrik.de/europe/germany-latest.osm.bz2 -P $BASE/data/osm -N
 else

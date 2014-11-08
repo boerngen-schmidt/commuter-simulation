@@ -33,8 +33,7 @@ function buildOsm2pgrouting {
 		make -j8
 }
 
-$(ynQuestion "Do you want to build osm2pgrouting from sources?")
-if [ $? -eq 1 ]; then
+if [ $(ynQuestion "Do you want to build osm2pgrouting from sources?") ]; then
     buildOsm2pgrouting
 fi
 

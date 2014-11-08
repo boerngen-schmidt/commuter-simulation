@@ -16,8 +16,6 @@ CREATE TABLE de_commuter
 WITH (
   OIDS=FALSE
 );
-
-SELECT AddGeometryColumn('de_commuter', 'geom', 900913, 'MULTIPOLYGON', 2);
   
 -- Table: de_commuter_kreise
 
@@ -30,7 +28,6 @@ CREATE TABLE de_commuter_kreise
 -- Geerbt from table de_commuter:  home integer,
 -- Geerbt from table de_commuter:  outgoing integer,
 -- Geerbt from table de_commuter:  incoming integer,
--- Geerbt from table de_commuter:  geom geometry(MultiPolygon,900913)
   CONSTRAINT de_communter_kreise_pkey PRIMARY KEY (rs)
 )
 INHERITS (de_commuter)
@@ -49,7 +46,6 @@ CREATE TABLE de_commuter_gemeinden
 -- Geerbt from table de_commuter:  home integer,
 -- Geerbt from table de_commuter:  outgoing integer,
 -- Geerbt from table de_commuter:  incoming integer,
--- Geerbt from table de_commuter:  geom geometry(MultiPolygon,900913)
   CONSTRAINT de_communter_gemeinden_pkey PRIMARY KEY (rs)
 )
 INHERITS (de_commuter)

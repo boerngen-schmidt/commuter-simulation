@@ -9,7 +9,7 @@ infoMsg "Creating temporary directory"
 mkdir -p $BASE/{bin,tmp}
 export TMPDIR=$BASE/tmp
 
-
+echo -e "${COLOR_PURPLE}Main Menu${COLOR_NC}"
 PS3="Select Job to do: "
 select job in setup/*.sh "All" "Done"; do
 	case "$job" in
@@ -24,19 +24,12 @@ select job in setup/*.sh "All" "Done"; do
 			source "$job"
 	esac
 	REPLY=
+	echo; echo;
+	echo -e "${COLOR_PURPLE}Main Menu${COLOR_NC}"
 done
 
 echo; echo;
-PS3="Do you wish to clean the temporary files? "
-select yn in "Yes" "No"; do
-	case "$yn" in
-		Yes) 
-        	rm -rf $TMPDIR
-        	break;;
-        No) 
-			break;;
-		*)
-			REPLY=
-			;;
-	esac
-done
+
+if [ $(ynQuestion "Do you wish to clean the temporary files?") ]; then
+	rm -rf $TMPDIR
+fi

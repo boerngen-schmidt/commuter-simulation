@@ -34,10 +34,8 @@ infoMsg "Checking if database \"$DATABASE\" exists"
 # Check if database exists. if so drop it and create it again
 DBEXISTS=`psql -At -c "SELECT count(*) FROM pg_database where datname='$DATABASE'" -d postgres -U $USER`
 if [ $DBEXISTS == 1 ]; then
-	$(ynQuestion "Do you want to drop the database?")
-	if [ $? -eq 1 ]; then
-		$(ynQuestion "Do you REALLY want to drop the database?")
-		if [ $? -eq 1 ]; then
+	if [ $(ynQuestion "Do you want to drop the database?") ]; then
+		if [ $(ynQuestion "Do you REALLY want to drop the database?") ]; then
 			infoMsg "Dropping database \"$DATABASE\""
 			dropdb -U $USER --if-exists $DATABASE
 			infoMsg "Creating Database for routing"
