@@ -5,14 +5,27 @@ Created on 25.08.2014
 '''
 import logging
 
+import simpy.rt
+from helper import database as db
+
+
 def main():
     init_logging()
-    print 'Hello World'
-    
+    print("Hello World")
+
+    env = simpy.rt.RealtimeEnvironment()
+    with db.get_connection() as conn:
+        curs = conn.cursor()
+        curs.execute("SELECT * ")
+        for commuter in curs.fetchall():
+            env.
+
+    env.run()
+
+
 def init_logging():
-    '''
-    Initialize logging module
-    '''
+    """Initialize logging module
+    """
     logger = logging.getLogger('spritsim')
     logger.setLevel(logging.DEBUG)
     
