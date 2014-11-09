@@ -40,7 +40,7 @@ elif [ $(currentDistribution) == $DIST_GENTOO ]; then
 fi
 
 infoMsg "Installing Packages"
-pip install psycopg2 simpy
+pip install psycopg2 simpy PyYaml
 
 infoMsg "Exiting Python 3 Virtual Environment"
 deactivate

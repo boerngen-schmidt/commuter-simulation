@@ -9,10 +9,13 @@ from contextlib import contextmanager
 from configparser import ConfigParser, NoSectionError
 from threading import RLock
 
+from psycopg2._psycopg import connection
+
 import os
 import psycopg2.extensions
 from psycopg2.pool import ThreadedConnectionPool
 from helper.file_finder import find
+
 
 
 # module Stuff
@@ -158,12 +161,12 @@ def get_connection_pool():
 
 
 @contextmanager
-def get_connection(key=None):
+def get_connection(key=None) -> connection:
     """Returns a connection from the connection pool to be used within a context
 
     :param key: Key for the connection
     :return: A connection cursor
-    :rtype: connection
+    :rtype connection:
     """
     pool = get_connection_pool()
     conn = pool.getconn(key)
