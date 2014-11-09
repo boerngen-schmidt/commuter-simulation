@@ -7,7 +7,7 @@ CREATE TABLE de_shp
   gid serial NOT NULL,
   objectid integer,
   use numeric,
-  rs character varying(12),
+  rs character varying(12) UNIQUE,
   gf numeric,
   rau_rs character varying(12),
   gen character varying(50),

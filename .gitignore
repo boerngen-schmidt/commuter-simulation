@@ -55,5 +55,8 @@ docs/_build/
 # directories
 tmp/
 
+# Idea
+/.idea/
+
 /python3-venv/
 /python2-venv/
