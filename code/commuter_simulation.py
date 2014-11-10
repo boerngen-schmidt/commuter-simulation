@@ -12,7 +12,7 @@ from helper import database as db
 
 def main():
     init_logging()
-    print("Hello World")
+    db.loadConfig('database.conf')
 
     env = simpy.rt.RealtimeEnvironment()
     with db.get_connection() as conn:
