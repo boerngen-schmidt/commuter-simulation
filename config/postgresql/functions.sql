@@ -1,6 +1,20 @@
+CREATE OR REPLACE FUNCTION SimpleRandomSample(geom geometry, bbox geometry, u list)
+  RETURNS SETOF geometry AS
+$$
+DECLARE
+
+BEGIN
+
+END$$
+  LANGUAGE plpgsql VOLATILE
+  COST 100
+  ROWS 1000;
+
+
 CREATE OR REPLACE FUNCTION RandomPointsInPolygon(geom geometry, num_points integer)
 	RETURNS SETOF geometry AS
-$BODY$DECLARE
+$BODY$
+DECLARE
 	target_proportion numeric;
 	n_ret integer := 0;
 	loops integer := 0;
