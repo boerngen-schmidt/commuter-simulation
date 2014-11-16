@@ -10,7 +10,7 @@ import queue
 
 import yaml
 from helper import database
-from builder import threaded_point_creator as rpc
+from builder import thread_random_point_generator_shapely as rpc
 
 
 def main():
