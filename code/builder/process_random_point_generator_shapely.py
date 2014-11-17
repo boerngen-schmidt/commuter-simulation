@@ -12,8 +12,6 @@ import numpy.random as npr
 import pylab
 from helper import database
 from shapely.geometry import Polygon, Point, box, shape
-from shapely.wkb import loads
-from psycopg2.extras import NamedTupleCursor
 
 
 class Counter(object):
@@ -31,6 +29,46 @@ class Counter(object):
         return self.val.value
 
 
+class Command(object):
+    def __init__(self, rs: str, name: str, polygon: Polygon, points: int):
+        self._rs = rs
+        self._polygon = polygon
+        self._num_points = points
+        self._name = name
+
+    @property
+    def rs(self):
+        return self._rs
+
+    @rs.setter
+    def rs(self, value):
+        self._rs = value
+
+    @property
+    def polygon(self):
+        return self._polygon
+
+    @polygon.setter
+    def polygon(self, value):
+        self._polygon = value
+
+    @property
+    def num_points(self):
+        return self._num_points
+
+    @num_points.setter
+    def num_points(self, value):
+        self._num_points = value
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        self._name = value
+
+
 class PointCreatorProcess(Process):
     """
     Creates new routing start and destination points for the simulation.
@@ -38,12 +76,11 @@ class PointCreatorProcess(Process):
     As basis for how many points should be created within a district,
     the data from the Zensus 2011 should be used.
     """
-
     def __init__(self, info_queue: Queue, counter: Counter, kreise=True, start_points=True):
         """Constructor
 
         :param str name: Name of the Thread
-        :param queue.Queue info_queue; Reference to the Queue with information
+        :param Queue[Command] info_queue; Reference to the Queue with information
         :param bool kreise: True to create points within
         """
         Process.__init__(self)
@@ -52,10 +89,9 @@ class PointCreatorProcess(Process):
         self.counter = counter
 
         self.logging = logging.getLogger(self.name)
-        self._get_total()
+        self.total = info_queue.qsize()
         self.t = 2
         self.plot = False
-
 
     def set_t(self, t):
         """Tuning Parameter
@@ -68,10 +104,6 @@ class PointCreatorProcess(Process):
             raise ValueError('Value for t should be between 1 and 2')
 
     def run(self):
-        # sql = 'WITH area AS (SELECT c.*, s.geom FROM de_commuter_{tbl} c JOIN de_shp_{tbl} s ON c.rs = s.rs WHERE c.rs={rs}) '
-        # sql += 'INSERT INTO de_sim_points (parent_geometry, point_type, geom) SELECT area.rs , \'{type}\', RandomPointsInPolygon(area.geom, (area.outgoing + area.within)) FROM area '
-        sql = 'SELECT c.*, ST_AsEWKB(s.geom) AS geom_b, ST_Area(s.geom) AS area FROM de_commuter_{tbl} c JOIN de_shp_{tbl} s ON c.rs = s.rs WHERE c.rs=\'{rs}\''
-
         if self.kreise:
             tbl='kreise'
         else:
@@ -79,49 +111,34 @@ class PointCreatorProcess(Process):
 
         while not self.queue.empty():
             generation_start = time.time()
-            rs = self.queue.get()
-            with database.get_connection() as con:
-                cur = con.cursor(cursor_factory=NamedTupleCursor)
-                cur.execute(sql.format(rs=rs, tbl=tbl))
+            cmd = self.queue.get()
+            assert isinstance(cmd, Command)
 
-                if cur.rowcount > 1:
-                    records = cur.fetchall()
-                    cur.execute('SELECT SUM(ST_Area(geom)) as total_area FROM de_shp_{tbl} WHERE rs=\'{rs}\';'.format(tbl=tbl, rs=rs))
-                    total_area = cur.fetchone().total_area
+            rs = cmd._rs
+            generation_time = time.time() - generation_start
+            points = self._generate_points(cmd._polygon, cmd._num_points)
 
-                    points = []
-                    for rec in records:
-                        n = int(round(rec.outgoing * (rec.area / total_area)))
-                        polygon = loads(bytes(rec.geom_b))
-                        points += self._generate_points(polygon, n)
-                else:
-                    rec = cur.fetchone()
-                    polygon = loads(bytes(rec.geom_b))
-                    points = self._generate_points(polygon, rec.outgoing)
+            if self.plot:
+                pylab.figure(num=None, figsize=(20, 20), dpi=200)
+                self._plot_polygon(cmd._polygon)
 
-                generation_time = time.time() - generation_start
+                # Plot the generated points
+                pylab.plot([p.x for p in points], [p.y for p in points], 'bs', alpha=0.75)
 
-                if self.plot:
-                    pylab.figure(num=None, figsize=(20, 20), dpi=200)
-                    self._plot_polygon(polygon)
+                # Write the number of patches and the total patch area to the figure
+                pylab.text(-25, 25,
+                    "Patches: %d, total area: %.2f" % (len(cmd._polygon.geoms), cmd._polygon.area))
 
-                    # Plot the generated points
-                    pylab.plot([p.x for p in points], [p.y for p in points], 'bs', alpha=0.75)
+                pylab.savefig('{rs}.png'.format(rs=rs))
 
-                    # Write the number of patches and the total patch area to the figure
-                    pylab.text(-25, 25,
-                        "Patches: %d, total area: %.2f" % (len(polygon.geoms), polygon.area))
-
-                    pylab.savefig('{rs}.png'.format(rs=rs))
-
-                sql_start = time.time()
-                self._insert_points(rs, points, 'start')
-                sql_time = time.time() - sql_start
+            sql_start = time.time()
+            self._insert_points(rs, points, 'start')
+            sql_time = time.time() - sql_start
 
             num = self.counter.increment()
             self.logging.info('(%4d/%d) %s: Created %s points for "%s". Generation time: %s, SQL Time: %s',
                               num, self.total,
-                              self.name, len(points), rec.name,
+                              self.name, len(points), cmd.name,
                               generation_time, sql_time)
 
     def _insert_points(self, rs, points, type):
@@ -262,32 +279,3 @@ class PointCreatorProcess(Process):
         """Returns bottom half of bbox"""
         l=(bbox[3]-bbox[1]) / 2
         return bbox[0], bbox[1], bbox[2], bbox[3]-l
-
-    def _get_total(self):
-        sql = 'SELECT count(*) FROM {}'
-        if self.kreise:
-            sql = sql.format('de_commuter_kreise')
-        else:
-            sql = sql.format('de_commuter_gemeinden')
-
-        with database.get_connection() as con:
-            cur = con.cursor()
-            cur.execute(sql)
-            self.total = cur.fetchone()[0]
-
-if __name__ == "__main__":
-    from shapely import speedups
-
-    if speedups.available:
-        speedups.enable()
-
-    q=Queue()
-    q.put('06631')
-    t=PointCreatorProcess(q, Counter())
-    t.set_t(1.2)
-    start=time.time()
-    t.start()
-    t.join()
-    print(time.time()-start)
-
-
