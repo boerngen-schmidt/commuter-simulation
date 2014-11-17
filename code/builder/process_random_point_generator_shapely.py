@@ -3,10 +3,10 @@ Created on 29.09.2014
 
 @author: Benjamin
 """
-import threading
 import math
 import time
 import logging
+from multiprocessing import Process, Value, Queue
 
 import numpy.random as npr
 import pylab
@@ -16,12 +16,22 @@ from shapely.wkb import loads
 from psycopg2.extras import NamedTupleCursor
 
 
-COUNTER_LOCK = threading.Lock()
+class Counter(object):
+    def __init__(self):
+        self.val = Value('i', 0)
 
-counter = 0
+    def increment(self, n=1):
+        with self.val.get_lock():
+            self.val.value += n
+            result = self.value
+        return result
+
+    @property
+    def value(self):
+        return self.val.value
 
 
-class PointCreator(threading.Thread):
+class PointCreatorProcess(Process):
     """
     Creates new routing start and destination points for the simulation.
 
@@ -29,19 +39,19 @@ class PointCreator(threading.Thread):
     the data from the Zensus 2011 should be used.
     """
 
-    def __init__(self, name, info_queue, kreise=True, start_points=True):
+    def __init__(self, info_queue: Queue, counter: Counter, kreise=True, start_points=True):
         """Constructor
 
         :param str name: Name of the Thread
         :param queue.Queue info_queue; Reference to the Queue with information
         :param bool kreise: True to create points within
         """
-        threading.Thread.__init__(self)
-        self.setName(name)
+        Process.__init__(self)
         self.queue = info_queue
         self.kreise = kreise
+        self.counter = counter
 
-        self.logging = logging.getLogger(name)
+        self.logging = logging.getLogger(self.name)
         self._get_total()
         self.t = 2
         self.plot = False
@@ -108,7 +118,7 @@ class PointCreator(threading.Thread):
                 self._insert_points(rs, points, 'start')
                 sql_time = time.time() - sql_start
 
-            num = increase_counter()
+            num = self.counter.increment()
             self.logging.info('(%4d/%d) %s: Created %s points for "%s". Generation time: %s, SQL Time: %s',
                               num, self.total,
                               self.name, len(points), rec.name,
@@ -129,6 +139,7 @@ class PointCreator(threading.Thread):
                             'VALUES($1, $2, ST_GeomFromWKB(ST_SetSRID($3, 900913)))'
 
         execute_statement = 'EXECUTE de_sim_points_plan({rs!r}, {type!r}, \'\\x{point!s}\'::bytea);'
+
         with database.get_connection() as conn:
             cur = conn.cursor()
             cur.execute(prepare_statement)
@@ -139,7 +150,7 @@ class PointCreator(threading.Thread):
 
             sql_list = []
             for p in points:
-                sql_list.append(execute_statement.format(rs=rs, point=p.wkb_hex, type='start'))
+                sql_list.append(execute_statement.format(rs=rs, point=p.wkb_hex, type=type))
 
             cur.execute('\n'.join(sql_list))
 
@@ -264,24 +275,15 @@ class PointCreator(threading.Thread):
             cur.execute(sql)
             self.total = cur.fetchone()[0]
 
-
-def increase_counter():
-    global counter
-    with COUNTER_LOCK as lock:
-        counter += 1
-        result = counter
-    return result
-
 if __name__ == "__main__":
-    import queue
     from shapely import speedups
 
     if speedups.available:
         speedups.enable()
 
-    q=queue.Queue()
+    q=Queue()
     q.put('06631')
-    t=PointCreator('test', q)
+    t=PointCreatorProcess(q, Counter())
     t.set_t(1.2)
     start=time.time()
     t.start()

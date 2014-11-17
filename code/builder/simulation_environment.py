@@ -4,28 +4,19 @@ Created on 28.09.2014
 @author: Benjamin
 '''
 import logging
-import logging.config
 import time
-import queue
+import multiprocessing
 
-import yaml
 from helper import database
-from builder import thread_random_point_generator_shapely as rpc
+from helper import logger
+from builder.process_random_point_generator_shapely import PointCreatorProcess, Counter
 
 
 def main():
-    from helper import file_finder
-
-    try:
-        cfg_file = file_finder.find('logging.conf')
-        with open(cfg_file, 'rt') as f:
-            cfg= yaml.load(f.read())
-            logging.config.dictConfig(cfg)
-    except:
-        raise
+    logger.setup()
 
     gemeinden = None
-    q=queue.Queue()
+    q = multiprocessing.Queue()
 
     # Fill the queue
     with database.get_connection() as conn:
@@ -37,17 +28,18 @@ def main():
         for record in gemeinden:
             q.put(record[0])
 
-    threads = []
+    processes = []
+    counter = Counter()
+    for i in range(6):
+        p = PointCreatorProcess(q, counter, False)
+        p.set_t(1.2)
+        processes.append(p)
+
     start = time.time()
-    for i in range(8):
-        threads.append(rpc.PointCreator('Thread %s' % i))
-        threads[-1].start()
-
-    #wait for all threads to finish
-    for t in threads:
-        t.join()
-
+    for p in processes: p.start()
+    for p in processes: p.join()
     end = time.time()
+
     logging.info('Runtime: %s' % (end-start,))
 
 
