@@ -1,8 +1,8 @@
 import logging
+import time
 from multiprocessing.queues import Queue, JoinableQueue
 from multiprocessing import Process, Event
 from queue import Empty
-import time
 from threading import Thread
 
 from helper import database
@@ -69,9 +69,9 @@ class PointInsertingProcess(Process):
     def stop(self):
         self.stop_request.set()
 
-    def join(self):
+    def join(self, timeout=None):
         self.stop_request.set()
-        super(PointInsertingProcess, self).join()
+        super(PointInsertingProcess, self).join(timeout)
 
 
 class PointInsertingThread(Thread):
@@ -113,7 +113,7 @@ if __name__ == "__main__":
     from helper import logger
 
     logger.setup()
-    input_queue = Queue()
+    input_queue = JoinableQueue()
     for i in range(10000):
         input_queue.put('SELECT 1;')
     p = PointInsertingProcess(input_queue)

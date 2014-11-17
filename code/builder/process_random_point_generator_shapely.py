@@ -8,7 +8,7 @@ import time
 import logging
 from multiprocessing import Process, Value, Queue
 
-import numpy.random as npr
+import numpy as np
 import pylab
 from shapely.geometry import Polygon, Point, box, shape
 
@@ -131,7 +131,7 @@ class PointCreatorProcess(Process):
                 pylab.plot([p.x for p in points], [p.y for p in points], 'bs', alpha=0.75)
 
                 # Write the number of patches and the total patch area to the figure
-                pylab.text(-25, 25, "Patches: %d, total area: %.2f" % (len(cmd.polygon.geoms), cmd.polygon.area))
+                pylab.text(-25, 25, "Patches: %d, total area: %.2f" % (1, cmd.polygon.area, ))
 
                 pylab.savefig('{rs}.png'.format(rs=rs))
 
@@ -145,7 +145,7 @@ class PointCreatorProcess(Process):
                               num, self.total,
                               self.name, len(points), cmd.name,
                               generation_time)
-            time.sleep(0.2) # Sleep for 200ms
+            time.sleep(0.2)  # Sleep for 200ms
 
         self.logging.info('Exiting %s', self.name)
         self.output.close()
@@ -174,9 +174,9 @@ class PointCreatorProcess(Process):
         """Generates sample points within a given geometry
 
         :param shapely.geometry.Polygon polygon: the polygon to create points in
-        :param list u: List of N independent uniform values between 0 and 1
+        :param int n: Number of points to generate in polygon
         :return: A list with point in the polygon
-        :rtype: list
+        :rtype: list[Point]
         """
         if n is 0:
             return []
@@ -235,26 +235,26 @@ class PointCreatorProcess(Process):
         """
         (minx, miny, maxx, maxy) = polygon.bounds
         while True:
-            p = Point(npr.uniform(minx, maxx), npr.uniform(miny, maxy))
+            p = Point(np.random.uniform(minx, maxx), np.random.uniform(miny, maxy))
             if polygon.contains(p):
                 return p
 
     def _bbox_left(self, bbox):
         """Returns left half of bbox"""
-        l=(bbox[2]-bbox[0]) / 2
+        l = (bbox[2]-bbox[0]) / 2
         return bbox[0], bbox[1], bbox[2]-l, bbox[3]
 
     def _bbox_right(self, bbox):
         """Returns right half of bbox"""
-        l=(bbox[2]-bbox[0]) / 2
+        l = (bbox[2]-bbox[0]) / 2
         return bbox[0]+l, bbox[1], bbox[2], bbox[3]
 
     def _bbox_top(self, bbox):
         """Returns top half of bbox"""
-        l=(bbox[3]-bbox[1]) / 2
+        l = (bbox[3]-bbox[1]) / 2
         return bbox[0], bbox[1]+l, bbox[2], bbox[3]
 
     def _bbox_bottom(self, bbox):
         """Returns bottom half of bbox"""
-        l=(bbox[3]-bbox[1]) / 2
+        l = (bbox[3]-bbox[1]) / 2
         return bbox[0], bbox[1], bbox[2], bbox[3]-l

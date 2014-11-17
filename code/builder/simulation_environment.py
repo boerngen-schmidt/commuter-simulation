@@ -34,8 +34,8 @@ def main():
                   'FROM de_commuter_gemeinden c ' \
                   'JOIN de_shp_gemeinden s ' \
                   'ON c.rs = s.rs ' \
-                  'WHERE c.rs = {rs!r}'
-            cur.execute(sql.format(rs=gemeinde.rs))
+                  'WHERE c.rs = %s'
+            cur.execute(sql, (gemeinde.rs, ))
 
             if cur.rowcount > 1:
                 records = cur.fetchall()
