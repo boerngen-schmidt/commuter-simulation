@@ -10,7 +10,6 @@ from multiprocessing import Process, Value, Queue
 
 import numpy.random as npr
 import pylab
-from helper import database
 from shapely.geometry import Polygon, Point, box, shape
 
 
@@ -30,11 +29,12 @@ class Counter(object):
 
 
 class Command(object):
-    def __init__(self, rs: str, name: str, polygon: Polygon, points: int):
+    def __init__(self, rs: str, name: str, polygon: Polygon, points: int, type: str):
         self._rs = rs
         self._polygon = polygon
         self._num_points = points
         self._name = name
+        self._type_points = type
 
     @property
     def rs(self):
@@ -58,6 +58,14 @@ class Command(object):
 
     @num_points.setter
     def num_points(self, value):
+        self._type_points = value
+
+    @property
+    def type_points(self):
+        return self._type_points
+
+    @type_points.setter
+    def type_points(self, value):
         self._num_points = value
 
     @property
@@ -76,16 +84,17 @@ class PointCreatorProcess(Process):
     As basis for how many points should be created within a district,
     the data from the Zensus 2011 should be used.
     """
-    def __init__(self, info_queue: Queue, counter: Counter, kreise=True, start_points=True):
-        """Constructor
+    def __init__(self, info_queue: Queue, output_queue: Queue, counter: Counter):
+        """
 
-        :param str name: Name of the Thread
-        :param Queue[Command] info_queue; Reference to the Queue with information
-        :param bool kreise: True to create points within
+        :param info_queue:
+        :param multiprocessing.queue.Queue output_queue:
+        :param counter:
+        :return:
         """
         Process.__init__(self)
         self.queue = info_queue
-        self.kreise = kreise
+        self.output = output_queue
         self.counter = counter
 
         self.logging = logging.getLogger(self.name)
@@ -104,72 +113,42 @@ class PointCreatorProcess(Process):
             raise ValueError('Value for t should be between 1 and 2')
 
     def run(self):
-        if self.kreise:
-            tbl='kreise'
-        else:
-            tbl='gemeinden'
+        execute_statement = 'EXECUTE de_sim_points_plan ({rs!r}, {type!r}, \'\\x{point!s}\'::bytea);'
 
         while not self.queue.empty():
             generation_start = time.time()
             cmd = self.queue.get()
             assert isinstance(cmd, Command)
 
-            rs = cmd._rs
-            generation_time = time.time() - generation_start
-            points = self._generate_points(cmd._polygon, cmd._num_points)
+            rs = cmd.rs
+            points = self._generate_points(cmd.polygon, cmd.num_points)
 
             if self.plot:
                 pylab.figure(num=None, figsize=(20, 20), dpi=200)
-                self._plot_polygon(cmd._polygon)
+                self._plot_polygon(cmd.polygon)
 
                 # Plot the generated points
                 pylab.plot([p.x for p in points], [p.y for p in points], 'bs', alpha=0.75)
 
                 # Write the number of patches and the total patch area to the figure
-                pylab.text(-25, 25,
-                    "Patches: %d, total area: %.2f" % (len(cmd._polygon.geoms), cmd._polygon.area))
+                pylab.text(-25, 25, "Patches: %d, total area: %.2f" % (len(cmd.polygon.geoms), cmd.polygon.area))
 
                 pylab.savefig('{rs}.png'.format(rs=rs))
 
-            sql_start = time.time()
-            self._insert_points(rs, points, 'start')
-            sql_time = time.time() - sql_start
+            list = [self.output.put(execute_statement.format(rs=rs, type=cmd.type_points, point=p.wkb_hex)) for p in points]
+            for p in points:
+                self.output.put(execute_statement.format(rs=rs, type=cmd.type_points, point=p.wkb_hex))
 
+            generation_time = time.time() - generation_start
             num = self.counter.increment()
-            self.logging.info('(%4d/%d) %s: Created %s points for "%s". Generation time: %s, SQL Time: %s',
+            self.logging.info('(%4d/%d) %s: Created %s points for "%s". Generation time: %s',
                               num, self.total,
                               self.name, len(points), cmd.name,
-                              generation_time, sql_time)
+                              generation_time)
+            time.sleep(0.2) # Sleep for 200ms
 
-    def _insert_points(self, rs, points, type):
-        """Inserts generated Points into the database
-
-        https://peterman.is/blog/postgresql-bulk-insertion/2013/08/
-
-        :param rs:
-        :param points:
-        :param type:
-        :return:
-        """
-        prepare_statement = 'PREPARE de_sim_points_plan (varchar, e_sim_point, geometry) AS ' \
-                            'INSERT INTO de_sim_points (parent_geometry, point_type, geom) ' \
-                            'VALUES($1, $2, ST_GeomFromWKB(ST_SetSRID($3, 900913)))'
-
-        execute_statement = 'EXECUTE de_sim_points_plan({rs!r}, {type!r}, \'\\x{point!s}\'::bytea);'
-
-        with database.get_connection() as conn:
-            cur = conn.cursor()
-            cur.execute(prepare_statement)
-
-            # for p in points:
-            #     cur.execute('EXECUTE de_sim_points_plan (%s, %s, %s);', (rs, 'start', p.wkb))
-            # Creating a list and mass execute it is faster :)
-
-            sql_list = []
-            for p in points:
-                sql_list.append(execute_statement.format(rs=rs, point=p.wkb_hex, type=type))
-
-            cur.execute('\n'.join(sql_list))
+        self.logging.info('Exiting %s', self.name)
+        self.output.close()
 
     def _plot_polygon(self, polygon):
         if polygon.geom_type is 'MultiPolygon':

@@ -3,6 +3,7 @@ Created on 28.09.2014
 
 @author: Benjamin
 '''
+from contextlib import contextmanager
 import logging
 import time
 import multiprocessing
@@ -10,6 +11,7 @@ import multiprocessing
 from helper import database
 from helper import logger
 from builder.process_random_point_generator_shapely import PointCreatorProcess, Counter, Command
+from builder.process_point_inserter import PointInsertingProcess
 from shapely.wkb import loads
 from psycopg2.extras import NamedTupleCursor
 
@@ -17,12 +19,14 @@ from psycopg2.extras import NamedTupleCursor
 def main():
     logger.setup()
 
-    q = multiprocessing.Queue()
+    work_queue = multiprocessing.Queue()
+    insert_queue = multiprocessing.JoinableQueue()
 
     with database.get_connection() as con:
         cur = con.cursor(cursor_factory=NamedTupleCursor)
 
         cur.execute('SELECT rs FROM de_commuter_gemeinden')
+        #cur.execute('SELECT rs FROM de_commuter_gemeinden where rs=%s', ('010010000000', ))
         gemeinden = cur.fetchall()
 
         for gemeinde in gemeinden:
@@ -41,27 +45,40 @@ def main():
                 for rec in records:
                     n = int(round(rec.outgoing * (rec.area / total_area)))
                     polygon = loads(bytes(rec.geom_b))
-                    q.put(Command(rec.rs, rec.name, polygon, n))
+                    work_queue.put(Command(rec.rs, rec.name, polygon, n, 'start'))
             else:
                 rec = cur.fetchone()
                 polygon = loads(bytes(rec.geom_b))
-                q.put(Command(rec.rs, rec.name, polygon, rec.outgoing))
+                work_queue.put(Command(rec.rs, rec.name, polygon, rec.outgoing, 'start'))
 
 
     processes = []
     counter = Counter()
     for i in range(6):
-        p = PointCreatorProcess(q, counter, False)
+        p = PointCreatorProcess(work_queue, insert_queue, counter)
         p.set_t(1.2)
         processes.append(p)
 
-    start = time.time()
-    for p in processes: p.start()
-    for p in processes: p.join()
-    end = time.time()
+    with inserting_process(insert_queue):
+        start = time.time()
+        for p in processes: p.start()
+        for p in processes: p.join()
 
+    end = time.time()
     logging.info('Runtime: %s' % (end-start,))
 
+@contextmanager
+def inserting_process(insert_queue):
+    """Generator for inserting process
+
+    :param multiprocessing.Queue insert_queue: Queue for to be inserted Objects
+    """
+    inserter = PointInsertingProcess(insert_queue)
+    inserter.set_batch_size(5000)
+    inserter.set_insert_threads(4)
+    inserter.start()
+    yield
+    inserter.join()
 
 if __name__ == "__main__":
     main()
