@@ -135,7 +135,7 @@ class PointCreatorProcess(Process):
 
                 pylab.savefig('{rs}.png'.format(rs=rs))
 
-            map(lambda p: self.output.put(execute_statement.format(rs=rs, type=cmd.type_points, point=p.wkb_hex)), points)
+            [self.output.put(execute_statement.format(rs=rs, type=cmd.type_points, point=p.wkb_hex)) for p in points]
 
             generation_time = time.time() - generation_start
             num = self.counter.increment()

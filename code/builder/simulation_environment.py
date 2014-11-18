@@ -30,13 +30,11 @@ def main():
                         (rs, name, geom_b, area, total_area, incomming, outgoing, within)
         """
         n = [rec.outgoing, rec.incoming, rec.within, rec.within]
-        t = ['start', 'end', 'within_start', 'within_end']
+        t = ['start', 'end', 'whitin_start', 'within_end']
         polygon = loads(bytes(rec.geom_b))
-        map(lambda amount, p_type:
-            work_queue.put(
-                Command(rec.rs, rec.name, polygon, int(round(amount * (rec.area / rec.total_area))), p_type)),
-            n, t
-            )
+        [work_queue.put(
+            Command(rec.rs, rec.name, polygon, int(round(amount * (rec.area / rec.total_area))), p_type))
+            for amount, p_type in zip(n, t)]
 
     start = time.time()
     with database.get_connection() as con:
@@ -46,7 +44,7 @@ def main():
               '(SELECT SUM(ST_Area(geom)) FROM de_shp_gemeinden WHERE rs=s.rs) AS total_area ' \
               'FROM de_commuter_gemeinden c JOIN de_shp_gemeinden s ON c.rs = s.rs'
         cur.execute(sql)
-        map(add_command, cur.fetchall())
+        [add_command(rec) for rec in cur.fetchall()]
 
     logging.info('Finished filling work queue. Time: %s', time.time()-start)
     processes = []

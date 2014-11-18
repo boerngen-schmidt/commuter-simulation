@@ -1,7 +1,5 @@
-BEGIN;
 DROP TABLE IF EXISTS de_sim_points;
-DROP TYPE IF EXISTS e_sim_point;
-END;
+DROP TYPE e_sim_point;
 
 CREATE TYPE e_sim_point AS ENUM ('start', 'end', 'whitin_start', 'within_end');
 CREATE TABLE de_sim_points
@@ -12,6 +10,7 @@ CREATE TABLE de_sim_points
 );
 
 SELECT AddGeometryColumn('de_sim_points', 'geom', 900913, 'POINT', 2);
+
 
 -- DO language plpgsql $$
 --   DECLARE
