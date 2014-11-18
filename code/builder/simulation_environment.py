@@ -19,39 +19,36 @@ from psycopg2.extras import NamedTupleCursor
 def main():
     logger.setup()
 
+    logging.info('Start filling work queue')
     work_queue = multiprocessing.Queue()
     insert_queue = multiprocessing.JoinableQueue()
 
+    def add_command(rec):
+        """Function to be used by map() to create commands for the work_queue
+
+        :param rec: A database record with named tuple having
+                        (rs, name, geom_b, area, total_area, incomming, outgoing, within)
+        """
+        n = [rec.outgoing, rec.incoming, rec.within, rec.within]
+        t = ['start', 'end', 'within_start', 'within_end']
+        polygon = loads(bytes(rec.geom_b))
+        map(lambda amount, p_type:
+            work_queue.put(
+                Command(rec.rs, rec.name, polygon, int(round(amount * (rec.area / rec.total_area))), p_type)),
+            n, t
+            )
+
+    start = time.time()
     with database.get_connection() as con:
         cur = con.cursor(cursor_factory=NamedTupleCursor)
+        sql = 'SELECT c.incoming, c.within, c.outgoing, s.rs, s.gen AS name, ST_AsEWKB(s.geom) AS geom_b, ' \
+              'ST_Area(s.geom) AS area, ' \
+              '(SELECT SUM(ST_Area(geom)) FROM de_shp_gemeinden WHERE rs=s.rs) AS total_area ' \
+              'FROM de_commuter_gemeinden c JOIN de_shp_gemeinden s ON c.rs = s.rs'
+        cur.execute(sql)
+        map(add_command, cur.fetchall())
 
-        cur.execute('SELECT rs FROM de_commuter_gemeinden')
-        #cur.execute('SELECT rs FROM de_commuter_gemeinden where rs=%s', ('010010000000', ))
-        gemeinden = cur.fetchall()
-
-        for gemeinde in gemeinden:
-            sql = 'SELECT c.outgoing, s.rs, s.gen AS name, ST_AsEWKB(s.geom) AS geom_b, ST_Area(s.geom) AS area ' \
-                  'FROM de_commuter_gemeinden c ' \
-                  'JOIN de_shp_gemeinden s ' \
-                  'ON c.rs = s.rs ' \
-                  'WHERE c.rs = %s'
-            cur.execute(sql, (gemeinde.rs, ))
-
-            if cur.rowcount > 1:
-                records = cur.fetchall()
-                cur.execute('SELECT SUM(ST_Area(geom)) as total_area FROM de_shp_gemeinden WHERE rs=\'{rs}\';'.format(rs=gemeinde.rs))
-                total_area = cur.fetchone().total_area
-
-                for rec in records:
-                    n = int(round(rec.outgoing * (rec.area / total_area)))
-                    polygon = loads(bytes(rec.geom_b))
-                    work_queue.put(Command(rec.rs, rec.name, polygon, n, 'start'))
-            else:
-                rec = cur.fetchone()
-                polygon = loads(bytes(rec.geom_b))
-                work_queue.put(Command(rec.rs, rec.name, polygon, rec.outgoing, 'start'))
-
-
+    logging.info('Finished filling work queue. Time: %s', time.time()-start)
     processes = []
     counter = Counter()
     for i in range(6):
@@ -61,11 +58,14 @@ def main():
 
     with inserting_process(insert_queue):
         start = time.time()
-        for p in processes: p.start()
-        for p in processes: p.join()
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join()
 
     end = time.time()
     logging.info('Runtime: %s' % (end-start,))
+
 
 @contextmanager
 def inserting_process(insert_queue):

@@ -1,8 +1,9 @@
 BEGIN;
-CREATE TYPE e_sim_point AS ENUM ('start', 'end');
+DROP TABLE IF EXISTS de_sim_points;
+DROP TYPE IF EXISTS e_sim_point;
 END;
 
-DROP TABLE IF EXISTS de_sim_points;
+CREATE TYPE e_sim_point AS ENUM ('start', 'end', 'whitin_start', 'within_end');
 CREATE TABLE de_sim_points
 (
   id serial PRIMARY KEY,
