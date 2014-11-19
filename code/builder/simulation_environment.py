@@ -33,8 +33,15 @@ def main():
         t = ['start', 'end', 'whitin_start', 'within_end']
         polygon = loads(bytes(rec.geom_b))
         [work_queue.put(
-            Command(rec.rs, rec.name, polygon, int(round(amount * (rec.area / rec.total_area))), p_type))
-            for amount, p_type in zip(n, t)]
+            Command(
+                rec.rs,
+                rec.name,
+                polygon,
+                int(round(amount * (rec.area / rec.total_area))) if rec.total_area > 0 else 0,
+                p_type)
+            )
+            for amount, p_type in zip(n, t)
+        ]
 
     start = time.time()
     with database.get_connection() as con:
@@ -47,7 +54,7 @@ def main():
         [add_command(rec) for rec in cur.fetchall()]
 
         sql = 'SELECT ' \
-              '  (c.incoming - sums.sum_incomming) AS incomming, ' \
+              '  (c.incoming - sums.sum_incoming)  AS incoming, ' \
               '  (c.within - sums.sum_within)      AS within, ' \
               '  (c.outgoing - sums.sum_outgoing)  AS outgoing, ' \
               '  k.rs, ' \
@@ -69,7 +76,7 @@ def main():
               '  RIGHT JOIN ( ' \
               '               SELECT ' \
               '                 SUBSTRING(rs FOR 5) AS id, ' \
-              '                 SUM(incoming)       AS sum_incomming, ' \
+              '                 SUM(incoming)       AS sum_incoming, ' \
               '                 SUM(within)         AS sum_within, ' \
               '                 SUM(outgoing)       AS sum_outgoing ' \
               '               FROM de_commuter_gemeinden ' \

@@ -214,12 +214,12 @@ class PointCreatorProcess(Process):
             p2 = shape(polygon)
             p2 = p2.difference(bbox_2)
 
-            del polygon, bbox_1, bbox_2
+            del bbox_1, bbox_2
             # k = bisect.bisect_left(u, p1.area / polygon.area)
             k = int(round(n * (p1.area / polygon.area)))
 
             v = self._generate_points(p1, k) + self._generate_points(p2, n - k)
-            del p1, p2
+            del polygon, p1, p2
         else:
             v = []
             max_iterations = self.t * n + 5 * math.sqrt(self.t * n)
@@ -230,7 +230,7 @@ class PointCreatorProcess(Process):
                 v_length = len(v)
 
             if len(v) < n:
-                raise Exception('Too many interation')
+                raise Exception('Too many iterations')
 
             self.logging.debug('Generated %s points', n)
 
