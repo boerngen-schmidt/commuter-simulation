@@ -48,7 +48,7 @@ class PointInsertingProcess(Process):
             else:
                 if len(sql_commands) >= self.batch_size:
                     self.thread_queue.put(sql_commands)
-                    sql_commands = []
+                    del sql_commands[:]
                 self.q.task_done()
             finally:
                 if self.stop_request.is_set():
@@ -58,6 +58,7 @@ class PointInsertingProcess(Process):
                         sql_commands.append(self.q.get())
                         self.q.task_done()
                     self.thread_queue.put(sql_commands)
+                    del sql_commands
 
                     self.logging.info('Doing last inserts. Queue size %s, SQL commands %s',
                                       self.q.qsize(), len(sql_commands))
@@ -90,8 +91,8 @@ class PointInsertingThread(Thread):
         with database.get_connection() as conn:
             cur = conn.cursor()
             prepare_statement = 'PREPARE de_sim_points_plan (varchar, e_sim_point, geometry) AS ' \
-                                        'INSERT INTO de_sim_points (parent_geometry, point_type, geom) ' \
-                                        'VALUES($1, $2, ST_GeomFromWKB(ST_SetSRID($3, 900913)))'
+                                'INSERT INTO de_sim_points (parent_geometry, point_type, geom) ' \
+                                'VALUES($1, $2, ST_GeomFromWKB(ST_SetSRID($3, 900913)))'
             cur.execute(prepare_statement)
 
             while True:
@@ -100,6 +101,7 @@ class PointInsertingThread(Thread):
                     start = time.time()
                     cur.execute('\n'.join(sql_list))
                     end = time.time()
+                    del sql_list
                     self.log.info('Inserted %s, Queue remaining %s, SQL time %s',
                                   len(sql_list), self.q.qsize(), end - start)
                 except Empty:
@@ -107,15 +109,3 @@ class PointInsertingThread(Thread):
                         break
                     else:
                         continue
-
-
-if __name__ == "__main__":
-    from helper import logger
-
-    logger.setup()
-    input_queue = JoinableQueue()
-    for i in range(10000):
-        input_queue.put('SELECT 1;')
-    p = PointInsertingProcess(input_queue)
-    p.start()
-    p.join()
