@@ -44,6 +44,20 @@ if [ ! -f $OSMFILE ]; then
 	exit 1
 fi
 
+PS3="Choose style File for import: "
+style_choices=( $(find $BASE/config/osm2pgsql -type f -iname "*.style") )
+select choice in ${osmfile_stylechoices[@]}
+do
+	if (( $REPLY > 0 && $REPLY <= ${#osmfile_choices[@]} )); then
+		OSMFILE=$choice
+		break
+	else
+		echo "Invailid choice, please select a OSM File"
+	fi
+	echo
+	REPLY=
+done
+
 OSM2PGSQL_OPTIONS="--number-processes 8 -c -d $DATABASE -U $USER -p de_osm -C 12000 \
 					-S $BASE/config/osm2pgsql/commuter_simulation.style \
 					--cache-strategy sparse $OSM_OPTS"

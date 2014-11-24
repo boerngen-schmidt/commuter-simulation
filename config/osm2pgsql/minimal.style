@@ -7,25 +7,25 @@
 #node,way	osm_user						text
 #node,way	osm_uid							text
 #node,way	osm_version						int4	linear
-#node,way	osm_timestamp						text
+#node,way	osm_timestamp					text
 
 #node,way	access							text	linear
-node,way	admin_level 						int4	linear
+node,way	admin_level 					int4	linear
 #node,way	amenity							text	polygon
 #node,way 	area							text	# hard coded support for area=1/yes => polygon is in osm2pgsql
 #way		boundary						text	polygon
 #node,way	building						text	polygon
-way		de:amtlicher_gemeindeschluessel				text	polygon
-way		de:regionalschluessel					text	polygon
+node,way	de:amtlicher_gemeindeschluessel	text	polygon
+node,way    de:regionalschluessel			text	polygon
 #node,way	highway							text	linear
-#node,way	landuse							text	polygon
+node,way	landuse							text	polygon
 #node,way	name							text	linear
 #node,way	place							text	polygon
-#node,way	population						text	linear  # sadly text is used here as well
+node,way	population						text	linear  # sadly text is used here as well
 #node,way	route							text	linear
 #node,way	type							text	linear
 node,way	z_order							int4	linear  # This is calculated during import
-way		way_area						real            # This is calculated during import
+way		    way_area						real            # This is calculated during import
 
 # Deleted tags
 node,way    note                    text    delete

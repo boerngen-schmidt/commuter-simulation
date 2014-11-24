@@ -90,8 +90,8 @@ class PointInsertingThread(Thread):
         with database.get_connection() as conn:
             cur = conn.cursor()
             prepare_statement = 'PREPARE de_sim_points_plan (varchar, e_sim_point, geometry) AS ' \
-                                        'INSERT INTO de_sim_points (parent_geometry, point_type, geom) ' \
-                                        'VALUES($1, $2, ST_GeomFromWKB(ST_SetSRID($3, 900913)))'
+                                'INSERT INTO de_sim_points (parent_geometry, point_type, geom) ' \
+                                'VALUES($1, $2, ST_GeomFromWKB(ST_SetSRID($3, 900913)))'
             cur.execute(prepare_statement)
 
             while True:

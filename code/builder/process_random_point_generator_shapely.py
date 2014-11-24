@@ -4,10 +4,10 @@ Created on 29.09.2014
 @author: Benjamin
 """
 import math
-from multiprocessing.queues import JoinableQueue
 import time
 import logging
-from multiprocessing import Process, Value, Queue
+from multiprocessing import Process, Value
+from multiprocessing.queues import JoinableQueue, Queue
 
 import numpy as np
 import pylab
@@ -85,13 +85,13 @@ class PointCreatorProcess(Process):
     As basis for how many points should be created within a district,
     the data from the Zensus 2011 should be used.
     """
+
     def __init__(self, info_queue: Queue, output_queue: JoinableQueue, counter: Counter):
         """
 
         :param info_queue:
         :param multiprocessing.queue.Queue output_queue:
-        :param counter:
-        :return:
+        :param Counter counter: Ze Counter class for counting counts
         """
         Process.__init__(self)
         self.queue = info_queue
@@ -121,6 +121,14 @@ class PointCreatorProcess(Process):
             cmd = self.queue.get()
             assert isinstance(cmd, Command)
 
+            if cmd.polygon.area <= 0 or cmd.num_points <= 0:
+                num = self.counter.increment()
+                self.logging.info(
+                    '(%4d/%d) %s: Skipped creating points for "%s". Polygon Area: %s, Number of Point: %s',
+                    num, self.total, self.name, cmd.name, cmd.polygon.area, cmd.num_points)
+                del cmd
+                continue
+
             rs = cmd.rs
             points = self._generate_points(cmd.polygon, cmd.num_points)
 
@@ -144,8 +152,7 @@ class PointCreatorProcess(Process):
                               num, self.total,
                               self.name, len(points), cmd.name,
                               generation_time)
-
-            del cmd, points
+            del points, cmd
             time.sleep(0.2)  # Sleep for 200ms
 
         self.logging.info('Exiting %s', self.name)
@@ -179,7 +186,7 @@ class PointCreatorProcess(Process):
         :return: A list with point in the polygon
         :rtype: list[Point]
         """
-        if n is 0:
+        if n <= 0:
             return []
 
         if polygon.area <= 0:
@@ -207,10 +214,12 @@ class PointCreatorProcess(Process):
             p2 = shape(polygon)
             p2 = p2.difference(bbox_2)
 
-            #k = bisect.bisect_left(u, p1.area / polygon.area)
+            del bbox_1, bbox_2
+            # k = bisect.bisect_left(u, p1.area / polygon.area)
             k = int(round(n * (p1.area / polygon.area)))
 
-            return self._generate_points(p1, k) + self._generate_points(p2, n-k)
+            v = self._generate_points(p1, k) + self._generate_points(p2, n - k)
+            del polygon, p1, p2
         else:
             v = []
             max_iterations = self.t * n + 5 * math.sqrt(self.t * n)
@@ -221,11 +230,12 @@ class PointCreatorProcess(Process):
                 v_length = len(v)
 
             if len(v) < n:
-                raise Exception('Too many interation')
+                raise Exception('Too many iterations')
 
             self.logging.debug('Generated %s points', n)
 
-            return v
+        del bbox
+        return v
 
     def _random_point_in_polygon(self, polygon):
         """Returns random point in polygon
@@ -242,20 +252,20 @@ class PointCreatorProcess(Process):
 
     def _bbox_left(self, bbox):
         """Returns left half of bbox"""
-        l = (bbox[2]-bbox[0]) / 2
-        return bbox[0], bbox[1], bbox[2]-l, bbox[3]
+        l = (bbox[2] - bbox[0]) / 2
+        return bbox[0], bbox[1], bbox[2] - l, bbox[3]
 
     def _bbox_right(self, bbox):
         """Returns right half of bbox"""
-        l = (bbox[2]-bbox[0]) / 2
-        return bbox[0]+l, bbox[1], bbox[2], bbox[3]
+        l = (bbox[2] - bbox[0]) / 2
+        return bbox[0] + l, bbox[1], bbox[2], bbox[3]
 
     def _bbox_top(self, bbox):
         """Returns top half of bbox"""
-        l = (bbox[3]-bbox[1]) / 2
-        return bbox[0], bbox[1]+l, bbox[2], bbox[3]
+        l = (bbox[3] - bbox[1]) / 2
+        return bbox[0], bbox[1] + l, bbox[2], bbox[3]
 
     def _bbox_bottom(self, bbox):
         """Returns bottom half of bbox"""
-        l = (bbox[3]-bbox[1]) / 2
-        return bbox[0], bbox[1], bbox[2], bbox[3]-l
+        l = (bbox[3] - bbox[1]) / 2
+        return bbox[0], bbox[1], bbox[2], bbox[3] - l
