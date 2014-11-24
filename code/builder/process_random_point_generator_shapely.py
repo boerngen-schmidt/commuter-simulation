@@ -4,6 +4,7 @@ Created on 29.09.2014
 @author: Benjamin
 """
 import math
+from multiprocessing.queues import JoinableQueue
 import time
 import logging
 from multiprocessing import Process, Value, Queue
@@ -84,7 +85,7 @@ class PointCreatorProcess(Process):
     As basis for how many points should be created within a district,
     the data from the Zensus 2011 should be used.
     """
-    def __init__(self, info_queue: Queue, output_queue: Queue, counter: Counter):
+    def __init__(self, info_queue: Queue, output_queue: JoinableQueue, counter: Counter):
         """
 
         :param info_queue:
@@ -143,6 +144,8 @@ class PointCreatorProcess(Process):
                               num, self.total,
                               self.name, len(points), cmd.name,
                               generation_time)
+
+            del cmd, points
             time.sleep(0.2)  # Sleep for 200ms
 
         self.logging.info('Exiting %s', self.name)

@@ -102,20 +102,9 @@ class PointInsertingThread(Thread):
                     end = time.time()
                     self.log.info('Inserted %s, Queue remaining %s, SQL time %s',
                                   len(sql_list), self.q.qsize(), end - start)
+                    del sql_list
                 except Empty:
                     if self.stop_request.is_set():
                         break
                     else:
                         continue
-
-
-if __name__ == "__main__":
-    from helper import logger
-
-    logger.setup()
-    input_queue = JoinableQueue()
-    for i in range(10000):
-        input_queue.put('SELECT 1;')
-    p = PointInsertingProcess(input_queue)
-    p.start()
-    p.join()
