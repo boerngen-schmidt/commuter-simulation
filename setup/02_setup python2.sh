@@ -19,9 +19,9 @@ source $BASE/python2-venv/bin/activate
 infoMsg "Installing Python 2 packages"
 pip install py-mysql2pgsql
 
-if [ ! -f $BASE/config/py-mysql2pgsql.yml ]; then
+if [ ! -f $BASE/config/py-mysql2pgsql.yml-default ]; then
 	infoMsg "Creating default py-mysql2pgsql config file"
-	py-mysql2pgsql -f $BASE/config/py-mysql2pgsql.yml
+	py-mysql2pgsql -f $BASE/config/py-mysql2pgsql.yml-default
 	warnMsg "Please configure connection settings"
 fi
 

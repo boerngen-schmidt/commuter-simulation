@@ -48,7 +48,7 @@ class PointInsertingProcess(Process):
             else:
                 if len(sql_commands) >= self.batch_size:
                     self.thread_queue.put(sql_commands)
-                    del sql_commands[:]
+                    sql_commands = []
                 self.q.task_done()
             finally:
                 if self.stop_request.is_set():
@@ -58,7 +58,6 @@ class PointInsertingProcess(Process):
                         sql_commands.append(self.q.get())
                         self.q.task_done()
                     self.thread_queue.put(sql_commands)
-                    del sql_commands
 
                     self.logging.info('Doing last inserts. Queue size %s, SQL commands %s',
                                       self.q.qsize(), len(sql_commands))
@@ -101,9 +100,9 @@ class PointInsertingThread(Thread):
                     start = time.time()
                     cur.execute('\n'.join(sql_list))
                     end = time.time()
-                    del sql_list
                     self.log.info('Inserted %s, Queue remaining %s, SQL time %s',
                                   len(sql_list), self.q.qsize(), end - start)
+                    del sql_list
                 except Empty:
                     if self.stop_request.is_set():
                         break

@@ -1,3 +1,4 @@
+#!/bin/sh
 export COLOR_NC='\e[0m' # No Color
 export COLOR_WHITE='\e[1;37m'
 export COLOR_BLACK='\e[0;30m'
@@ -29,10 +30,10 @@ function ynQuestion {
 	read -p "$1 [y/N]: " yn
 	case $yn in
 		[Yy]* ) 
-			return 1
+			echo 1
 			;;
 		*)
-			return 0
+			echo 0
 			;;
 	esac
 }
