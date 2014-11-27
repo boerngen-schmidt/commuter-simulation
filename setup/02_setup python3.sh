@@ -26,7 +26,8 @@ function installPython3Debian {
 
 function installPython3Gentoo {
 	infoMsg "Creating Python 3 Virtual Environment"
-	virtualenv --clear python3-venv
+	#virtualenv --clear python3-venv --python=/usr/bin/python3.4
+	python3.4 -m venv --clear python3-venv
 	
 	infoMsg "Activating Python 3 Virtual Environment"
 	source $BASE/python3-venv/bin/activate
@@ -40,7 +41,8 @@ elif [ $(currentDistribution) == $DIST_GENTOO ]; then
 fi
 
 infoMsg "Installing Packages"
-pip install psycopg2 simpy PyYaml
+pip install psycopg2 simpy PyYaml numpy Shapely matplotlib
+pip install --global-option=build_ext --global-option="-I/usr/include/gdal" gdal
 
 infoMsg "Exiting Python 3 Virtual Environment"
 deactivate
