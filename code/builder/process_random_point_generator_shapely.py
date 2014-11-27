@@ -114,7 +114,7 @@ class PointCreatorProcess(Process):
             raise ValueError('Value for t should be between 1 and 2')
 
     def run(self):
-        execute_statement = 'EXECUTE de_sim_points_plan ({rs!r}, {type!r}, \'\\x{point!s}\'::bytea);'
+        execute_statement = 'EXECUTE de_sim_points_{type!s}_plan ({rs!r}, \'\\x{point!s}\'::bytea);'
 
         while not self.queue.empty():
             generation_start = time.time()

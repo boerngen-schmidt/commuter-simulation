@@ -30,7 +30,7 @@ def main():
                         (rs, name, geom_b, area, total_area, incomming, outgoing, within)
         """
         n = [rec.outgoing, rec.incoming, rec.within, rec.within]
-        t = ['start', 'end', 'whitin_start', 'within_end']
+        t = ['start', 'end', 'within_start', 'within_end']
         polygon = loads(bytes(rec.geom_b))
         [work_queue.put(
             Command(

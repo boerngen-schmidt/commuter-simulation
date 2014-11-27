@@ -15,6 +15,7 @@ Else choose another point
 """
 import logging
 from multiprocessing import Process
+
 from helper import database
 
 
@@ -28,16 +29,46 @@ class PointMatcherProcess(Process):
     def run(self):
         with database.get_connection() as conn:
             cur = conn.cursor()
+            cur.execute('select * from de_sim_points WHERE point_type = %s offset random() * (select count(*) from de_sim_points WHERE point_type=%s) limit 1 ;', ('start',))
+            start = cur.fetchone()
+
+            cur.execute('select * from de_sim_points WHERE point_type = %s offset random() * (select count(*) from de_sim_points WHERE point_type=%s) limit 1 ;', ('end',))
+            end = cur.fetchone()
+
+
+
+        # with database.get_connection() as conn:
+        #     cur = conn.cursor()
+        #     cur.execute('SELECT rs FROM de_commuter_gemeinden')
+        #     gemeinden = cur.fetchall()
+        #
+        # while gemeinde in gemeinden:
+        #     with database.get_connection() as conn:
+        #
 
     def match_within(self):
-        with database.get_connection()  as conn:
+        with database.get_connection() as conn:
             cur = conn.cursor()
-            cur.execute('SELECT p.* FROM de_sim_points p, de_sim_routes r WHERE type=%s AND DOES NOT EXIST IN ROUTE TABLE', ('within_start', ))
+            cur.execute('SELECT p.* FROM de_sim_points p WHERE point_type=%s AND NOT EXISTS (SELECT 1 FROM de_sim_routes r WHERE p.id == r.start_point)', ('within_start', ))
 
-            SELECT ST_Intersection(
-ST_Difference(
-  ST_Buffer(St_GeomFromText('POINT(10 10)'), 5),
-  ST_Buffer(St_GeomFromText('POINT(10 10)'), 2)
-),
-ST_GeomFromText('POLYGON((6 6, 6 12, 12 12, 12 6, 6 6))')
+    def match(self):
+
+WITH x AS (
+    SELECT geom, parent_geometry
+    FROM de_sim_points
+    WHERE point_type = 'start' AND id = %s
 )
+SELECT p.*, St_Distance(p.geom, x.geom) as distance
+FROM de_sim_points p, x
+WHERE
+  ST_DWithin(p.geom, x.geom, %s)
+  AND p.parent_geometry != x.parent_geometry
+  AND p.point_type = 'end'
+  AND St_Distance(p.geom, x.geom) > %s
+ORDER BY distance
+
+Find nearest point
+            SELECT * FROM de_2po_4pgr_vertices_pgr,
+(SELECT ST_Transform(geom, 4326) as geom from de_sim_points WHERE point_type = 'start' offset random() * (select count(*) from de_sim_points WHERE point_type='start') limit 1) as start
+ORDER BY the_geom <-> start.geom
+LIMIT 1;

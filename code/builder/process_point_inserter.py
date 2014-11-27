@@ -5,6 +5,7 @@ from multiprocessing import Process, Event
 from queue import Empty
 from threading import Thread
 
+from builder import PointType
 from helper import database
 
 
@@ -43,7 +44,7 @@ class PointInsertingProcess(Process):
                 sql_commands.append(self.q.get(block=True, timeout=0.5))
             except Empty:
                 # Nothing there yet, check Event and wait for data again
-                self.logging.debug('Queue size %s, Event %s', self.q.qsize(), self.stop_request.is_set())
+                self.logging.debug('Queue size %s, Event %s', self.q.qsize()*self.batch_size, self.stop_request.is_set())
                 continue
             else:
                 if len(sql_commands) >= self.batch_size:
@@ -65,6 +66,12 @@ class PointInsertingProcess(Process):
 
         for t in threads:
             t.join()
+
+        with database.get_connection() as conn:
+            cur = conn.cursor()
+            for p in PointType:
+                self.logging.info('Creating Indexes for de_sim_points_{s}'.format((p.value, )))
+                cur.execute('CREATE INDEX de_sim_points_%s_geom_idx ON de_sim_points_%s USING gist (geom);', (p.value, ))
 
     def stop(self):
         self.stop_request.set()
@@ -89,9 +96,21 @@ class PointInsertingThread(Thread):
         self.log.info('Starting inserting thread %s', self.name)
         with database.get_connection() as conn:
             cur = conn.cursor()
-            prepare_statement = 'PREPARE de_sim_points_plan (varchar, e_sim_point, geometry) AS ' \
-                                'INSERT INTO de_sim_points (parent_geometry, point_type, geom) ' \
-                                'VALUES($1, $2, ST_GeomFromWKB(ST_SetSRID($3, 900913)))'
+            prepare_statement = 'PREPARE de_sim_points_start_plan (varchar, geometry) AS ' \
+                                'INSERT INTO de_sim_points_start (parent_geometry, geom) ' \
+                                'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)))'
+            cur.execute(prepare_statement)
+            prepare_statement = 'PREPARE de_sim_points_within_start_plan (varchar, geometry) AS ' \
+                                'INSERT INTO de_sim_points_within_start (parent_geometry, geom) ' \
+                                'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)))'
+            cur.execute(prepare_statement)
+            prepare_statement = 'PREPARE de_sim_points_end_plan (varchar, geometry) AS ' \
+                                'INSERT INTO de_sim_points_end (parent_geometry, geom) ' \
+                                'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)))'
+            cur.execute(prepare_statement)
+            prepare_statement = 'PREPARE de_sim_points_within_end_plan (varchar, geometry) AS ' \
+                                'INSERT INTO de_sim_points_within_end (parent_geometry, geom) ' \
+                                'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)))'
             cur.execute(prepare_statement)
 
             while True:

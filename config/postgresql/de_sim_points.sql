@@ -1,16 +1,49 @@
-DROP TABLE IF EXISTS de_sim_points;
-DROP TYPE e_sim_point;
+DROP TABLE IF EXISTS de_sim_points CASCADE;
 
-CREATE TYPE e_sim_point AS ENUM ('start', 'end', 'whitin_start', 'within_end');
 CREATE TABLE de_sim_points
 (
-  id serial PRIMARY KEY,
+  id serial NOT NULL,
   parent_geometry character varying(12),
-  point_type e_sim_point
+  CONSTRAINT de_sim_points_pkey PRIMARY KEY (id)
 );
 
-SELECT AddGeometryColumn('de_sim_points', 'geom', 900913, 'POINT', 2);
+SELECT AddGeometryColumn('de_sim_points', 'geom', 4326, 'POINT', 2);
 
+CREATE TABLE de_sim_points_start
+(
+  CONSTRAINT de_sim_points_start_pkey PRIMARY KEY (id)
+)
+INHERITS (de_sim_points)
+WITH (
+  OIDS=FALSE
+);
+
+CREATE TABLE de_sim_points_within_start
+(
+  CONSTRAINT de_sim_points_within_start_pkey PRIMARY KEY (id)
+)
+INHERITS (de_sim_points)
+WITH (
+  OIDS=FALSE
+);
+
+CREATE TABLE de_sim_points_end
+(
+  CONSTRAINT de_sim_points_end_pkey PRIMARY KEY (id)
+)
+INHERITS (de_sim_points)
+WITH (
+  OIDS=FALSE
+);
+
+CREATE TABLE de_sim_points_within_end
+(
+  CONSTRAINT de_sim_points_within_end_pkey PRIMARY KEY (id)
+)
+INHERITS (de_sim_points)
+WITH (
+  OIDS=FALSE
+);
 
 -- DO language plpgsql $$
 --   DECLARE
