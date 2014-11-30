@@ -10,11 +10,17 @@ from helper import database
 
 
 class PointInsertingProcess(Process):
+    """Random Sample Point inserting process
+
+    Process reads input queue from point creator processes and generates insert batches
+    for the insert threads.
+    After inserting of the points is done, indexes are generated for the tables.
+    """
     def __init__(self, input_queue: JoinableQueue):
         Process.__init__(self)
         self.q = input_queue
         self.thread_queue = Queue()
-        self.batch_size = 30000
+        self.batch_size = 5000
         self.insert_threads = 2
         self.stop_request = Event()
         self.logging = logging.getLogger(self.name)
@@ -26,10 +32,6 @@ class PointInsertingProcess(Process):
         self.insert_threads = value
 
     def run(self):
-        """Overwritten run method
-
-        Process will run until the input queue is closed
-        """
         threads = []
         for i in range(self.insert_threads):
             name = 'Inserting Thread %s' % i
@@ -43,8 +45,7 @@ class PointInsertingProcess(Process):
             try:
                 sql_commands.append(self.q.get(block=True, timeout=0.5))
             except Empty:
-                # Nothing there yet, check Event and wait for data again
-                self.logging.debug('Queue size %s, Event %s', self.q.qsize()*self.batch_size, self.stop_request.is_set())
+                # Nothing there yet. Wait for data again.
                 continue
             else:
                 if len(sql_commands) >= self.batch_size:
@@ -68,10 +69,17 @@ class PointInsertingProcess(Process):
             t.join()
 
         with database.get_connection() as conn:
-            cur = conn.cursor()
-            for p in PointType:
-                self.logging.info('Creating Indexes for de_sim_points_{s}'.format((p.value, )))
-                cur.execute('CREATE INDEX de_sim_points_%s_geom_idx ON de_sim_points_%s USING gist (geom);', (p.value, ))
+            with conn.cursor() as cur:
+                for p in PointType:
+                    self.logging.info('Creating Indexes for de_sim_points_{s}'.format((p.value, )))
+                    start_index = time.time()
+                    sql = "CREATE INDEX de_sim_points_{tbl!s}_parent_relation_idx " \
+                          "  ON de_sim_points_{tbl!s} USING btree (parent_geometry);" \
+                          "CREATE INDEX de_sim_points_{tbl!s}_geom_idx " \
+                          "  ON de_sim_points_{tbl!s} USING gist (geom);"
+                    cur.execute(sql.format(tbl=p.value))
+                    finish_index = time.time()
+                    self.logging.info('Finished creating indexes on de_sim_points_{tbl!s} in {time!r}')
 
     def stop(self):
         self.stop_request.set()
@@ -82,6 +90,10 @@ class PointInsertingProcess(Process):
 
 
 class PointInsertingThread(Thread):
+    """Worker Thread for inserting Points
+
+    Thread reads commands from queue and executes one of the pre-made execution plans.
+    """
     def __init__(self, queue: Queue, stop_request: Event):
         Thread.__init__(self)
         self.q = queue
@@ -112,12 +124,14 @@ class PointInsertingThread(Thread):
                                 'INSERT INTO de_sim_points_within_end (parent_geometry, geom) ' \
                                 'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)))'
             cur.execute(prepare_statement)
+            conn.commit()
 
             while True:
                 try:
                     sql_list = self.q.get(block=True, timeout=0.05)
                     start = time.time()
                     cur.execute('\n'.join(sql_list))
+                    conn.commit()
                     end = time.time()
                     self.log.info('Inserted %s, Queue remaining %s, SQL time %s',
                                   len(sql_list), self.q.qsize(), end - start)
