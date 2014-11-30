@@ -37,7 +37,13 @@ def main():
     start = time.time()
     with database.get_connection() as con:
         cur = con.cursor(cursor_factory=NamedTupleCursor)
-        sql = 'SELECT c.incoming, c.within, c.outgoing, s.rs, s.gen AS name, ST_AsEWKB(s.geom) AS geom_b ' \
+        sql = 'SELECT ' \
+              's.rs              AS rs ' \
+              's.gen             AS name, ' \
+              'c.incoming        AS incoming, ' \
+              'c.within          AS within, ' \
+              'c.outgoing        AS outgoing, ' \
+              'ST_AsEWKB(s.geom) AS geom_b ' \
               'FROM de_commuter_gemeinden c  ' \
               'LEFT JOIN (' \
               '  SELECT rs, gen, ST_Union(geom) AS geom FROM de_shp_gemeinden ' \
@@ -46,8 +52,8 @@ def main():
         [add_command(rec) for rec in cur.fetchall()]
 
         sql = 'SELECT ' \
-              'k.rs, ' \
-              'k.gen, ' \
+              'k.rs                                       AS rs,' \
+              'k.gen                                      AS name,' \
               '(ck.incoming-sums.incoming)                AS incoming, ' \
               '(ck.outgoing-sums.outgoing)                AS outgoing, ' \
               '(ck.within-sums.within)                    AS within, ' \
