@@ -38,7 +38,7 @@ def main():
     with database.get_connection() as con:
         cur = con.cursor(cursor_factory=NamedTupleCursor)
         sql = 'SELECT ' \
-              's.rs              AS rs ' \
+              's.rs              AS rs, ' \
               's.gen             AS name, ' \
               'c.incoming        AS incoming, ' \
               'c.within          AS within, ' \
