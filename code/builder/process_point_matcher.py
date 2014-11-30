@@ -19,6 +19,12 @@ from multiprocessing import Process
 from helper import database
 
 
+class CommuterDistribution(object):
+    def __init__(self):
+
+
+
+
 class PointMatcherProcess(Process):
     """
     Point Matcher class
@@ -28,14 +34,26 @@ class PointMatcherProcess(Process):
 
     def run(self):
         with database.get_connection() as conn:
-            cur = conn.cursor()
-            cur.execute('select * from de_sim_points WHERE point_type = %s offset random() * (select count(*) from de_sim_points WHERE point_type=%s) limit 1 ;', ('start',))
-            start = cur.fetchone()
+            with conn.cursor() as cur:
+                cur.execute('select * from de_sim_points WHERE point_type = %s offset random() * (select count(*) from de_sim_points WHERE point_type=%s) limit 1 ;', ('start',))
+                start = cur.fetchone()
 
-            cur.execute('select * from de_sim_points WHERE point_type = %s offset random() * (select count(*) from de_sim_points WHERE point_type=%s) limit 1 ;', ('end',))
-            end = cur.fetchone()
+                cur.execute('select * from de_sim_points WHERE point_type = %s offset random() * (select count(*) from de_sim_points WHERE point_type=%s) limit 1 ;', ('end',))
+                end = cur.fetchone()
 
+    def fetch_start_point(self):
+        with database.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute('SELECT * FROM de_sim_points_start offset random() * (select count(*) from de_sim_points) limit 1 ;', ('start',))
+                start = cur.fetchone()
+                return start
 
+    def fetch_end_point(self):
+        with database.get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute('SELECT * FROm de_sim_points_end offset random() * (select count(*) from de_sim_points WHERE point_type=%s) limit 1 ;', ('end',))
+                end = cur.fetchone()
+                return end
 
         # with database.get_connection() as conn:
         #     cur = conn.cursor()
