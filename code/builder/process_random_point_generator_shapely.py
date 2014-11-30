@@ -6,8 +6,7 @@ Created on 29.09.2014
 import math
 import time
 import logging
-from multiprocessing import Process, Value
-from multiprocessing.queues import JoinableQueue, Queue
+from multiprocessing import Process, Value, JoinableQueue, Queue
 
 import numpy as np
 import pylab

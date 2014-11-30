@@ -1,7 +1,6 @@
 import logging
 import time
-from multiprocessing.queues import Queue, JoinableQueue
-from multiprocessing import Process, Event
+from multiprocessing import Process, Event, Queue, JoinableQueue
 from queue import Empty
 from threading import Thread
 
