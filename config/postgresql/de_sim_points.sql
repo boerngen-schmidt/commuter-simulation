@@ -4,6 +4,7 @@ CREATE TABLE de_sim_points
 (
   id serial NOT NULL,
   parent_geometry character varying(12),
+  used boolean DEFAULT false,
   CONSTRAINT de_sim_points_pkey PRIMARY KEY (id)
 );
 
