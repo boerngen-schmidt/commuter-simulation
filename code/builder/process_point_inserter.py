@@ -70,7 +70,7 @@ class PointInsertingProcess(Process):
         with database.get_connection() as conn:
             with conn.cursor() as cur:
                 for p in PointType:
-                    self.logging.info('Creating Indexes for de_sim_points_{s}'.format((p.value, )))
+                    self.logging.info('Creating Indexes for de_sim_points_%s', p.value)
                     start_index = time.time()
                     sql = "CREATE INDEX de_sim_points_{tbl!s}_parent_relation_idx " \
                           "  ON de_sim_points_{tbl!s} USING btree (parent_geometry);" \
@@ -78,7 +78,8 @@ class PointInsertingProcess(Process):
                           "  ON de_sim_points_{tbl!s} USING gist (geom);"
                     cur.execute(sql.format(tbl=p.value))
                     finish_index = time.time()
-                    self.logging.info('Finished creating indexes on de_sim_points_{tbl!s} in {time!r}')
+                    self.logging.info('Finished creating indexes on de_sim_points_{tbl!s} in {time!r}',
+                                      tbl=p.value, time=finish_index-start_index)
 
     def stop(self):
         self.stop_request.set()
