@@ -8,9 +8,10 @@ import logging
 import time
 import multiprocessing
 
+from builder.process_point_matcher import PointMatcherProcess
 from helper import database
 from helper import logger
-from builder.process_random_point_generator_shapely import PointCreatorProcess, Counter, Command
+from builder.process_random_point_generator_shapely import PointCreatorProcess, Counter, PointCreationCommand
 from builder.process_point_inserter import PointInsertingProcess
 from shapely.wkb import loads
 from psycopg2.extras import NamedTupleCursor
@@ -36,7 +37,7 @@ def main():
         except TypeError:
             logging.error('Bad record: rs: %s, name: %s values: %s', rec.rs, rec.name, n)
             return
-        [work_queue.put(Command(rec.rs, rec.name, polygon, amount, p_type)) for amount, p_type in zip(n, t)]
+        [work_queue.put(PointCreationCommand(rec.rs, rec.name, polygon, amount, p_type)) for amount, p_type in zip(n, t)]
 
     start = time.time()
     with database.get_connection() as con:
@@ -117,7 +118,25 @@ def main():
             p.join()
 
     end = time.time()
-    logging.info('Runtime: %s' % (end - start,))
+    logging.info('Runtime Point Creation: %s' % (end - start,))
+
+    district_queue = multiprocessing.Queue()
+    with database.get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute('SELECT rs FROM de_commuter')
+            [district_queue.put(rec[0]) for rec in cur.fetchall()]
+
+    start = time.time()
+    processes = []
+    for i in range(1):
+        p = PointMatcherProcess(district_queue)
+        processes.append(p)
+        p.start()
+
+    for p in processes:
+        p.join()
+    end = time.time()
+    logging.info('Runtime Point Matching: %s' % (end - start,))
 
 
 @contextmanager

@@ -28,13 +28,14 @@ class Counter(object):
         return self.val.value
 
 
-class Command(object):
-    def __init__(self, rs: str, name: str, polygon: Polygon, points: int, type: str):
+class PointCreationCommand(object):
+    __slots__ = ['_rs', '_polygon', '_num_points', '_name', '_type_points']
+    def __init__(self, rs: str, name: str, polygon: Polygon, points: int, point_type: str):
         self._rs = rs
         self._polygon = polygon
         self._num_points = points
         self._name = name
-        self._type_points = type
+        self._type_points = point_type
 
     @property
     def rs(self):
@@ -118,7 +119,7 @@ class PointCreatorProcess(Process):
         while not self.queue.empty():
             generation_start = time.time()
             cmd = self.queue.get()
-            assert isinstance(cmd, Command)
+            assert isinstance(cmd, PointCreationCommand)
 
             if cmd.polygon.area <= 0 or cmd.num_points <= 0:
                 num = self.counter.increment()

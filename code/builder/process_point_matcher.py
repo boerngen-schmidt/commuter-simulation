@@ -10,7 +10,7 @@ Select all points within this donut
 Randomly choose one of the points
 Calculate route
 If does route match the wanted conditions?
-    Save route and point to database
+    Save points to database routing table
 Else choose another point
 """
 import logging
@@ -18,24 +18,29 @@ from multiprocessing import Process, Queue
 from threading import Thread
 
 from helper import database
+from builder import MatchingType
+from helper.commuter_distribution import MatchingDistribution
 
 
-commuter_distribution = {'01': [],
-                         '02': [],
-                         '03': [],
-                         '04': [],
-                         '05': [],
-                         '06': [],
-                         '07': [],
-                         '08': [],
-                         '09': [],
-                         '10': [],
-                         '11': [],
-                         '12': [],
-                         '13': [],
-                         '14': [],
-                         '15': [],
-                         '16': []}
+class PointMatchCommand(object):
+    __slots__ = ['_point_id', '_rs', '_matching_type']
+
+    def __init__(self, point_id, rs, matching_type):
+        self._point_id = point_id
+        self._rs = rs
+        self._matching_type = matching_type
+
+    @property
+    def point_id(self):
+        return self._point_id
+
+    @property
+    def rs(self):
+        return self._rs
+
+    @property
+    def matching_type(self):
+        return self._matching_type
 
 
 class PointMatcherProcess(Process):
@@ -43,88 +48,133 @@ class PointMatcherProcess(Process):
     Point Matcher class
     """
 
-    def __init__(self):
+    def __init__(self, district_queue: Queue):
+        Process.__init__(self)
         self.logging = logging.getLogger(self.__name__)
+        self.dq = district_queue
         self.point_q = Queue()
         self.matcher_threads = 3
 
     def run(self):
-        with database.get_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute('SELECT rs FROM de_commuter')
-                rs = [rec[0] for rec in cur.fetchall()]
-
-        while len(rs) > 0:
-            current_rs = rs.pop()
+        while not self.dq.empty():
+            current_rs = self.dq.get()
+            distribution_rs = MatchingDistribution(current_rs)
             self.logging.info('Start matching for %s', current_rs)
-            self.fill_queue(current_rs)
+            self.fill_point_queue(current_rs)
+
             threads = []
             for i in range(self.matcher_threads):
                 name = 'Matcher Thread %s' % i
-                t = PointMatcherThread(self.point_q)
+                t = PointMatcherThread(self.point_q, distribution_rs)
                 t.setName(name)
                 threads.append(t)
                 t.start()
 
             for t in threads:
                 t.join()
-
             self.logging.info('Finished matching for %s', current_rs)
 
-    def match_within(self):
+    def fill_point_queue(self, rs):
         with database.get_connection() as conn:
             cur = conn.cursor()
-            cur.execute(
-                'SELECT p.* FROM de_sim_points p WHERE point_type=%s AND NOT EXISTS (SELECT 1 FROM de_sim_routes r WHERE p.id == r.start_point)',
-                ('within_start', ))
-
-
-    def fill_queue(self, rs):
-        with database.get_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute('SELECT id FROM de_sim_points_within_start WHERE parent_geometry = %s', (rs, ))
-                conn.commit()
-                [self.point_q.put(p[0]) for p in cur.fetchall()]
+            cur.execute('SELECT id FROM de_sim_points_within_start WHERE parent_geometry = %s', (rs, ))
+            conn.commit()
+            [self.point_q.put(PointMatchCommand(p[0], rs, MatchingType.within)) for p in cur.fetchall()]
+            cur.execute('SELECT id FROM de_sim_points_start WHERE parent_geometry = %s', (rs, ))
+            conn.commit()
+            [self.point_q.put(PointMatchCommand(p[0], rs, MatchingType.outgoing)) for p in cur.fetchall()]
 
 
 class PointMatcherThread(Thread):
-    def __init__(self, q: Queue):
+    def __init__(self, q: Queue, distribution: MatchingDistribution):
         """
 
-        :param q: Queue with ID of points
+        :param q: Queue with PointMatchCommand
         :return:
         """
         Thread.__init__(self)
         self.q = q
+        self.distribution = distribution
         self.logging = logging.getLogger(self.__name__)
+        self.max_retries = 5
 
     def run(self):
+        sql_search = 'WITH s AS (SELECT * FROM de_sim_points_{tbl_s!s} WHERE id = %(start)s) ' \
+                     'SELECT s.id AS start, e.id AS destination ' \
+                     'FROM de_sim_points_{tbl_e!s} AS e, s ' \
+                     'WHERE ST_DWithin(s.geom::geography, e.geom::geography, %(max_d)s) ' \
+                     '  AND NOT ST_DWithin(s.geom::geography, e.geom::geography, %(min_d)s) ' \
+                     '  AND e.parent_geometry {cf!s} ' \
+                     '  AND e.used = false ' \
+                     'ORDER BY RANDOM() ' \
+                     'LIMIT 1 ' \
+                     'FOR UPDATE'
+
         while not self.q.emtpy():
-            p_id = self.q.get()
+            cmd = self.q.get()
+            assert isinstance(cmd, PointMatchCommand)
+
+            # Set comparison strings and tables
+            if cmd.matching_type is MatchingType.within:
+                cf = '= s.parent_geometry'
+                tbl_s = 'within_start'
+                tbl_e = 'within_end'
+            else:
+                # Using IN to minimize the amount of data that has to be scanned and try to use indexes efficiently
+                cf = 'IN (SELECT * FROM (' \
+                     '  SELECT sk.rs FROM de_shp_kreise sk ' \
+                     '  INNER JOIN de_commuter_kreise ck USING (rs) ' \
+                     '  WHERE ST_DWithin(s.geom::geography, sk.geom::geography, %(max_d)s) ' \
+                     '  UNION ' \
+                     '  SELECT sg.rs FROM de_shp_gemeinden sg ' \
+                     '  INNER JOIN de_commuter_gemeinden cg USING (rs) ' \
+                     '  WHERE ST_DWithin(s.geom::geography, sg.geom::geography, %(max_d)s) ' \
+                     'WHERE rs != s.parent_geometry))'
+                tbl_s = 'start'
+                tbl_e = 'end'
+
+            retries = 0
             while True:
+                # Get the index of the corresponding category where we will try to match an end point for
+                if cmd.matching_type is MatchingType.within:
+                    index = self.distribution.within_idx
+                else:
+                    index = self.distribution.outgoing_idx
+
+                distances = self.distribution.get_distance(cmd.matching_type, index)
+
+                # Query the Database for a end point
                 with database.get_connection() as conn:
                     cur = conn.cursor()
-                    sql = 'WITH s AS (SELECT * FROM de_sim_points_start WHERE id = %(start)s) ' \
-                          'SELECT s.id AS start, e.id AS destination ' \
-                          'FROM de_sim_points_end AS e, s ' \
-                          'WHERE ST_DWithin(e.geom::geography, s.geom::geography, %(max_d)s) ' \
-                          '  AND e.parent_geometry = s.parent_geometry ' \
-                          '  AND ST_Distance(e.geom::geography, s.geom::geography) > %(min_d)s ' \
-                          '  AND e.used = false ' \
-                          'ORDER BY RANDOM() ' \
-                          'LIMIT 1 ' \
-                          'FOR UPDATE'
-                    cur.execute(sql, {'start': p_id, 'max_d': 10000, 'min_d': 2000})
+                    cur.execute(sql_search.format(tbl_s=tbl_s, tbl_e=tbl_e, cf=cf),
+                                start=cmd.point_id, **distances)
+
                     if cur.rowcount == 0:
-                        self.logging.warning('No possible end point found for %s', p_id)
+                        retries += 1
+                        self.logging.warning('No possible end point found for %s', cmd.point_id)
+                        if retries >= self.max_retries:
+                            # If after self.max_retries there is no end point found we stop searching
+                            self.logging.warning('Too many retries to find end point for point id: %s', cmd.point_id)
+                            # TODO decide what to do with these points
+                            break
+                        else:
+                            # Search again
+                            continue
+
+                    # A point has been found, now check if distribution constraints are still met
+                    if not self.distribution.increase(cmd.matching_type, index):
+                        conn.rollback()
+                        continue
+
                     (destination, ) = cur.fetchone()
                     cur.execute('UPDATE de_sim_points_end SET used = true WHERE used = false AND id = %s',
                                 (destination, ))
-                    if cur.rowcount is 0:
+                    if cur.rowcount == 0:
                         # Update did not work, rollback, find new point
                         conn.rollback()
                         continue
-                    cur.execute('INSERT INTO de_sim_routes (start_point, end_point) VALUES (%s, %s)',
-                                (p_id, destination,))
-                    conn.commit()
 
+                    # Everything is fine so let's insert the points in the table for the routes
+                    cur.execute('INSERT INTO de_sim_routes (start_point, end_point) VALUES (%s, %s)',
+                                (cmd.point_id, destination,))
+                    conn.commit()
