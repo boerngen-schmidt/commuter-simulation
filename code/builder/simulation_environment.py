@@ -19,7 +19,11 @@ from psycopg2.extras import NamedTupleCursor
 
 def main():
     logger.setup()
+    create_points()
+    match_points()
 
+def create_points():
+    logging.info('Start creation of points')
     logging.info('Start filling work queue')
     work_queue = multiprocessing.Queue()
     insert_queue = multiprocessing.JoinableQueue()
@@ -120,15 +124,21 @@ def main():
     end = time.time()
     logging.info('Runtime Point Creation: %s' % (end - start,))
 
+
+def match_points():
+    """
+    Matches start and end points with a randomized order of the districts
+    :return:
+    """
     district_queue = multiprocessing.Queue()
     with database.get_connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute('SELECT rs FROM de_commuter')
-            [district_queue.put(rec[0]) for rec in cur.fetchall()]
+        cur = conn.cursor()
+        cur.execute('SELECT rs FROM de_commuter ORDER BY RANDOM()')
+        [district_queue.put(rec[0]) for rec in cur.fetchall()]
 
     start = time.time()
     processes = []
-    for i in range(1):
+    for i in range(4):
         p = PointMatcherProcess(district_queue)
         processes.append(p)
         p.start()

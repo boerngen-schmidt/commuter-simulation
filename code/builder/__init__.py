@@ -2,8 +2,8 @@ from enum import Enum
 
 
 class MatchingType(Enum):
-    within = 0
-    outgoing = 1
+    within = 'Within'
+    outgoing = 'Outgoing'
 
 
 class PointType(Enum):

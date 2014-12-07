@@ -7,7 +7,6 @@ from builder import MatchingType
 from helper import database
 
 
-
 # Could be placed in the database, but for now we keep it static
 commuter_distribution = {'01': (0.5, 0.28, 0.17, 0.05),
                          '02': (0.5, 0.28, 0.17, 0.05),
@@ -58,7 +57,7 @@ class MatchingDistribution():
         if match_type is MatchingType.within:
             self._cur_within_idx_lock.acquire()
             result = self._cur_within_idx
-            self._count_within_lock.release()
+            self._cur_within_idx_lock.release()
         else:
             self._cur_outgoing_idx_lock.acquire()
             result = self._cur_outgoing_idx
@@ -85,9 +84,9 @@ class MatchingDistribution():
 
     def increase(self, matching_type: MatchingType, index):
         if MatchingType.outgoing is matching_type:
-            return self.increase_outgoing()
+            return self.increase_outgoing(index)
         else:
-            return self.increase_within()
+            return self.increase_within(index)
 
     def increase_within(self, index):
         """
