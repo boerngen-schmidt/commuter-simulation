@@ -80,7 +80,7 @@ def create_points():
               '  SELECT DISTINCT  ' \
               '  k.rs     AS rs,  ' \
               '  CASE WHEN geo.geom IS NULL  ' \
-              '    THEN ST_GeomFromText(\'POLYGON EMPTY\',4326) ' \
+              '    THEN ST_GeomFromText(\'POLYGON EMPTY\', 900913) ' \
               '    ELSE geo.geom ' \
               '  END AS geom ' \
               '  FROM de_shp_kreise AS k  ' \

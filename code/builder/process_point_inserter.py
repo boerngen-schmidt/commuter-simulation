@@ -67,19 +67,18 @@ class PointInsertingProcess(Process):
         for t in threads:
             t.join()
 
-        with database.get_connection() as conn:
-            with conn.cursor() as cur:
-                for p in PointType:
-                    self.logging.info('Creating Indexes for de_sim_points_%s', p.value)
-                    start_index = time.time()
-                    sql = "CREATE INDEX de_sim_points_{tbl!s}_parent_relation_idx " \
-                          "  ON de_sim_points_{tbl!s} USING btree (parent_geometry);" \
-                          "CREATE INDEX de_sim_points_{tbl!s}_geom_idx " \
-                          "  ON de_sim_points_{tbl!s} USING gist (geom);"
-                    cur.execute(sql.format(tbl=p.value))
-                    finish_index = time.time()
-                    self.logging.info('Finished creating indexes on de_sim_points_{tbl!s} in {time!r}',
-                                      tbl=p.value, time=finish_index-start_index)
+        self.logging.info('Creating Indexes for Tables...')
+        threads = []
+        for table in PointType:
+            t = PointInsertIndexingThread(table.value)
+            threads.append(t)
+            t.start()
+
+        for t in threads:
+            t.join()
+        self.logging.info("Finished creating Indexes.")
+
+
 
     def stop(self):
         self.stop_request.set()
@@ -110,19 +109,19 @@ class PointInsertingThread(Thread):
             cur = conn.cursor()
             prepare_statement = 'PREPARE de_sim_points_start_plan (varchar, geometry) AS ' \
                                 'INSERT INTO de_sim_points_start (parent_geometry, geom) ' \
-                                'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)))'
+                                'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 900913)))'
             cur.execute(prepare_statement)
             prepare_statement = 'PREPARE de_sim_points_within_start_plan (varchar, geometry) AS ' \
                                 'INSERT INTO de_sim_points_within_start (parent_geometry, geom) ' \
-                                'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)))'
+                                'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 900913)))'
             cur.execute(prepare_statement)
             prepare_statement = 'PREPARE de_sim_points_end_plan (varchar, geometry) AS ' \
                                 'INSERT INTO de_sim_points_end (parent_geometry, geom) ' \
-                                'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)))'
+                                'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 900913)))'
             cur.execute(prepare_statement)
             prepare_statement = 'PREPARE de_sim_points_within_end_plan (varchar, geometry) AS ' \
                                 'INSERT INTO de_sim_points_within_end (parent_geometry, geom) ' \
-                                'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)))'
+                                'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 900913)))'
             cur.execute(prepare_statement)
             conn.commit()
 
@@ -141,3 +140,27 @@ class PointInsertingThread(Thread):
                         break
                     else:
                         continue
+
+
+class PointInsertIndexingThread(Thread):
+    def __init__(self, table):
+        Thread.__init__(self)
+        self.tbl = table
+        self.logging = logging.getLogger(self.name)
+
+    def run(self):
+        self.logging.info('Start creating Indexes for de_sim_points_%s tables', self.tbl)
+        with database.get_connection() as conn:
+            cur = conn.cursor()
+            start_index = time.time()
+            sql = "ALTER TABLE de_sim_points_{tbl!s} SET (FILLFACTOR=100); " \
+                  "CREATE INDEX de_sim_points_{tbl!s}_parent_relation_idx " \
+                  "  ON de_sim_points_{tbl!s} USING btree (parent_geometry) WITH (FILLFACTOR=100); " \
+                  "CREATE INDEX de_sim_points_{tbl!s}_geom_idx " \
+                  "  ON de_sim_points_{tbl!s} USING gist (geom) WITH (FILLFACTOR=100);" \
+                  "ALTER TABLE de_sim_points_{tbl!s} CLUSTER ON de_sim_points_{tbl!s}_geom_idx; "
+            cur.execute(sql.format(tbl=self.tbl))
+            conn.commit()
+            finish_index = time.time()
+            self.logging.info('Finished creating indexes on de_sim_points_%s in %s',
+                              self.tbl, (finish_index-start_index))

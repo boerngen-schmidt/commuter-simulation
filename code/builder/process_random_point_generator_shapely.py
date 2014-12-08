@@ -153,7 +153,7 @@ class PointCreatorProcess(Process):
                               self.name, len(points), cmd.name,
                               generation_time)
             del points, cmd
-            time.sleep(0.2)  # Sleep for 200ms
+            time.sleep(0.5)  # Sleep for 500ms
 
         self.logging.info('Exiting %s', self.name)
         self.output.close()
