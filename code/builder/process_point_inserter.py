@@ -157,9 +157,13 @@ class PointInsertIndexingThread(Thread):
                   "CREATE INDEX de_sim_points_{tbl!s}_parent_relation_idx " \
                   "  ON de_sim_points_{tbl!s} USING btree (parent_geometry) WITH (FILLFACTOR=100); " \
                   "CREATE INDEX de_sim_points_{tbl!s}_geom_idx " \
-                  "  ON de_sim_points_{tbl!s} USING gist (geom) WITH (FILLFACTOR=100);" \
+                  "  ON de_sim_points_{tbl!s} USING gist (geom) WITH (FILLFACTOR=100); " \
+                  "CREATE INDEX de_sim_points_{tbl!s}_used_idx ON de_sim_points_{tbl!s} (used ASC NULLS LAST) WITH (FILLFACTOR=100);" \
                   "ALTER TABLE de_sim_points_{tbl!s} CLUSTER ON de_sim_points_{tbl!s}_geom_idx; "
             cur.execute(sql.format(tbl=self.tbl))
+            conn.commit()
+            conn.set_isolation_level(0)
+            cur.execute('VACUUM ANALYSE de_sim_points_{tbl!s}'.format(tbl=self.tbl))
             conn.commit()
             finish_index = time.time()
             self.logging.info('Finished creating indexes on de_sim_points_%s in %s',
