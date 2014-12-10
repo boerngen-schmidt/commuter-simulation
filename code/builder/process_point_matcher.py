@@ -14,8 +14,10 @@ If does route match the wanted conditions?
 Else choose another point
 """
 import logging
-from multiprocessing import Process, Queue
+from multiprocessing import Process
 from threading import Thread
+from queue import Queue as ThreadQueue
+import time
 
 from helper import database
 from builder import MatchingType
@@ -23,20 +25,27 @@ from helper.commuter_distribution import MatchingDistribution
 
 
 class PointMatchCommand(object):
-    __slots__ = ['_point_id', '_rs', '_matching_type']
+    __slots__ = ['_data', '_matching_type']
 
-    def __init__(self, point_id, rs, matching_type):
-        self._point_id = point_id
-        self._rs = rs
+    def __init__(self, point_id, rs, data, matching_type, geometry):
+        self._data = dict({'start': point_id, 'rs': rs, 'geom': geometry}, **data)
         self._matching_type = matching_type
 
     @property
     def point_id(self):
-        return self._point_id
+        return self._data['start']
+
+    @property
+    def geom(self):
+        return self._data['geom']
 
     @property
     def rs(self):
-        return self._rs
+        return self._data['rs']
+
+    @property
+    def data(self):
+        return self._data
 
     @property
     def matching_type(self):
@@ -47,91 +56,125 @@ class PointMatcherProcess(Process):
     """
     Point Matcher class
     """
-
-    def __init__(self, district_queue: Queue):
+    def __init__(self, district_queue, insert_queue):
         Process.__init__(self)
         self.logging = logging.getLogger(self.name)
         self.dq = district_queue
-        self.point_q = Queue()
+        self.cmd_q = ThreadQueue()
         self.matcher_threads = 3
+        self.insert_q = insert_queue
 
     def run(self):
         while not self.dq.empty():
-            current_rs = self.dq.get()
-            distribution_rs = MatchingDistribution(current_rs)
-            self.logging.info('Start matching for %s', current_rs)
-            self.fill_point_queue(current_rs)
+            start = time.time()
+            current_dist = self.dq.get()
+            assert isinstance(current_dist, MatchingDistribution)
+            data = current_dist.next()
+
+            self.logging.info('Start matching (%s/%s) for %s', current_dist.index, len(current_dist), current_dist.rs)
+            self.fill_command_queue(current_dist)
 
             threads = []
             for i in range(self.matcher_threads):
                 name = 'Matcher Thread %s' % i
-                t = PointMatcherThread(self.point_q, distribution_rs)
+                t = PointMatcherThread(self.cmd_q, self.insert_q)
                 t.setName(name)
                 threads.append(t)
                 t.start()
 
             for t in threads:
                 t.join()
-            self.logging.info('Finished matching for %s', current_rs)
 
-    def fill_point_queue(self, rs):
+            end = time.time()
+            self.logging.info('Finished matching (%s, %s) in category (%s/%s) for %s in %s seconds',
+                              data['within']['commuters'], data['outgoing']['commuters'],
+                              current_dist.index, len(current_dist),
+                              current_dist.rs, (end-start))
+            if current_dist.has_next():
+                # Still categories to do, enqueue again
+                self.dq.put(current_dist)
+
+    def fill_command_queue(self, current_dist):
+        """
+        Adds PointMatchCommand elements to the queue for which a destination should be matched
+
+        :param rs: current Regionalschlüssel
+        :param within: number of commuters within the rs
+        :param outgoing: number of commuters leaving the rs
+        :return: None
+        """
         with database.get_connection() as conn:
             cur = conn.cursor()
-            cur.execute('SELECT id FROM de_sim_points_within_start WHERE parent_geometry = %s', (rs, ))
+
+            cur.execute('SELECT id, ST_AsEWKB(geom) AS geom '
+                        'FROM de_sim_points_within_start '
+                        'WHERE parent_geometry = %s AND NOT used '
+                        'ORDER BY RANDOM() LIMIT %s', (current_dist.rs, current_dist.commuter_within,))
             conn.commit()
-            [self.point_q.put(PointMatchCommand(p[0], rs, MatchingType.within)) for p in cur.fetchall()]
-            cur.execute('SELECT id FROM de_sim_points_start WHERE parent_geometry = %s', (rs, ))
+            [self.cmd_q.put(
+                PointMatchCommand(p[0], current_dist.rs, current_dist.data['within'], MatchingType.within, p[1]))
+             for p in cur.fetchall()]
+
+            cur.execute('SELECT id, ST_AsEWKB(geom) AS geom '
+                        'FROM de_sim_points_start '
+                        'WHERE parent_geometry = %s AND NOT used '
+                        'ORDER BY RANDOM() LIMIT %s', (current_dist.rs, current_dist.commuter_outgoing,))
             conn.commit()
-            [self.point_q.put(PointMatchCommand(p[0], rs, MatchingType.outgoing)) for p in cur.fetchall()]
+            [self.cmd_q.put(
+                PointMatchCommand(p[0], current_dist.rs, current_dist.data['outgoing'], MatchingType.outgoing, p[1]))
+             for p in cur.fetchall()]
 
 
 class PointMatcherThread(Thread):
-    def __init__(self, q: Queue, distribution: MatchingDistribution):
+    def __init__(self, cmd_queue, insert_queue):
         """
 
-        :param q: Queue with PointMatchCommand
+        :param cmd_queue: Queue with PointMatchCommand
+        :param insert_queue: Queue for SQL Execute Statements
+        :param distribution: Commuting distance distribution
         :return:
         """
         Thread.__init__(self)
-        self.q = q
-        self.distribution = distribution
         self.logging = logging.getLogger(self.name)
-        self.max_retries = 5
+        self.max_retries = 2
+        self.cmd_q = cmd_queue
+        self.insert_q = insert_queue
 
     def run(self):
-        self.logging.info('Start %s', self.name)
-        sql_search = 'WITH s AS (SELECT * FROM de_sim_points_{tbl_s!s} WHERE id = %(start)s) ' \
-                     'SELECT s.id AS start, e.id AS destination ' \
-                     'FROM de_sim_points_{tbl_e!s} AS e, s ' \
-                     'WHERE ST_DWithin(s.geom::geography, e.geom::geography, %(max_d)s) ' \
-                     '  AND NOT ST_DWithin(s.geom::geography, e.geom::geography, %(min_d)s) ' \
+        sql_search = 'SELECT e.id AS destination ' \
+                     'FROM de_sim_points_{tbl_e!s} AS e ' \
+                     'WHERE {dist!s} ' \
                      '  AND e.parent_geometry {cf!s} ' \
-                     '  AND e.used = false ' \
+                     '  AND NOT e.used ' \
                      'ORDER BY RANDOM() ' \
                      'LIMIT 1 ' \
                      'FOR UPDATE'
         sql_update = 'UPDATE de_sim_points_{tbl!s} SET used = true WHERE used = false AND id = %s'
 
-        while not self.q.empty():
-            cmd = self.q.get()
+        assert isinstance(self.cmd_q, ThreadQueue)
+        while not self.cmd_q.empty():
+            cmd = self.cmd_q.get()
             assert isinstance(cmd, PointMatchCommand)
 
             # Set comparison strings and tables
             if cmd.matching_type is MatchingType.within:
-                cf = '= s.parent_geometry'
+                dist = 'NOT ST_DWithin(ST_GeomFromEWKB(%(geom)s), e.geom, 2000)'
+                cf = '= %(rs)s'
                 tbl_s = 'within_start'
                 tbl_e = 'within_end'
             else:
                 # Using IN to minimize the amount of data that has to be scanned and try to use indexes efficiently
-                cf = 'IN (SELECT * FROM (' \
+                dist = 'ST_DWithin(ST_GeomFromEWKB(%(geom)s), e.geom, %(max_d)s) ' \
+                       '  AND NOT ST_DWithin(ST_GeomFromEWKB(%(geom)s), e.geom, %(min_d)s)'
+                cf = 'IN (SELECT rs FROM (' \
                      '  SELECT sk.rs FROM de_shp_kreise sk ' \
                      '  INNER JOIN de_commuter_kreise ck USING (rs) ' \
-                     '  WHERE ST_DWithin((SELECT geom FROM s)::geography, sk.geom::geography, %(max_d)s) ' \
+                     '  WHERE ST_DWithin(ST_GeomFromEWKB(%(geom)s), sk.geom, %(max_d)s) ' \
                      '  UNION ' \
                      '  SELECT sg.rs FROM de_shp_gemeinden sg ' \
                      '  INNER JOIN de_commuter_gemeinden cg USING (rs) ' \
-                     '  WHERE ST_DWithin((SELECT geom FROM s)::geography, sg.geom::geography, %(max_d)s)) reachable_rs ' \
-                     'WHERE rs != (SELECT parent_geometry FROM s))'
+                     '  WHERE ST_DWithin(ST_GeomFromEWKB(%(geom)s), sg.geom, %(max_d)s)) reachable_rs ' \
+                     'WHERE rs != %(rs)s)'
                 tbl_s = 'start'
                 tbl_e = 'end'
 
@@ -139,41 +182,30 @@ class PointMatcherThread(Thread):
             while True:
                 # Get the index of the corresponding category where we will try to match an end point for
                 if cmd.matching_type is MatchingType.within:
-                    index = self.distribution.within_idx
-                    sql_insert = 'INSERT INTO de_sim_routes_within (start_point, end_point) VALUES (%s, %s)'
+                    sql_insert = 'EXECUTE de_sim_routes_within_plan ({start!s}, {end!s});'
                 else:
-                    index = self.distribution.outgoing_idx
-                    sql_insert = 'INSERT INTO de_sim_routes_outgoing (start_point, end_point) VALUES (%s, %s)'
-
-                distances = self.distribution.get_distance(cmd.matching_type, index)
+                    sql_insert = 'EXECUTE de_sim_routes_outgoing_plan ({start!s}, {end!s});'
 
                 # Query the Database for a end point
                 with database.get_connection() as conn:
                     cur = conn.cursor()
-                    distances['start'] = cmd.point_id
-                    cur.execute(sql_search.format(tbl_s=tbl_s, tbl_e=tbl_e, cf=cf), distances)
+                    cur.execute(sql_search.format(tbl_s=tbl_s, tbl_e=tbl_e, cf=cf, dist=dist), cmd.data)
 
                     if cur.rowcount == 0:
-                        retries += 1
-                        self.logging.warning('No possible end point found for %s', cmd.point_id)
+                        self.logging.debug('No possible end point found for %s', cmd.point_id)
                         if retries >= self.max_retries:
                             # If after self.max_retries there is no end point found we stop searching
-                            self.logging.warning('Too many retries to find end point for point id: %s', cmd.point_id)
+                            self.logging.debug('Too many retries to find end point for point id: %s', cmd.point_id)
                             # TODO decide what to do with these points
                             break
                         else:
+                            retries += 1
                             # Search again
                             continue
 
-                    # A point has been found, now check if distribution constraints are still met
-                    if not self.distribution.increase(cmd.matching_type, index):
-                        self.logging.warning('Could not increment distribution on category %s', index)
-                        conn.rollback()
-                        continue
-
-                    (start, destination) = cur.fetchone()
+                    (destination, ) = cur.fetchone()
                     update_error = False
-                    for cur_tbl, cur_point in zip([tbl_s, tbl_e], [start, destination]):
+                    for cur_tbl, cur_point in zip([tbl_s, tbl_e], [cmd.point_id, destination]):
                         cur.execute(sql_update.format(tbl=cur_tbl), (cur_point, ))
                         if cur.rowcount == 0:
                             # Update did not work, rollback, find new point
@@ -186,18 +218,6 @@ class PointMatcherThread(Thread):
                         break
 
                     # Everything is fine so let's insert the points in the table for the routes
-                    cur.execute(sql_insert, (start, destination,))
+                    self.insert_q.put(sql_insert.format(start=cmd.point_id, end=destination))
                     conn.commit()
                 break
-
-if __name__ == "__main__":
-    from helper import logger
-    logger.setup()
-    q = Queue()
-    q.put('06535')
-
-    p = PointMatcherProcess(q)
-    p.fill_point_queue('06535')
-    t = PointMatcherThread(p.point_q, MatchingDistribution('06535'))
-    t.start()
-    t.join()

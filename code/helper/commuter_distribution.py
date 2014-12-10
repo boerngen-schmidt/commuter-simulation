@@ -1,9 +1,8 @@
 """
 Module to capsule the distribution of commuting distances
 """
-from multiprocessing import Lock
+from math import floor
 
-from builder import MatchingType
 from helper import database
 
 
@@ -26,101 +25,68 @@ commuter_distribution = {'01': (0.5, 0.28, 0.17, 0.05),
                          '16': (0.5, 0.28, 0.17, 0.05)}
 
 
-class MatchingDistribution():
+commuting_distance = ({'min_d':  2000, 'max_d': 10000},
+                      {'min_d': 10000, 'max_d': 25000},
+                      {'min_d': 25000, 'max_d': 50000},
+                      {'min_d': 50000, 'max_d': 140000})
+
+
+class MatchingDistribution(object):
+    __slots__ = ['_rs', '_index', '_data', '_dist_within', '_dist_outgoing']
+
     def __init__(self, rs):
         self._rs = rs
-        self._cur_within_idx = 0
-        self._cur_outgoing_idx = 0
-        self._cur_within_idx_lock = Lock()
-        self._cur_outgoing_idx_lock = Lock()
+        self._index = 0
+        self._data = {}
 
         with database.get_connection() as conn:
             cur = conn.cursor()
             cur.execute('SELECT outgoing, within FROM de_commuter WHERE rs = %s', (rs, ))
             conn.commit()
-            (self.outgoing, self.within) = cur.fetchone()
+            (outgoing, within) = cur.fetchone()
 
-        self._dist_within = [self.within*p for p in commuter_distribution[self._rs[:2]]]
-        self._count_within = [0] * len(commuter_distribution[self._rs[:2]])
-        self._count_within_lock = Lock()
-
-        self._dist_outgoing = [self.outgoing*p for p in commuter_distribution[self._rs[:2]]]
-        self._count_outgoing = [0] * len(commuter_distribution[self._rs[:2]])
-        self._count_outgoing_lock = Lock()
-
-        self.commuting_distance = ({'min_d':  2000, 'max_d': 10000},
-                                   {'min_d': 10000, 'max_d': 25000},
-                                   {'min_d': 25000, 'max_d': 50000},
-                                   {'min_d': 50000, 'max_d': 140000})
-
-    def get_distance(self, match_type: MatchingType, index):
-        if match_type is MatchingType.within:
-            self._cur_within_idx_lock.acquire()
-            result = self._cur_within_idx
-            self._cur_within_idx_lock.release()
-        else:
-            self._cur_outgoing_idx_lock.acquire()
-            result = self._cur_outgoing_idx
-            self._cur_outgoing_idx_lock.release()
-        return self.commuting_distance[result]
+        self._dist_within = [int(floor(within*p)) for p in commuter_distribution[self._rs[:2]]]
+        self._dist_outgoing = [int(floor(outgoing*p)) for p in commuter_distribution[self._rs[:2]]]
 
     @property
-    def within_idx(self):
-        self._cur_within_idx_lock.acquire()
-        if self._count_within[self._cur_within_idx] >= self._dist_within[self._cur_within_idx]:
-            self._cur_within_idx += 1
-        result = self._cur_within_idx
-        self._cur_within_idx_lock.release()
-        return result
+    def rs(self):
+        return self._rs
 
     @property
-    def outgoing_idx(self):
-        self._cur_outgoing_idx_lock.acquire()
-        if self._count_outgoing[self._cur_outgoing_idx] >= self._dist_outgoing[self._cur_outgoing_idx]:
-            self._cur_outgoing_idx +=1
-        result = self._cur_outgoing_idx
-        self._cur_outgoing_idx_lock.release()
-        return result
+    def index(self):
+        return self._index
 
-    def increase(self, matching_type: MatchingType, index):
-        if MatchingType.outgoing is matching_type:
-            return self.increase_outgoing(index)
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self.next()
+
+    def __len__(self):
+        return len(list(zip(commuting_distance, commuter_distribution[self._rs[:2]])))
+
+    @property
+    def data(self):
+        return self._data
+
+    @property
+    def commuter_within(self):
+        return self._data['within']['commuters']
+
+    @property
+    def commuter_outgoing(self):
+        return self._data['outgoing']['commuters']
+
+    def next(self):
+        if self._index < len(list(zip(commuting_distance, commuter_distribution[self._rs[:2]]))):
+            self._data = {
+                'within': dict({'commuters': self._dist_within[self._index]}, **commuting_distance[self._index]),
+                'outgoing': dict({'commuters': self._dist_outgoing[self._index]}, **commuting_distance[self._index])
+            }
+            self._index += 1
+            return self._data
         else:
-            return self.increase_within(index)
+            raise StopIteration()
 
-    def increase_within(self, index):
-        """
-        Tries to increase the count for the within distribution
-
-        :param index: Index of the corresponding category for which start and end point where searched
-        :rtype: bool
-        :return: True indicates that increment was successful,
-                 False that it wasn't due to already enough commuters distributed in category
-        """
-        self._count_within_lock.acquire()
-        if self._count_within[index] >= self._dist_within[index]:
-            self._count_within_lock.release()
-            return False
-        else:
-            self._count_within[index] += 1
-            self._count_within_lock.release()
-            return True
-
-    def increase_outgoing(self, index):
-        """
-        Tries to increase the count for the outgoing distribution
-
-        :param index: Index of the corresponding category for which start and end point where searched
-        :rtype: bool
-        :return: True indicates that increment was successful,
-                 False that it wasn't due to already enough commuters distributed in category
-        """
-        self._count_outgoing_lock.acquire()
-        if self._count_outgoing[index] >= self._dist_outgoing[index]:
-            self._count_outgoing_lock.release()
-            return False
-        else:
-            self._count_outgoing[index] += 1
-            self._count_outgoing_lock.release()
-            return True
-
+    def has_next(self):
+        return self._index+1 < len(list(zip(commuting_distance, commuter_distribution[self._rs[:2]])))

@@ -8,19 +8,22 @@ import logging
 import time
 import multiprocessing
 
+from builder import PointType
 from builder.process_point_matcher import PointMatcherProcess
 from helper import database
 from helper import logger
 from builder.process_random_point_generator_shapely import PointCreatorProcess, Counter, PointCreationCommand
-from builder.process_point_inserter import PointInsertingProcess
+from builder.process_point_inserter import PointInsertingProcess, PointInsertIndexingThread
+from helper.commuter_distribution import MatchingDistribution
 from shapely.wkb import loads
 from psycopg2.extras import NamedTupleCursor
 
 
 def main():
     logger.setup()
-    create_points()
+    # create_points()
     match_points()
+
 
 def create_points():
     logging.info('Start creation of points')
@@ -41,7 +44,8 @@ def create_points():
         except TypeError:
             logging.error('Bad record: rs: %s, name: %s values: %s', rec.rs, rec.name, n)
             return
-        [work_queue.put(PointCreationCommand(rec.rs, rec.name, polygon, amount, p_type)) for amount, p_type in zip(n, t)]
+        [work_queue.put(PointCreationCommand(rec.rs, rec.name, polygon, amount, p_type)) for amount, p_type in
+         zip(n, t)]
 
     start = time.time()
     with database.get_connection() as con:
@@ -114,15 +118,41 @@ def create_points():
         p.set_t(1.2)
         processes.append(p)
 
-    with inserting_process(insert_queue):
+    plans = ['PREPARE de_sim_points_start_plan (varchar, geometry) AS '
+             'INSERT INTO de_sim_points_start (parent_geometry, geom) '
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 900913)))',
+
+             'PREPARE de_sim_points_within_start_plan (varchar, geometry) AS '
+             'INSERT INTO de_sim_points_within_start (parent_geometry, geom) '
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 900913)))',
+
+             'PREPARE de_sim_points_end_plan (varchar, geometry) AS '
+             'INSERT INTO de_sim_points_end (parent_geometry, geom) '
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 900913)))',
+
+             'PREPARE de_sim_points_within_end_plan (varchar, geometry) AS '
+             'INSERT INTO de_sim_points_within_end (parent_geometry, geom) '
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 900913)))']
+    with inserting_process(insert_queue, plans, 4):
         start = time.time()
         for p in processes:
             p.start()
         for p in processes:
             p.join()
 
+        logging.info('Creating Indexes for Tables...')
+        threads = []
+        for table in PointType:
+            t = PointInsertIndexingThread(table.value)
+            threads.append(t)
+            t.start()
+
+        for t in threads:
+            t.join()
+        logging.info("Finished creating Indexes.")
+
     end = time.time()
-    logging.info('Runtime Point Creation: %s' % (end - start,))
+    logging.info('Runtime Point Creation: %s', (end - start))
 
 
 def match_points():
@@ -134,30 +164,40 @@ def match_points():
     with database.get_connection() as conn:
         cur = conn.cursor()
         cur.execute('SELECT rs FROM de_commuter ORDER BY RANDOM()')
-        [district_queue.put(rec[0]) for rec in cur.fetchall()]
+        [district_queue.put(MatchingDistribution(rec[0])) for rec in cur.fetchall()]
+    insert_queue = multiprocessing.JoinableQueue()
 
-    start = time.time()
     processes = []
-    for i in range(4):
-        p = PointMatcherProcess(district_queue)
-        processes.append(p)
-        p.start()
+    for i in range(6):
+        processes.append(PointMatcherProcess(district_queue, insert_queue))
 
-    for p in processes:
-        p.join()
+    plans = ['PREPARE de_sim_routes_within_plan (integer, integer) AS '
+             'INSERT INTO de_sim_routes_within (start_point, end_point) '
+             'VALUES($1, $2)',
+
+             'PREPARE de_sim_routes_outgoing_plan (integer, integer) AS '
+             'INSERT INTO de_sim_routes_outgoing (start_point, end_point) '
+             'VALUES($1, $2)']
+    with inserting_process(insert_queue, plans, 2):
+        start = time.time()
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join()
+
     end = time.time()
-    logging.info('Runtime Point Matching: %s' % (end - start,))
+    logging.info('Runtime Point Matching: %s', (end - start))
 
 
 @contextmanager
-def inserting_process(insert_queue):
+def inserting_process(insert_queue, plans, threads=2, batch_size=5000):
     """Generator for inserting process
 
     :param multiprocessing.Queue insert_queue: Queue for to be inserted Objects
     """
-    insert_process = PointInsertingProcess(insert_queue)
-    insert_process.set_batch_size(5000)
-    insert_process.set_insert_threads(4)
+    insert_process = PointInsertingProcess(insert_queue, plans)
+    insert_process.set_batch_size(batch_size)
+    insert_process.set_insert_threads(threads)
     insert_process.start()
     yield
     insert_process.join()

@@ -4,7 +4,6 @@ from multiprocessing import Process, Event, Queue, JoinableQueue
 from queue import Empty
 from threading import Thread
 
-from builder import PointType
 from helper import database
 
 
@@ -15,7 +14,8 @@ class PointInsertingProcess(Process):
     for the insert threads.
     After inserting of the points is done, indexes are generated for the tables.
     """
-    def __init__(self, input_queue: JoinableQueue):
+
+    def __init__(self, input_queue: JoinableQueue, plans):
         Process.__init__(self)
         self.q = input_queue
         self.thread_queue = Queue()
@@ -23,6 +23,7 @@ class PointInsertingProcess(Process):
         self.insert_threads = 2
         self.stop_request = Event()
         self.logging = logging.getLogger(self.name)
+        self.plans = plans
 
     def set_batch_size(self, value: int):
         self.batch_size = value
@@ -34,7 +35,7 @@ class PointInsertingProcess(Process):
         threads = []
         for i in range(self.insert_threads):
             name = 'Inserting Thread %s' % i
-            t = PointInsertingThread(self.thread_queue, self.stop_request)
+            t = PointInsertingThread(self.thread_queue, self.stop_request, self.plans)
             t.setName(name)
             threads.append(t)
             t.start()
@@ -67,19 +68,6 @@ class PointInsertingProcess(Process):
         for t in threads:
             t.join()
 
-        self.logging.info('Creating Indexes for Tables...')
-        threads = []
-        for table in PointType:
-            t = PointInsertIndexingThread(table.value)
-            threads.append(t)
-            t.start()
-
-        for t in threads:
-            t.join()
-        self.logging.info("Finished creating Indexes.")
-
-
-
     def stop(self):
         self.stop_request.set()
 
@@ -93,11 +81,13 @@ class PointInsertingThread(Thread):
 
     Thread reads commands from queue and executes one of the pre-made execution plans.
     """
-    def __init__(self, queue: Queue, stop_request: Event):
+
+    def __init__(self, queue: Queue, stop_request: Event, plans):
         Thread.__init__(self)
         self.q = queue
         self.stop_request = stop_request
         self.log = logging.getLogger(self.name)
+        self.plans = plans
 
     def run(self):
         """Inserts generated Points into the database
@@ -107,22 +97,8 @@ class PointInsertingThread(Thread):
         self.log.info('Starting inserting thread %s', self.name)
         with database.get_connection() as conn:
             cur = conn.cursor()
-            prepare_statement = 'PREPARE de_sim_points_start_plan (varchar, geometry) AS ' \
-                                'INSERT INTO de_sim_points_start (parent_geometry, geom) ' \
-                                'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 900913)))'
-            cur.execute(prepare_statement)
-            prepare_statement = 'PREPARE de_sim_points_within_start_plan (varchar, geometry) AS ' \
-                                'INSERT INTO de_sim_points_within_start (parent_geometry, geom) ' \
-                                'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 900913)))'
-            cur.execute(prepare_statement)
-            prepare_statement = 'PREPARE de_sim_points_end_plan (varchar, geometry) AS ' \
-                                'INSERT INTO de_sim_points_end (parent_geometry, geom) ' \
-                                'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 900913)))'
-            cur.execute(prepare_statement)
-            prepare_statement = 'PREPARE de_sim_points_within_end_plan (varchar, geometry) AS ' \
-                                'INSERT INTO de_sim_points_within_end (parent_geometry, geom) ' \
-                                'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 900913)))'
-            cur.execute(prepare_statement)
+            for prepare_statement in self.plans:
+                cur.execute(prepare_statement)
             conn.commit()
 
             while True:
@@ -167,4 +143,4 @@ class PointInsertIndexingThread(Thread):
             conn.commit()
             finish_index = time.time()
             self.logging.info('Finished creating indexes on de_sim_points_%s in %s',
-                              self.tbl, (finish_index-start_index))
+                              self.tbl, (finish_index - start_index))
