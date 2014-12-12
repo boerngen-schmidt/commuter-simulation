@@ -21,35 +21,8 @@ import time
 
 from helper import database
 from builder import MatchingType
+from builder.commands import PointMatchCommand
 from helper.commuter_distribution import MatchingDistribution
-
-
-class PointMatchCommand(object):
-    __slots__ = ['_data', '_matching_type']
-
-    def __init__(self, point_id, rs, data, matching_type, geometry):
-        self._data = dict({'start': point_id, 'rs': rs, 'geom': geometry}, **data)
-        self._matching_type = matching_type
-
-    @property
-    def point_id(self):
-        return self._data['start']
-
-    @property
-    def geom(self):
-        return self._data['geom']
-
-    @property
-    def rs(self):
-        return self._data['rs']
-
-    @property
-    def data(self):
-        return self._data
-
-    @property
-    def matching_type(self):
-        return self._matching_type
 
 
 class PointMatcherProcess(Process):

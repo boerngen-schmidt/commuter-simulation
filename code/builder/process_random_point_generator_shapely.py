@@ -8,6 +8,7 @@ import time
 import logging
 from multiprocessing import Process, Value, JoinableQueue, Queue
 
+from builder.commands import PointCreationCommand
 import numpy as np
 import pylab
 from shapely.geometry import Polygon, Point, box, shape
@@ -26,56 +27,6 @@ class Counter(object):
     @property
     def value(self):
         return self.val.value
-
-
-class PointCreationCommand(object):
-    __slots__ = ['_rs', '_polygon', '_num_points', '_name', '_type_points']
-    def __init__(self, rs: str, name: str, polygon: Polygon, points: int, point_type: str):
-        self._rs = rs
-        self._polygon = polygon
-        self._num_points = points
-        self._name = name
-        self._type_points = point_type
-
-    @property
-    def rs(self):
-        return self._rs
-
-    @rs.setter
-    def rs(self, value):
-        self._rs = value
-
-    @property
-    def polygon(self):
-        return self._polygon
-
-    @polygon.setter
-    def polygon(self, value):
-        self._polygon = value
-
-    @property
-    def num_points(self):
-        return self._num_points
-
-    @num_points.setter
-    def num_points(self, value):
-        self._type_points = value
-
-    @property
-    def type_points(self):
-        return self._type_points
-
-    @type_points.setter
-    def type_points(self, value):
-        self._num_points = value
-
-    @property
-    def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, value):
-        self._name = value
 
 
 class PointCreatorProcess(Process):
