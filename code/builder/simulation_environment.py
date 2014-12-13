@@ -9,7 +9,7 @@ import time
 import multiprocessing
 
 from builder import PointType
-from builder.process_point_matcher import PointMatcherProcess
+from builder.process_point_mass_matcher import PointMassMatcherProcess
 from helper import database
 from helper import logger
 from builder.process_random_point_generator_shapely import PointCreatorProcess, Counter, PointCreationCommand
@@ -169,7 +169,7 @@ def match_points():
 
     processes = []
     for i in range(6):
-        processes.append(PointMatcherProcess(district_queue, insert_queue))
+        processes.append(PointMassMatcherProcess(district_queue, insert_queue))
 
     plans = ['PREPARE de_sim_routes_within_plan (integer, integer) AS '
              'INSERT INTO de_sim_routes_within (start_point, end_point) '
