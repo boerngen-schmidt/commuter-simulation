@@ -1,3 +1,5 @@
+from shapely.geometry.polygon import Polygon
+
 __author__ = 'Benjamin'
 
 

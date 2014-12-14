@@ -6,27 +6,13 @@ Created on 29.09.2014
 import math
 import time
 import logging
-from multiprocessing import Process, Value, JoinableQueue, Queue
+from multiprocessing import Process, JoinableQueue, Queue
 
 from builder.commands import PointCreationCommand
+from helper.counter import Counter
 import numpy as np
 import pylab
 from shapely.geometry import Polygon, Point, box, shape
-
-
-class Counter(object):
-    def __init__(self):
-        self.val = Value('i', 0)
-
-    def increment(self, n=1):
-        with self.val.get_lock():
-            self.val.value += n
-            result = self.value
-        return result
-
-    @property
-    def value(self):
-        return self.val.value
 
 
 class PointCreatorProcess(Process):

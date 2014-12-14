@@ -167,9 +167,10 @@ def match_points():
         [district_queue.put(MatchingDistribution(rec[0])) for rec in cur.fetchall()]
     insert_queue = multiprocessing.JoinableQueue()
 
+    counter = Counter(district_queue.qsize())
     processes = []
-    for i in range(6):
-        processes.append(PointMassMatcherProcess(district_queue, insert_queue))
+    for i in range(4):
+        processes.append(PointMassMatcherProcess(district_queue, insert_queue, counter))
 
     plans = ['PREPARE de_sim_routes_within_plan (integer, integer) AS '
              'INSERT INTO de_sim_routes_within (start_point, end_point) '
