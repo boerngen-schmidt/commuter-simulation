@@ -65,16 +65,11 @@ class PointMassMatcherProcess(Process):
                              '      FOR UPDATE ' \
                              '    ) AS t ' \
                              ') AS e ' \
-                             'ON s.i = e.i ' \
-                             'WHERE NOT ST_DWithin(s.geom, e.geom, 2000) '
+                             'ON s.i = e.i AND NOT ST_DWithin(s.geom, e.geom, 2000) '
                 tbl_s = 'within_start'
                 tbl_e = 'within_end'
                 cf = '= %(rs)s'
-                sql_reachable_rs = 'SELECT sk.rs FROM de_commuter_kreise ck ' \
-                                   'INNER JOIN de_shp_kreise sk ON sk.rs=ck.rs AND ST_DWithin((SELECT geom FROM de_shp_kreise WHERE rs = %(rs)s), sk.geom, %(max_d)s) ' \
-                                   'UNION  ' \
-                                   'SELECT cg.rs FROM de_commuter_gemeinden cg  ' \
-                                   'INNER JOIN de_shp_gemeinden sg ON sg.rs=cg.rs AND ST_DWithin((SELECT geom FROM de_shp_kreise WHERE rs = %(rs)s), sg.geom, %(max_d)s) '
+
                 cur.execute(sql_search.format(tbl_e=tbl_e, tbl_s=tbl_s, cf=cf), {'rs': current_rs})
                 for (start, destination) in cur.fetchall():
                     self.insert_q.put('EXECUTE de_sim_routes_within_plan ({start!s}, {destination!s});'.format(start=start, destination=destination))
@@ -83,6 +78,53 @@ class PointMassMatcherProcess(Process):
                                 (destination, ))
 
                 conn.commit()
+
+                '''Matching outgoing'''
+                sql_search = 'SELECT s.id AS start, e.id AS destination ' \
+                             'FROM ( ' \
+                             '  SELECT id, geom, row_number() over() as i FROM ( ' \
+                             '	  SELECT id, geom ' \
+                             '	  FROM de_sim_points_{tbl_s!s} ' \
+                             '	  WHERE parent_geometry = %(rs)s ' \
+                             '	  ORDER BY RANDOM() ' \
+                             '    LIMIT %(commuters)s ' \
+                             '    FOR UPDATE ' \
+                             '  ) AS sq ' \
+                             ') AS s ' \
+                             'INNER JOIN ( ' \
+                             '  SELECT id, geom, row_number() over() as i ' \
+                             '  FROM ( ' \
+                             '	  SELECT id, geom ' \
+                             '	  FROM de_sim_points_{tbl_e!s} ' \
+                             '	  WHERE parent_geometry {cf!s} ' \
+                             '	  ORDER BY RANDOM() ' \
+                             '    LIMIT %(commuters)s ' \
+                             '    FOR UPDATE ' \
+                             '  ) AS t ' \
+                             ') AS e ' \
+                             'ON s.i = e.i ' \
+                             'WHERE NOT ST_DWithin(s.geom, e.geom, %(min_d)s)) AND ST_DWithin(s.geom, e.geom, %(max_d)s)'
+                sql_reachable_rs = 'SELECT sk.rs FROM de_commuter_kreise ck ' \
+                                   'INNER JOIN de_shp_kreise sk ON sk.rs=ck.rs AND ST_DWithin(' \
+                                   '  (SELECT geom FROM de_shp_kreise WHERE rs = %(rs)s), sk.geom, %(max_d)s) ' \
+                                   'UNION  ' \
+                                   'SELECT cg.rs FROM de_commuter_gemeinden cg  ' \
+                                   'INNER JOIN de_shp_gemeinden sg ON sg.rs=cg.rs AND ST_DWithin(' \
+                                   '  (SELECT geom FROM de_shp_kreise WHERE rs = %(rs)s), sg.geom, %(max_d)s)'
+                tbl_s = 'start'
+                tbl_e = 'end'
+                cf = 'IN (' + sql_reachable_rs + ')'
+
+                for params in current_dist:
+                    cur.execute(sql_search.format(tbl_e=tbl_e, tbl_s=tbl_s, cf=cf), params['outgoing'])
+                    for (start, destination) in cur.fetchall():
+                        self.insert_q.put('EXECUTE de_sim_routes_outgoing_plan ({start!s}, {destination!s});'.format(start=start, destination=destination))
+                        cur.execute('UPDATE de_sim_points_within_start SET used = true WHERE id=%s AND NOT used',
+                                    (start, ))
+                        cur.execute('UPDATE de_sim_points_within_end SET used = true WHERE id=%s AND NOT used',
+                                    (destination, ))
+                    conn.commit()
+
                 self.counter.increment()
                 self.logging.info('(%4d/%d) Finished matching within points for %s in %s',
                                   self.counter.value, self.counter.max,

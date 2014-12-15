@@ -80,8 +80,10 @@ class MatchingDistribution(object):
     def next(self):
         if self._index < len(list(zip(commuting_distance, commuter_distribution[self._rs[:2]]))):
             self._data = {
-                'within': dict({'commuters': self._dist_within[self._index]}, **commuting_distance[self._index]),
-                'outgoing': dict({'commuters': self._dist_outgoing[self._index]}, **commuting_distance[self._index])
+                'within':   dict({'commuters': self._dist_within[self._index], 'rs': self.rs},
+                                 **commuting_distance[self._index]),
+                'outgoing': dict({'commuters': self._dist_outgoing[self._index], 'rs': self.rs},
+                                 **commuting_distance[self._index])
             }
             self._index += 1
             return self._data
