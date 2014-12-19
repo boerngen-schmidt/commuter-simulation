@@ -8,13 +8,14 @@ import atexit
 from contextlib import contextmanager
 from configparser import ConfigParser, NoSectionError
 from threading import RLock
+import os
 
 from psycopg2._psycopg import connection
 
-import os
 import psycopg2.extensions
 from psycopg2.pool import ThreadedConnectionPool
 from helper.file_finder import find
+
 
 
 
@@ -40,12 +41,12 @@ class LoggingCursor(psycopg2.extensions.cursor):
     """
     def execute(self, sql, args=None):
         logger = logging.getLogger('database.sql_debug')
-        logger.info(self.mogrify(sql, args))
-        
+
         try:
             psycopg2.extensions.cursor.execute(self, sql, args)
         except Exception as exc:
             logger.error("%s: %s" % (exc.__class__.__name__, exc))
+            logger.error("Query: %s", self.query)
             raise
 
 

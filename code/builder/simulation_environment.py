@@ -21,7 +21,7 @@ from psycopg2.extras import NamedTupleCursor
 
 def main():
     logger.setup()
-    # create_points()
+    create_points()
     match_points()
 
 
@@ -169,7 +169,7 @@ def match_points():
 
     counter = Counter(district_queue.qsize())
     processes = []
-    for i in range(4):
+    for i in range(1):
         processes.append(PointMassMatcherProcess(district_queue, insert_queue, counter))
 
     plans = ['PREPARE de_sim_routes_within_plan (integer, integer) AS '

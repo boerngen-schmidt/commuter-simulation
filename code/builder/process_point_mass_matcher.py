@@ -14,12 +14,14 @@ If does route match the wanted conditions?
 Else choose another point
 """
 import logging
-from multiprocessing import Process, Queue
+from multiprocessing import Process
 import time
+from queue import Empty
 
 from helper import database
 from helper.commuter_distribution import MatchingDistribution
 from helper.counter import Counter
+from helper.database import LoggingCursor
 
 
 class PointMassMatcherProcess(Process):
@@ -29,7 +31,7 @@ class PointMassMatcherProcess(Process):
     Spawns Threads which do the actual matching
     """
 
-    def __init__(self, district_queue: Queue, insert_queue, counter: Counter):
+    def __init__(self, district_queue, insert_queue, counter: Counter):
         Process.__init__(self)
         self.logging = logging.getLogger(self.name)
         self.dq = district_queue
@@ -38,34 +40,34 @@ class PointMassMatcherProcess(Process):
 
     def run(self):
         while not self.dq.empty():
-            current_dist = self.dq.get()
+            try:
+                current_dist = self.dq.get(timeout=1)
+            except Empty:
+                continue
             assert isinstance(current_dist, MatchingDistribution)
             current_rs = current_dist.rs
             start_time = time.time()
             with database.get_connection() as conn:
-                cur = conn.cursor()
+                cur = conn.cursor(cursor_factory=LoggingCursor)
                 '''Match within'''
                 sql_search = 'SELECT s.id AS start, e.id AS destination ' \
                              'FROM ( ' \
-                             '    SELECT id, geom, row_number() over() as i FROM ( ' \
-                             '		SELECT id, geom ' \
-                             '		FROM de_sim_points_{tbl_s!s} ' \
-                             '		WHERE parent_geometry {cf!s} ' \
-                             '		ORDER BY RANDOM() ' \
-                             '      FOR UPDATE ' \
-                             '	) AS sq ' \
+                             '  SELECT id, geom, row_number() over() as i FROM ( ' \
+                             '    SELECT id, geom ' \
+                             '    FROM de_sim_points_{tbl_s!s} ' \
+                             '    WHERE parent_geometry {cf!s} ' \
+                             '    ORDER BY RANDOM() ' \
+                             '  ) AS sq ' \
                              ') AS s ' \
                              'INNER JOIN ( ' \
-                             '    SELECT id, geom, row_number() over() as i ' \
-                             '    FROM ( ' \
-                             '		SELECT id, geom ' \
-                             '		FROM de_sim_points_{tbl_e!s} ' \
-                             '		WHERE parent_geometry {cf!s} ' \
-                             '		ORDER BY RANDOM() ' \
-                             '      FOR UPDATE ' \
-                             '    ) AS t ' \
+                             '  SELECT id, geom, row_number() over() as i FROM ( ' \
+                             '    SELECT id, geom ' \
+                             '    FROM de_sim_points_{tbl_e!s} ' \
+                             '    WHERE parent_geometry {cf!s} ' \
+                             '    ORDER BY RANDOM() ' \
+                             '  ) AS t ' \
                              ') AS e ' \
-                             'ON s.i = e.i AND NOT ST_DWithin(s.geom, e.geom, 2000) '
+                             'ON s.i = e.i AND NOT ST_DWithin(s.geom, e.geom, 2000);'
                 tbl_s = 'within_start'
                 tbl_e = 'within_end'
                 cf = '= %(rs)s'
@@ -83,34 +85,32 @@ class PointMassMatcherProcess(Process):
                 sql_search = 'SELECT s.id AS start, e.id AS destination ' \
                              'FROM ( ' \
                              '  SELECT id, geom, row_number() over() as i FROM ( ' \
-                             '	  SELECT id, geom ' \
-                             '	  FROM de_sim_points_{tbl_s!s} ' \
-                             '	  WHERE parent_geometry = %(rs)s ' \
-                             '	  ORDER BY RANDOM() ' \
+                             '    SELECT id, geom ' \
+                             '    FROM de_sim_points_{tbl_s!s} ' \
+                             '    WHERE parent_geometry = %(rs)s AND NOT used' \
+                             '    ORDER BY RANDOM() ' \
                              '    LIMIT %(commuters)s ' \
-                             '    FOR UPDATE ' \
                              '  ) AS sq ' \
                              ') AS s ' \
                              'INNER JOIN ( ' \
                              '  SELECT id, geom, row_number() over() as i ' \
                              '  FROM ( ' \
-                             '	  SELECT id, geom ' \
-                             '	  FROM de_sim_points_{tbl_e!s} ' \
-                             '	  WHERE parent_geometry {cf!s} ' \
-                             '	  ORDER BY RANDOM() ' \
+                             '    SELECT id, geom ' \
+                             '    FROM de_sim_points_{tbl_e!s} ' \
+                             '    WHERE parent_geometry {cf!s} AND NOT used' \
+                             '    ORDER BY RANDOM() ' \
                              '    LIMIT %(commuters)s ' \
-                             '    FOR UPDATE ' \
                              '  ) AS t ' \
                              ') AS e ' \
                              'ON s.i = e.i ' \
-                             'WHERE NOT ST_DWithin(s.geom, e.geom, %(min_d)s)) AND ST_DWithin(s.geom, e.geom, %(max_d)s)'
+                             'WHERE NOT ST_DWithin(s.geom, e.geom, %(min_d)s) AND ST_DWithin(s.geom, e.geom, %(max_d)s);'
                 sql_reachable_rs = 'SELECT sk.rs FROM de_commuter_kreise ck ' \
                                    'INNER JOIN de_shp_kreise sk ON sk.rs=ck.rs AND ST_DWithin(' \
-                                   '  (SELECT geom FROM de_shp_kreise WHERE rs = %(rs)s), sk.geom, %(max_d)s) ' \
+                                   '  (SELECT ST_Union(geom) FROM de_shp_kreise WHERE rs = %(rs)s), sk.geom, %(max_d)s) ' \
                                    'UNION  ' \
                                    'SELECT cg.rs FROM de_commuter_gemeinden cg  ' \
                                    'INNER JOIN de_shp_gemeinden sg ON sg.rs=cg.rs AND ST_DWithin(' \
-                                   '  (SELECT geom FROM de_shp_kreise WHERE rs = %(rs)s), sg.geom, %(max_d)s)'
+                                   '  (SELECT ST_Union(geom) FROM de_shp_gemeinden WHERE rs = %(rs)s), sg.geom, %(max_d)s)'
                 tbl_s = 'start'
                 tbl_e = 'end'
                 cf = 'IN (' + sql_reachable_rs + ')'
@@ -126,6 +126,7 @@ class PointMassMatcherProcess(Process):
                     conn.commit()
 
                 self.counter.increment()
-                self.logging.info('(%4d/%d) Finished matching within points for %s in %s',
+                self.logging.info('(%4d/%d) Finished matching points for %s in %s',
                                   self.counter.value, self.counter.max,
                                   current_rs, time.time() - start_time)
+        self.logging.info('Exiting Matcher Tread: %s', self.name)
