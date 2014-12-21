@@ -3,7 +3,9 @@ Module to capsule the distribution of commuting distances
 """
 from math import floor
 
+from builder import MatchingType
 from helper import database
+
 
 
 # Could be placed in the database, but for now we keep it static
@@ -24,29 +26,51 @@ commuter_distribution = {'01': (0.5, 0.28, 0.17, 0.05),
                          '15': (0.5, 0.28, 0.17, 0.05),
                          '16': (0.5, 0.28, 0.17, 0.05)}
 
-
-commuting_distance = ({'min_d':  2000, 'max_d': 10000},
+commuting_distance = ({'min_d': 2000, 'max_d': 10000},
                       {'min_d': 10000, 'max_d': 25000},
                       {'min_d': 25000, 'max_d': 50000},
                       {'min_d': 50000, 'max_d': 140000})
 
+delta_commuters = 0.1
+
 
 class MatchingDistribution(object):
-    __slots__ = ['_rs', '_index', '_data', '_dist_within', '_dist_outgoing']
+    __slots__ = ['_rs', '_index', '_data', '_age']
 
     def __init__(self, rs):
         self._rs = rs
         self._index = 0
-        self._data = {}
+        self._age = 0
 
         with database.get_connection() as conn:
             cur = conn.cursor()
             cur.execute('SELECT outgoing, within FROM de_commuter WHERE rs = %s', (rs, ))
             conn.commit()
             (outgoing, within) = cur.fetchone()
+        self.__build_data(within, outgoing)
 
-        self._dist_within = [int(floor(within*p)) for p in commuter_distribution[self._rs[:2]]]
-        self._dist_outgoing = [int(floor(outgoing*p)) for p in commuter_distribution[self._rs[:2]]]
+    def reuse(self, within, outgoing):
+        """
+        Makes the MatchingDistribution reusable
+
+        :param within: Int with the remaining commuters within to match
+        :param outgoing: List of int with remaining outgoing commuters to match
+
+        """
+        self.__build_data(within, outgoing)
+        self._index = 0
+        self._age += 1
+
+    def __build_data(self, within, outgoing):
+        self._data = [{'commuters': within, 'type': MatchingType.within, 'rs': self._rs, 'min_d': 2000, 'max_d': -1}]
+        for i, o in zip(range(len(outgoing)), outgoing):
+            amount = int(floor(o / commuter_distribution[self._rs[:2]][i]))
+            self._data.append(
+                dict({'commuters': amount, 'type': MatchingType.outgoing, 'rs': self._rs}, **commuting_distance[i]))
+
+    @property
+    def age(self):
+        return self._age
 
     @property
     def rs(self):
@@ -69,26 +93,13 @@ class MatchingDistribution(object):
     def data(self):
         return self._data
 
-    @property
-    def commuter_within(self):
-        return self._data['within']['commuters']
-
-    @property
-    def commuter_outgoing(self):
-        return self._data['outgoing']['commuters']
-
     def next(self):
-        if self._index < len(list(zip(commuting_distance, commuter_distribution[self._rs[:2]]))):
-            self._data = {
-                'within':   dict({'commuters': self._dist_within[self._index], 'rs': self.rs},
-                                 **commuting_distance[self._index]),
-                'outgoing': dict({'commuters': self._dist_outgoing[self._index], 'rs': self.rs},
-                                 **commuting_distance[self._index])
-            }
+        if self._index < len(self._data):
+            result = self._data[self._index]
             self._index += 1
-            return self._data
+            return result
         else:
             raise StopIteration()
 
     def has_next(self):
-        return self._index+1 < len(list(zip(commuting_distance, commuter_distribution[self._rs[:2]])))
+        return self._index + 1 < len(self._data)

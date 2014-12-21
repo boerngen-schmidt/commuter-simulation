@@ -10,6 +10,7 @@ import multiprocessing
 
 from builder import PointType
 from builder.process_point_mass_matcher import PointMassMatcherProcess
+from builder.process_route_calculation import ProcessRouteCalculation
 from helper import database
 from helper import logger
 from builder.process_random_point_generator_shapely import PointCreatorProcess, Counter, PointCreationCommand
@@ -23,6 +24,40 @@ def main():
     logger.setup()
     create_points()
     match_points()
+    generate_routes()
+
+
+def generate_routes():
+    logging.info('Start of route generation')
+    route_queue = multiprocessing.Queue()
+    with database.get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute('SELECT start_point, end_point FROM de_sim_routes')
+        conn.commit()
+        [route_queue.put(rec) for rec in cur.fetchall()]
+    insert_queue = multiprocessing.JoinableQueue()
+
+    counter = Counter(route_queue.qsize())
+    processes = []
+    for i in range(8):
+        processes.append(ProcessRouteCalculation(route_queue, insert_queue, counter))
+
+    plans = ['PREPARE de_sim_routes_within_plan (integer, integer) AS '
+             'INSERT INTO de_sim_routes_within (start_point, end_point) '
+             'VALUES($1, $2)',
+
+             'PREPARE de_sim_routes_outgoing_plan (integer, integer) AS '
+             'INSERT INTO de_sim_routes_outgoing (start_point, end_point) '
+             'VALUES($1, $2)']
+    with inserting_process(insert_queue, plans, 2):
+        start = time.time()
+        for p in processes:
+            p.start()
+        for p in processes:
+            p.join()
+
+    end = time.time()
+    logging.info('Runtime Route Generation: %s', (end - start))
 
 
 def create_points():
