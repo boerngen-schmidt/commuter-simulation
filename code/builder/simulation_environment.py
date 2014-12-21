@@ -22,7 +22,7 @@ from psycopg2.extras import NamedTupleCursor
 
 def main():
     logger.setup()
-    create_points()
+    #create_points()
     match_points()
     generate_routes()
 
@@ -32,29 +32,20 @@ def generate_routes():
     route_queue = multiprocessing.Queue()
     with database.get_connection() as conn:
         cur = conn.cursor()
-        cur.execute('SELECT start_point, end_point FROM de_sim_routes')
+        cur.execute('SELECT id, start_point, end_point FROM de_sim_routes LIMIT 16')
         conn.commit()
         [route_queue.put(rec) for rec in cur.fetchall()]
-    insert_queue = multiprocessing.JoinableQueue()
 
     counter = Counter(route_queue.qsize())
+    start = time.time()
     processes = []
     for i in range(8):
-        processes.append(ProcessRouteCalculation(route_queue, insert_queue, counter))
+        p = ProcessRouteCalculation(route_queue, counter)
+        processes.append(p)
+        processes[-1].start()
 
-    plans = ['PREPARE de_sim_routes_within_plan (integer, integer) AS '
-             'INSERT INTO de_sim_routes_within (start_point, end_point) '
-             'VALUES($1, $2)',
-
-             'PREPARE de_sim_routes_outgoing_plan (integer, integer) AS '
-             'INSERT INTO de_sim_routes_outgoing (start_point, end_point) '
-             'VALUES($1, $2)']
-    with inserting_process(insert_queue, plans, 2):
-        start = time.time()
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join()
+    for p in processes:
+        p.join()
 
     end = time.time()
     logging.info('Runtime Route Generation: %s', (end - start))

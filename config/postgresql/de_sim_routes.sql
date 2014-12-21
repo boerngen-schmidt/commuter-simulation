@@ -41,3 +41,15 @@ INHERITS (de_sim_routes)
 WITH (
   OIDS=FALSE
 );
+
+DROP TABLE de_sim_routes_calculated;
+CREATE TABLE de_sim_routes_calculated
+(
+  points integer,
+  seq integer,
+  edge integer
+)
+WITH (
+  OIDS=FALSE
+);
+
