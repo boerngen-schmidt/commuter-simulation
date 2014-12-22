@@ -191,26 +191,16 @@ def match_points():
         cur = conn.cursor()
         cur.execute('SELECT rs FROM de_commuter ORDER BY RANDOM()')
         [district_queue.put(MatchingDistribution(rec[0])) for rec in cur.fetchall()]
-    insert_queue = multiprocessing.JoinableQueue()
 
     counter = Counter(district_queue.qsize())
+    start = time.time()
     processes = []
     for i in range(1):
-        processes.append(PointMassMatcherProcess(district_queue, insert_queue, counter))
+        processes.append(PointMassMatcherProcess(district_queue, counter))
+        processes[-1].start()
 
-    plans = ['PREPARE de_sim_routes_within_plan (integer, integer) AS '
-             'INSERT INTO de_sim_routes_within (start_point, end_point) '
-             'VALUES($1, $2)',
-
-             'PREPARE de_sim_routes_outgoing_plan (integer, integer) AS '
-             'INSERT INTO de_sim_routes_outgoing (start_point, end_point) '
-             'VALUES($1, $2)']
-    with inserting_process(insert_queue, plans, 2):
-        start = time.time()
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join()
+    for p in processes:
+        p.join()
 
     end = time.time()
     logging.info('Runtime Point Matching: %s', (end - start))

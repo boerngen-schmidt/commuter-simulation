@@ -15,7 +15,6 @@ Else choose another point
 """
 import logging
 from multiprocessing import Process
-from string import Template
 import time
 from queue import Empty
 
@@ -32,11 +31,10 @@ class PointMassMatcherProcess(Process):
     Spawns Threads which do the actual matching
     """
 
-    def __init__(self, district_queue, insert_queue, counter: Counter):
+    def __init__(self, district_queue, counter: Counter):
         Process.__init__(self)
         self.logging = logging.getLogger(self.name)
         self.dq = district_queue
-        self.insert_q = insert_queue
         self.counter = counter
         self.max_age_distribution = 3
 
@@ -52,6 +50,7 @@ class PointMassMatcherProcess(Process):
 
             within = 0
             outgoing = []
+            updated = 0
 
             with database.get_connection() as conn:
                 cur = conn.cursor()
@@ -78,9 +77,10 @@ class PointMassMatcherProcess(Process):
                               '    ORDER BY RANDOM() ' \
                               '  ) AS t ' \
                               ') AS e ' \
-                              'ON s.i = e.i AND NOT ST_DWithin(s.geom, e.geom, %(min_d)s);'
+                              'ON s.i = e.i AND NOT ST_DWithin(s.geom, e.geom, %(min_d)s)'
                         tbl_s = 'within_start'
                         tbl_e = 'within_end'
+                        tbl_r = 'within'
                         cf = '= %(rs)s'
                     else:
                         '''Matching outgoing'''
@@ -115,47 +115,32 @@ class PointMassMatcherProcess(Process):
                              '  (SELECT ST_Union(geom) FROM de_shp_gemeinden WHERE rs = %(rs)s), sg.geom, %(max_d)s)'
                         tbl_s = 'start'
                         tbl_e = 'end'
+                        tbl_r = 'outgoing'
                         cf = 'IN (' + cf + ')'
 
-                    cur.execute('PREPARE update_start (int) AS UPDATE de_sim_points_{tbl_s!s} SET used = true WHERE NOT used AND id=$1'.format(tbl_s=tbl_s))
-                    cur.execute('PREPARE update_dest (int) AS UPDATE de_sim_points_{tbl_e!s} SET used = true WHERE NOT used AND id=$1'.format(tbl_e=tbl_e))
 
-                    cur.execute(sql.format(tbl_e=tbl_e, tbl_s=tbl_s, cf=cf), params)
+                    upsert = 'WITH points AS (' + sql + '), ' \
+                             'upsert_start AS (UPDATE de_sim_points_{tbl_s!s} ps SET used = true FROM points p WHERE p.start = ps.id), ' \
+                             'upsert_destination AS (UPDATE de_sim_points_{tbl_e!s} pe SET used = true FROM points p WHERE p.destination = pe.id) ' \
+                             'INSERT INTO de_sim_routes_{tbl_r!s} (start_point, end_point) SELECT start, destination FROM points'
+
+                    cur.execute(upsert.format(tbl_e=tbl_e, tbl_s=tbl_s, cf=cf, tbl_r=tbl_r), params)
+                    conn.commit()
 
                     # Update MatchingDistribution with not matched commuters
+                    updated += cur.rowcount
                     commuters = params['commuters'] - cur.rowcount
                     if params['type'] is MatchingType.within:
                         within = commuters
-                        plan = 'within'
                     else:
                         outgoing.append(commuters)
-                        plan = 'outgoing'
 
-                    # List to hold all update execute statements
-                    u_s = []
-                    u_e = []
-                    for (s_id, d_id) in cur.fetchall():
-                        self.insert_q.put(
-                            'EXECUTE de_sim_routes_{plan!s}_plan ({s_id!s}, {d_id!s});'.format(s_id=s_id, d_id=d_id, plan=plan))
-                        u_s.append('EXECUTE update_start ({0:d});'.format(s_id))
-                        u_e.append('EXECUTE update_dest ({0:d});'.format(d_id))
-                        if len(u_s) >= 5000:
-                            cur.execute('\n'.join(u_s))
-                            cur.execute('\n'.join(u_e))
-                            del u_s[:], u_e[:]
-                    cur.execute('\n'.join(u_s))
-                    cur.execute('\n'.join(u_e))
-                    # Deallocate prepared statements
-                    cur.execute('DEALLOCATE ALL')
-                    # Commit to release the LOCKs on rows
-                    conn.commit()
-
-                if current_dist.age < self.max_age_distribution:
+                if current_dist.age < self.max_age_distribution and sum(outgoing) + within > 0:
                     self.dq.put(current_dist.reuse(within, outgoing))
                     count = self.counter.increment_both()
                 else:
                     count = self.counter.increment()
-                self.logging.info('(%4d/%d) Finished matching points for %s in %s',
-                                  count, self.counter.maximum,
+                self.logging.info('(%4d/%d) Finished matching %6d points for %12s in %.2f',
+                                  count, self.counter.maximum, updated,
                                   current_rs, time.time() - start_time)
         self.logging.info('Exiting Matcher Tread: %s', self.name)
