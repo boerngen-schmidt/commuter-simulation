@@ -37,6 +37,6 @@ class ProcessRouteCalculation(Process):
                 conn.commit()
 
             self.logging.info('(%8d/%d) Generated route in %s',
-                              self.counter.increment(), self.counter.max,
+                              self.counter.increment(), self.counter.maximum,
                               time.time() - start_time)
         self.logging.info('Exiting Route Process: %s', self.name)

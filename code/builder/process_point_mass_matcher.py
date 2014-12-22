@@ -15,6 +15,7 @@ Else choose another point
 """
 import logging
 from multiprocessing import Process
+from string import Template
 import time
 from queue import Empty
 
@@ -37,6 +38,7 @@ class PointMassMatcherProcess(Process):
         self.dq = district_queue
         self.insert_q = insert_queue
         self.counter = counter
+        self.max_age_distribution = 3
 
     def run(self):
         while not self.dq.empty():
@@ -54,7 +56,7 @@ class PointMassMatcherProcess(Process):
             with database.get_connection() as conn:
                 cur = conn.cursor()
                 for params in current_dist:
-                    if params['commuter'] == 0:
+                    if params['commuters'] == 0:
                         continue
 
                     if params['type'] is MatchingType.within:
@@ -76,7 +78,7 @@ class PointMassMatcherProcess(Process):
                               '    ORDER BY RANDOM() ' \
                               '  ) AS t ' \
                               ') AS e ' \
-                              'ON s.i = e.i AND NOT ST_DWithin(s.geom, e.geom, %(min_d));'
+                              'ON s.i = e.i AND NOT ST_DWithin(s.geom, e.geom, %(min_d)s);'
                         tbl_s = 'within_start'
                         tbl_e = 'within_end'
                         cf = '= %(rs)s'
@@ -115,23 +117,37 @@ class PointMassMatcherProcess(Process):
                         tbl_e = 'end'
                         cf = 'IN (' + cf + ')'
 
+                    cur.execute('PREPARE update_start (int) AS UPDATE de_sim_points_{tbl_s!s} SET used = true WHERE NOT used AND id=$1'.format(tbl_s=tbl_s))
+                    cur.execute('PREPARE update_dest (int) AS UPDATE de_sim_points_{tbl_e!s} SET used = true WHERE NOT used AND id=$1'.format(tbl_e=tbl_e))
+
                     cur.execute(sql.format(tbl_e=tbl_e, tbl_s=tbl_s, cf=cf), params)
 
+                    # Update MatchingDistribution with not matched commuters
                     commuters = params['commuters'] - cur.rowcount
                     if params['type'] is MatchingType.within:
                         within = commuters
+                        plan = 'within'
                     else:
                         outgoing.append(commuters)
+                        plan = 'outgoing'
 
+                    # List to hold all update execute statements
+                    u_s = []
+                    u_e = []
                     for (s_id, d_id) in cur.fetchall():
                         self.insert_q.put(
-                            'EXECUTE de_sim_routes_within_plan ({s_id!s}, {d_id!s});'.format(s_id=s_id, d_id=d_id))
-                        cur.execute(
-                            'UPDATE de_sim_points_{tbl_s!s} SET used = true WHERE id=%s AND NOT used'.format(
-                                tbl_s=tbl_s), (s_id, ))
-                        cur.execute(
-                            'UPDATE de_sim_points_{tbl_e!s} SET used = true WHERE id=%s AND NOT used'.format(
-                                tbl_e=tbl_e), (d_id, ))
+                            'EXECUTE de_sim_routes_{plan!s}_plan ({s_id!s}, {d_id!s});'.format(s_id=s_id, d_id=d_id, plan=plan))
+                        u_s.append('EXECUTE update_start ({0:d});'.format(s_id))
+                        u_e.append('EXECUTE update_dest ({0:d});'.format(d_id))
+                        if len(u_s) >= 5000:
+                            cur.execute('\n'.join(u_s))
+                            cur.execute('\n'.join(u_e))
+                            del u_s[:], u_e[:]
+                    cur.execute('\n'.join(u_s))
+                    cur.execute('\n'.join(u_e))
+                    # Deallocate prepared statements
+                    cur.execute('DEALLOCATE ALL')
+                    # Commit to release the LOCKs on rows
                     conn.commit()
 
                 if current_dist.age < self.max_age_distribution:
@@ -140,6 +156,6 @@ class PointMassMatcherProcess(Process):
                 else:
                     count = self.counter.increment()
                 self.logging.info('(%4d/%d) Finished matching points for %s in %s',
-                                  count, self.counter.max,
+                                  count, self.counter.maximum,
                                   current_rs, time.time() - start_time)
         self.logging.info('Exiting Matcher Tread: %s', self.name)

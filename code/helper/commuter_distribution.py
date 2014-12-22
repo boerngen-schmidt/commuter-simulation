@@ -47,7 +47,7 @@ class MatchingDistribution(object):
             cur.execute('SELECT outgoing, within FROM de_commuter WHERE rs = %s', (rs, ))
             conn.commit()
             (outgoing, within) = cur.fetchone()
-        self.__build_data(within, outgoing)
+        self.__build_data(within, self.__build_outgoing_distribution(outgoing))
 
     def reuse(self, within, outgoing):
         """
@@ -57,9 +57,15 @@ class MatchingDistribution(object):
         :param outgoing: List of int with remaining outgoing commuters to match
 
         """
+        if outgoing is int:
+            outgoing = self.__build_outgoing_distribution(outgoing)
         self.__build_data(within, outgoing)
         self._index = 0
         self._age += 1
+
+    def __build_outgoing_distribution(self, amount_outgoing):
+        N = len(commuter_distribution[self._rs[:2]])
+        return [int(floor(amount_outgoing / commuter_distribution[self._rs[:2]][i])) for i in range(N)]
 
     def __build_data(self, within, outgoing):
         self._data = [{'commuters': within, 'type': MatchingType.within, 'rs': self._rs, 'min_d': 2000, 'max_d': -1}]
