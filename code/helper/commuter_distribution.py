@@ -65,14 +65,13 @@ class MatchingDistribution(object):
 
     def __build_outgoing_distribution(self, amount_outgoing):
         N = len(commuter_distribution[self._rs[:2]])
-        return [int(floor(amount_outgoing / commuter_distribution[self._rs[:2]][i])) for i in range(N)]
+        return [int(floor(amount_outgoing * commuter_distribution[self._rs[:2]][i])) for i in range(N)]
 
     def __build_data(self, within, outgoing):
         self._data = [{'commuters': within, 'type': MatchingType.within, 'rs': self._rs, 'min_d': 2000, 'max_d': -1}]
         for i, o in zip(range(len(outgoing)), outgoing):
-            amount = int(floor(o / commuter_distribution[self._rs[:2]][i]))
             self._data.append(
-                dict({'commuters': amount, 'type': MatchingType.outgoing, 'rs': self._rs}, **commuting_distance[i]))
+                dict({'commuters': o, 'type': MatchingType.outgoing, 'rs': self._rs}, **commuting_distance[i]))
 
     @property
     def age(self):
