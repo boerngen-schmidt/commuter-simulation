@@ -21,7 +21,12 @@ class ProcessRouteCalculation(Process):
                 '''Generate route'''
                 sql_route = 'INSERT INTO de_sim_points_calculated ' \
                             'SELECT %(id)s AS points, seq, id FROM pgr_astar( ' \
-                            '  \'SELECT id, source, target, cost, x1, y1, x2, y2 FROM de_2po_4pgr\', ' \
+                            '  \'SELECT id, source, target, cost, x1, y1, x2, y2 FROM de_2po_4pgr' \
+                            '    (SELECT ST_Expand(ST_Extent(the_geom),0.1) as box FROM de_2po_4pgr_vertices_pgr ' \
+                            '      WHERE id = (SELECT id::integer FROM de_2po_4pgr_vertices_pgr ORDER BY the_geom <-> ST_Transform((SELECT geom FROM de_sim_points WHERE id =%(start)s), 4326) LIMIT 1) ' \
+                            '      OR id = (SELECT id::integer FROM de_2po_4pgr_vertices_pgr ORDER BY the_geom <-> ST_Transform((SELECT geom FROM de_sim_points WHERE id =%(dest)s), 4326) LIMIT 1) ' \
+                            '    ) as box' \
+                            '    WHERE geom_way && box.box\', ' \
                             '  (SELECT id::integer FROM de_2po_4pgr_vertices_pgr ORDER BY the_geom <-> ST_Transform((SELECT geom FROM de_sim_points WHERE id =%(start)s), 4326) LIMIT 1), ' \
                             '  (SELECT id::integer FROM de_2po_4pgr_vertices_pgr ORDER BY the_geom <-> ST_Transform((SELECT geom FROM de_sim_points WHERE id =%(dest)s), 4326) LIMIT 1), ' \
                             '  false, ' \
