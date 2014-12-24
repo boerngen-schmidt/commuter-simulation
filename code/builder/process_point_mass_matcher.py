@@ -46,7 +46,9 @@ class PointMassMatcherProcess(Process):
                 current_dist = self.dq.get(timeout=1)
             except Empty:
                 continue
-            assert isinstance(current_dist, MatchingDistribution)
+            if not isinstance(current_dist, MatchingDistribution):
+                self.logging.error('Expected MatchingDistribution got %s', type(current_dist).__name__)
+                continue
             current_rs = current_dist.rs
             start_time = time.time()
 
