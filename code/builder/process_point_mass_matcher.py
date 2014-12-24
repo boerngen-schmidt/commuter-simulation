@@ -22,6 +22,7 @@ from builder import MatchingType
 from helper import database
 from helper.commuter_distribution import MatchingDistribution
 from helper.counter import Counter
+import psycopg2
 
 
 class PointMassMatcherProcess(Process):
@@ -39,6 +40,7 @@ class PointMassMatcherProcess(Process):
         self.max_age_distribution = 3
 
     def run(self):
+
         while not self.dq.empty():
             try:
                 current_dist = self.dq.get(timeout=1)
@@ -46,6 +48,7 @@ class PointMassMatcherProcess(Process):
                 continue
             assert isinstance(current_dist, MatchingDistribution)
             current_rs = current_dist.rs
+            self.logging.info('Start matching points for: %12s', current_rs)
             start_time = time.time()
 
             within = 0
@@ -53,6 +56,7 @@ class PointMassMatcherProcess(Process):
             updated = 0
 
             with database.get_connection() as conn:
+                conn.set_session(isolation_level=psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE)
                 cur = conn.cursor()
                 for params in current_dist:
                     if params['commuters'] == 0:
@@ -123,8 +127,15 @@ class PointMassMatcherProcess(Process):
                              'upsert_start AS (UPDATE de_sim_points_{tbl_s!s} ps SET used = true FROM points p WHERE p.start = ps.id), ' \
                              'upsert_destination AS (UPDATE de_sim_points_{tbl_e!s} pe SET used = true FROM points p WHERE p.destination = pe.id) ' \
                              'INSERT INTO de_sim_routes_{tbl_r!s} (start_point, end_point) SELECT start, destination FROM points'
-
-                    cur.execute(upsert.format(tbl_e=tbl_e, tbl_s=tbl_s, cf=cf, tbl_r=tbl_r), params)
+                    
+                    while True:
+                        try: 
+                            cur.execute(upsert.format(tbl_e=tbl_e, tbl_s=tbl_s, cf=cf, tbl_r=tbl_r), params)
+                        except psycopg2.extensions.TransactionRollbackError:
+                            conn.rollback()
+                            time.sleep(10)
+                        else:
+                            break
                     conn.commit()
 
                     # Update MatchingDistribution with not matched commuters
