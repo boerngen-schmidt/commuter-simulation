@@ -192,7 +192,10 @@ def match_points():
     with database.get_connection() as conn:
         cur = conn.cursor()
         cur.execute('SELECT rs FROM de_commuter ORDER BY RANDOM()')
-        [district_queue.put(MatchingDistribution(rec[0])) for rec in cur.fetchall()]
+        for rec in cur.fetchall():
+            md = MatchingDistribution(rec[0])
+            assert isinstance(md, MatchingDistribution)
+            district_queue.put(md)
     logging.info('Finished filling work queue.')
 
     counter = Counter(district_queue.qsize())
