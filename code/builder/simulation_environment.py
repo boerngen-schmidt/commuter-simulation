@@ -186,11 +186,14 @@ def match_points():
     Matches start and end points with a randomized order of the districts
     :return:
     """
+    logging.info('Start matching points for routes.')
+    logging.info('Start filling work queue.')
     district_queue = multiprocessing.Queue()
     with database.get_connection() as conn:
         cur = conn.cursor()
         cur.execute('SELECT rs FROM de_commuter ORDER BY RANDOM()')
         [district_queue.put(MatchingDistribution(rec[0])) for rec in cur.fetchall()]
+    logging.info('Finished filling work queue.')
 
     counter = Counter(district_queue.qsize())
     start = time.time()
