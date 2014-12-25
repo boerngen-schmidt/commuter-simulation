@@ -41,11 +41,11 @@ class PointMassMatcherProcess(Process):
 
     def run(self):
 
-        while not self.dq.empty():
-            try:
-                current_dist = self.dq.get(timeout=1)
-            except Empty:
-                continue
+        while True:
+            current_dist = self.dq.get()
+            if type(current_dist) is StopIteration:
+                break
+
             if not isinstance(current_dist, MatchingDistribution):
                 self.logging.error('Expected MatchingDistribution got %s', type(current_dist).__name__)
                 continue

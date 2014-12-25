@@ -22,7 +22,7 @@ from psycopg2.extras import NamedTupleCursor
 
 def main():
     logger.setup()
-    #create_points()
+    create_points()
     match_points()
     generate_routes()
 
@@ -186,6 +186,8 @@ def match_points():
     Matches start and end points with a randomized order of the districts
     :return:
     """
+    number_of_matchers = 1
+
     logging.info('Start matching points for routes.')
     logging.info('Start filling work queue.')
     district_queue = multiprocessing.Queue()
@@ -196,12 +198,17 @@ def match_points():
             md = MatchingDistribution(rec[0])
             assert isinstance(md, MatchingDistribution)
             district_queue.put(md)
+
+    # Use Sentinel to stop the processes
+    for i in range(number_of_matchers):
+        district_queue.put(StopIteration())
+
     logging.info('Finished filling work queue.')
 
     counter = Counter(district_queue.qsize())
     start = time.time()
     processes = []
-    for i in range(1):
+    for i in range(number_of_matchers):
         processes.append(PointMassMatcherProcess(district_queue, counter))
         processes[-1].start()
 
