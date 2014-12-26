@@ -55,7 +55,6 @@ class ProcessRouteCalculation(Process):
                                           time.time() - start_time)
                         i = 0
                         start_time = time.time()
-                        time.sleep(0.2)
                     else:
                         i += 1
         self.logging.info('Exiting Route Process: %s', self.name)
