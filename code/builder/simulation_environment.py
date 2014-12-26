@@ -7,6 +7,7 @@ from contextlib import contextmanager
 import logging
 import time
 import multiprocessing
+import threading
 
 from builder import PointType
 from builder.process_point_mass_matcher import PointMassMatcherProcess
@@ -22,24 +23,22 @@ from psycopg2.extras import NamedTupleCursor
 
 def main():
     logger.setup()
-    create_points()
-    match_points()
+    #create_points()
+    #match_points()
     generate_routes()
 
 
 def generate_routes():
     logging.info('Start of route generation')
+    number_of_processes = 8
     route_queue = multiprocessing.Queue()
-    with database.get_connection() as conn:
-        cur = conn.cursor()
-        cur.execute('SELECT id, start_point, end_point FROM de_sim_routes LIMIT 16')
-        conn.commit()
-        [route_queue.put(rec) for rec in cur.fetchall()]
+    sql = 'SELECT id, start_point, end_point FROM de_sim_routes'
+    threading.Thread(target=_queue_feeder, args=(sql, route_queue, 20000, number_of_processes))
 
     counter = Counter(route_queue.qsize())
     start = time.time()
     processes = []
-    for i in range(8):
+    for i in range(number_of_processes):
         p = ProcessRouteCalculation(route_queue, counter)
         processes.append(p)
         processes[-1].start()
@@ -231,6 +230,17 @@ def inserting_process(insert_queue, plans, threads=2, batch_size=5000):
     insert_process.start()
     yield
     insert_process.join()
+
+
+def _queue_feeder(sql, queue, size=5000, sentinels=8):
+    with database.get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute(sql)
+        for rec in cur.fetchmany(size):
+            queue.put(rec)
+        if sentinels > 0:
+            for i in range(sentinels):
+                queue.put(StopIteration)
 
 
 if __name__ == "__main__":
