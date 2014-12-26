@@ -31,11 +31,19 @@ def main():
 def generate_routes():
     logging.info('Start of route generation')
     number_of_processes = 8
-    route_queue = multiprocessing.Queue()
+    route_queue = multiprocessing.Queue(maxsize=20000)
     sql = 'SELECT id, start_point, end_point FROM de_sim_routes'
-    threading.Thread(target=_queue_feeder, args=(sql, route_queue, 20000, number_of_processes))
+    threading.Thread(target=_queue_feeder, args=(sql, route_queue, 20000, number_of_processes)).start()
 
-    counter = Counter(route_queue.qsize())
+    with database.get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute('SELECT COUNT(id) FROM de_sim_routes') # execute 1.7 Secs
+        rec = cur.fetchone()
+        counter = Counter(rec[0])
+
+    while not route_queue.full():
+        time.sleep(0.2)
+
     start = time.time()
     processes = []
     for i in range(number_of_processes):
@@ -233,14 +241,19 @@ def inserting_process(insert_queue, plans, threads=2, batch_size=5000):
 
 
 def _queue_feeder(sql, queue, size=5000, sentinels=8):
-    with database.get_connection() as conn:
-        cur = conn.cursor()
-        cur.execute(sql)
-        for rec in cur.fetchmany(size):
-            queue.put(rec)
-        if sentinels > 0:
-            for i in range(sentinels):
-                queue.put(StopIteration)
+    while True:
+        with database.get_connection() as conn:
+            cur = conn.cursor()
+            cur.execute(sql)
+            results =  cur.fetchmany(size)
+            for rec in results:
+                queue.put(rec)
+            if sentinels > 0 and not results:
+                for i in range(sentinels):
+                    queue.put(StopIteration)
+                break
+            elif not results:
+                break
 
 
 if __name__ == "__main__":
