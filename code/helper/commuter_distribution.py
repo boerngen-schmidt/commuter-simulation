@@ -2,9 +2,11 @@
 Module to capsule the distribution of commuting distances
 """
 from math import floor
+import logging
 
 from builder import MatchingType
 from helper import database
+
 
 
 
@@ -44,10 +46,16 @@ class MatchingDistribution(object):
 
         with database.get_connection() as conn:
             cur = conn.cursor()
-            cur.execute('SELECT outgoing, within FROM de_commuter WHERE rs = %s', (rs, ))
-            conn.commit()
-            (outgoing, within) = cur.fetchone()
-        self.__build_data(within, self.__build_outgoing_distribution(outgoing))
+            try:
+                cur.execute('SELECT outgoing, within FROM de_commuter WHERE rs = %s', (rs, ))
+            except Exception:
+                outgoing = 0
+                within = 0
+                logging.error('Could not create MatchingDistiribution for rs "%s"', self._rs)
+            else:
+                (outgoing, within) = cur.fetchone()
+            finally:
+                self.__build_data(within, self.__build_outgoing_distribution(outgoing))
 
     def reuse(self, within, outgoing):
         """

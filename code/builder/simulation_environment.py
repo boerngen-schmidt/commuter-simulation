@@ -23,9 +23,9 @@ from psycopg2.extras import NamedTupleCursor
 
 def main():
     logger.setup()
-    #create_points()
-    #match_points()
-    generate_routes()
+    # create_points()
+    match_points()
+    # generate_routes()
 
 
 def generate_routes():
@@ -37,7 +37,7 @@ def generate_routes():
 
     with database.get_connection() as conn:
         cur = conn.cursor()
-        cur.execute('SELECT COUNT(id) FROM de_sim_routes') # execute 1.7 Secs
+        cur.execute('SELECT COUNT(id) FROM de_sim_routes')  # execute 1.7 Secs
         rec = cur.fetchone()
         counter = Counter(rec[0])
 
@@ -193,30 +193,30 @@ def match_points():
     Matches start and end points with a randomized order of the districts
     :return:
     """
-    number_of_matchers = 1
+    import pickle
+
+    number_of_matchers = 3
 
     logging.info('Start matching points for routes.')
     logging.info('Start filling work queue.')
-    district_queue = multiprocessing.Queue()
+
+    sql = 'SELECT rs FROM de_commuter ORDER BY RANDOM()'
+
     with database.get_connection() as conn:
         cur = conn.cursor()
-        cur.execute('SELECT rs FROM de_commuter ORDER BY RANDOM()')
+        # cur.execute('SELECT COUNT(rs) FROM de_commuter') # execute 1.7 Secs
+        cur.execute(sql)
+        conn.commit()
+        counter = Counter(cur.rowcount)
         for rec in cur.fetchall():
-            md = MatchingDistribution(rec[0])
-            assert isinstance(md, MatchingDistribution)
-            district_queue.put(md)
+            obj = pickle.dumps(MatchingDistribution(rec[0]), protocol=pickle.HIGHEST_PROTOCOL)
+            #print(type(obj))
+            cur.execute('INSERT INTO de_sim_matching_queue (distribution) VALUES(%s)', (obj, ))
 
-    # Use Sentinel to stop the processes
-    for i in range(number_of_matchers):
-        district_queue.put(StopIteration())
-
-    logging.info('Finished filling work queue.')
-
-    counter = Counter(district_queue.qsize())
     start = time.time()
     processes = []
     for i in range(number_of_matchers):
-        processes.append(PointMassMatcherProcess(district_queue, counter))
+        processes.append(PointMassMatcherProcess(counter))
         processes[-1].start()
 
     for p in processes:
@@ -245,7 +245,7 @@ def _queue_feeder(sql, queue, size=5000, sentinels=8):
         with database.get_connection() as conn:
             cur = conn.cursor()
             cur.execute(sql)
-            results =  cur.fetchmany(size)
+            results = cur.fetchmany(size)
             for rec in results:
                 queue.put(rec)
             if sentinels > 0 and not results:

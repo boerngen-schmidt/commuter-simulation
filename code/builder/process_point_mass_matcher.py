@@ -1,69 +1,80 @@
 """
-Class for Matching start and endpoints of a simulation
+Class for Matching start and endpoints of the simulation using new PostgreSQL 9.5 SKIP LOCKED feature
 
 Pseudo code:
-Get random start point
-    if point is part of commuter within an area
-        get area of startpoint
-Build dount around the point (bigger buffer, substract smaller buffer
-Select all points within this donut
-Randomly choose one of the points
-Calculate route
-If does route match the wanted conditions?
-    Save points to database routing table
-Else choose another point
+    Get MatchingDistribution from queue
+    Iterate over the distributions
+        choose within or outgoing matching
+        Select random start points
+        Select random end point which should comply with distribution parameters
+        Check matched points for compliance to distribution parameters
+        Insert only complying points into database and mark them as used
+    Update the MatchingDistribution with the yet unmatched commuters and
+    if nesessary re-queue the MatchingDistribution
 """
 import logging
 from multiprocessing import Process
 import time
-from queue import Empty
+import pickle
 
 from builder import MatchingType
 from helper import database
 from helper.commuter_distribution import MatchingDistribution
 from helper.counter import Counter
-import psycopg2
 
 
 class PointMassMatcherProcess(Process):
     """
-    Point Matcher Process
-
-    Spawns Threads which do the actual matching
+    Point Mass Matcher Process using PostgreSQL 9.5 feature SKIP LOCKED
     """
-
-    def __init__(self, district_queue, counter: Counter):
+    def __init__(self, counter: Counter, max_age_distribution=3):
         Process.__init__(self)
         self.logging = logging.getLogger(self.name)
-        self.dq = district_queue
         self.counter = counter
-        self.max_age_distribution = 3
+        self.max_age_distribution = max_age_distribution
 
     def run(self):
-
         while True:
-            current_dist = self.dq.get()
-            if type(current_dist) is StopIteration:
+            # Get a MatchingDistribution from database
+            dequeue_sql = 'WITH job AS (SELECT * FROM de_sim_matching_queue ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED) ' \
+                          'DELETE FROM de_sim_matching_queue * WHERE id = (SELECT id FROM job) RETURNING distribution'
+            with database.get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute(dequeue_sql)
+                distribution = cur.fetchone()
+
+            # Check if we got a result, otherwise stop the loop
+            if distribution:
+                try:
+                    current_dist = pickle.loads(distribution[0].tobytes())
+                except pickle.UnpicklingError as e:
+                    self.logging.error('Unpickle Error %s', e)
+                    time.sleep(0.1)
+                    continue
+            else:
                 break
 
+            # Catch the stupid NoneType Error (should not happen with database anymore)
             if not isinstance(current_dist, MatchingDistribution):
-                self.logging.error('Expected MatchingDistribution got %s', type(current_dist).__name__)
+                self.logging.error('Got %s "%s"', type(current_dist).__name__, distribution[0])
+                time.sleep(0.1)
                 continue
-            current_rs = current_dist.rs
-            self.logging.info('Start matching points for: %12s', current_rs)
+
+            self.logging.debug('Start matching points for: %12s', current_dist.rs)
             start_time = time.time()
 
+            # Initialize arguments for MatchingDistribution update
             within = 0
             outgoing = []
             updated = 0
-
             with database.get_connection() as conn:
-                conn.set_session(isolation_level=psycopg2.extensions.ISOLATION_LEVEL_SERIALIZABLE)
                 cur = conn.cursor()
                 for params in current_dist:
+                    # Check if there are commuters to be matched, otherwise look at the next set
                     if params['commuters'] == 0:
                         continue
 
+                    # Select the type of matching to be done
                     if params['type'] is MatchingType.within:
                         '''Match within'''
                         sql = 'SELECT s.id AS start, e.id AS destination ' \
@@ -73,6 +84,7 @@ class PointMassMatcherProcess(Process):
                               '    FROM de_sim_points_{tbl_s!s} ' \
                               '    WHERE parent_geometry {cf!s} ' \
                               '    ORDER BY RANDOM() ' \
+                              '    FOR UPDATE SKIP LOCKED' \
                               '  ) AS sq ' \
                               ') AS s ' \
                               'INNER JOIN ( ' \
@@ -81,6 +93,7 @@ class PointMassMatcherProcess(Process):
                               '    FROM de_sim_points_{tbl_e!s} ' \
                               '    WHERE parent_geometry {cf!s} ' \
                               '    ORDER BY RANDOM() ' \
+                              '    FOR UPDATE SKIP LOCKED' \
                               '  ) AS t ' \
                               ') AS e ' \
                               'ON s.i = e.i AND NOT ST_DWithin(s.geom, e.geom, %(min_d)s)'
@@ -98,6 +111,7 @@ class PointMassMatcherProcess(Process):
                               '    WHERE parent_geometry = %(rs)s AND NOT used' \
                               '    ORDER BY RANDOM() ' \
                               '    LIMIT %(commuters)s ' \
+                              '    FOR UPDATE SKIP LOCKED' \
                               '  ) AS sq ' \
                               ') AS s ' \
                               'INNER JOIN ( ' \
@@ -108,6 +122,7 @@ class PointMassMatcherProcess(Process):
                               '    WHERE parent_geometry {cf!s} AND NOT used' \
                               '    ORDER BY RANDOM() ' \
                               '    LIMIT %(commuters)s ' \
+                              '    FOR UPDATE SKIP LOCKED' \
                               '  ) AS t ' \
                               ') AS e ' \
                               'ON s.i = e.i ' \
@@ -124,23 +139,15 @@ class PointMassMatcherProcess(Process):
                         tbl_r = 'outgoing'
                         cf = 'IN (' + cf + ')'
 
-
+                    # Match the points and save them
                     upsert = 'WITH points AS (' + sql + '), ' \
-                             'upsert_start AS (UPDATE de_sim_points_{tbl_s!s} ps SET used = true FROM points p WHERE p.start = ps.id), ' \
-                             'upsert_destination AS (UPDATE de_sim_points_{tbl_e!s} pe SET used = true FROM points p WHERE p.destination = pe.id) ' \
-                             'INSERT INTO de_sim_routes_{tbl_r!s} (start_point, end_point) SELECT start, destination FROM points'
-                    
-                    while True:
-                        try: 
-                            cur.execute(upsert.format(tbl_e=tbl_e, tbl_s=tbl_s, cf=cf, tbl_r=tbl_r), params)
-                        except psycopg2.extensions.TransactionRollbackError:
-                            conn.rollback()
-                            time.sleep(10)
-                        else:
-                            break
+                                                        'upsert_start AS (UPDATE de_sim_points_{tbl_s!s} ps SET used = true FROM points p WHERE p.start = ps.id), ' \
+                                                        'upsert_destination AS (UPDATE de_sim_points_{tbl_e!s} pe SET used = true FROM points p WHERE p.destination = pe.id) ' \
+                                                        'INSERT INTO de_sim_routes_{tbl_r!s} (start_point, end_point) SELECT start, destination FROM points'
+                    cur.execute(upsert.format(tbl_e=tbl_e, tbl_s=tbl_s, cf=cf, tbl_r=tbl_r), params)
                     conn.commit()
 
-                    # Update MatchingDistribution with not matched commuters
+                    # Update MatchingDistribution arguments
                     updated += cur.rowcount
                     commuters = params['commuters'] - cur.rowcount
                     if params['type'] is MatchingType.within:
@@ -148,12 +155,18 @@ class PointMassMatcherProcess(Process):
                     else:
                         outgoing.append(commuters)
 
+                # Check if MatchingDistribution has reached its max age
                 if current_dist.age < self.max_age_distribution and sum(outgoing) + within > 0:
-                    self.dq.put(current_dist.reuse(within, outgoing))
+                    with database.get_connection() as conn:
+                        cur = conn.cursor()
+                        cur.execute('INSERT INTO de_sim_matching_queue (distribution) VALUES (%s)',
+                            (pickle.dumps(current_dist.reuse(within, outgoing), protocol=pickle.HIGHEST_PROTOCOL), )
+                        )
                     count = self.counter.increment_both()
                 else:
                     count = self.counter.increment()
+
                 self.logging.info('(%4d/%d) Finished matching %6d points for %12s in %.2f',
                                   count, self.counter.maximum, updated,
-                                  current_rs, time.time() - start_time)
+                                  current_dist.rs, time.time() - start_time)
         self.logging.info('Exiting Matcher Tread: %s', self.name)
