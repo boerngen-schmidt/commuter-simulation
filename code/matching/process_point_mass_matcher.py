@@ -16,6 +16,7 @@ import logging
 from multiprocessing import Process, Event
 import time
 import pickle
+import copy
 
 from database import connection
 from matching import MatchingType
@@ -164,7 +165,8 @@ class PointMassMatcherProcess(Process):
                 if current_dist.age < self.max_age_distribution and sum(outgoing) + within > 0:
                     with connection.get_connection() as conn:
                         cur = conn.cursor()
-                        obj = pickle.dumps(current_dist.reuse(within, outgoing), protocol=pickle.HIGHEST_PROTOCOL)
+                        reused_distrib = copy.copy(current_dist.reuse(within, outgoing))
+                        obj = pickle.dumps(reused_distrib, protocol=pickle.HIGHEST_PROTOCOL)
                         cur.execute('INSERT INTO de_sim_matching_queue (distribution) VALUES (%s)', (obj, ))
                     count = self.counter.increment_both()
                 else:
@@ -173,4 +175,7 @@ class PointMassMatcherProcess(Process):
                 self.logging.info('(%4d/%d) Finished matching %6d points for %12s in %.2f',
                                   count, self.counter.maximum, updated,
                                   current_dist.rs, time.time() - start_time)
+
+                # clean up
+                del current_dist
         self.logging.info('Exiting Matcher Tread: %s', self.name)
