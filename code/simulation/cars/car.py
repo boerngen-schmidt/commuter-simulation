@@ -8,30 +8,26 @@ import logging
 from random import randint
 
 
-class Car():
+class BaseCar(object):
     """
     Represents a car
     """
 
-    __slots__ = {'currentSpeed', 'tankFilling', 'logger', 'currentPosition', 'currentDirection', 'route'}
-    """Use __slots__ to minimize the memory needed for the class, since we will spawn over 40.000.000 of them"""
-
-    def __init__(self, commuter_id, route):
+    def __init__(self, commuter_id, route, tank_size, refill_strategy):
         """
         Constructor
         """
-        self.currentSpeed = 0
-        self.tankFilling = self.randomTankFilling
-        self.logger = logging.getLogger('spritsim.Car' + commuter_id)
-        self.currentPosition
-        self.currentDirection
-        self.route = route
-        pass
-    
+        self.id = commuter_id
+        self.__tankFilling = self.randomTankFilling
+        self.__tankSize = tank_size
+        self.__strategy = refill_strategy
+        self.log = logging.getLogger('spritsim.Car' + commuter_id)
+        self.__route = route
+
     @property
     def randomTankFilling(self):
         """
-        Method for initializing a car with a random tank filling
+        Method for initializing a cars with a random tank filling
         between 10 and 100%
         """
         return (randint(10,100)/100)
@@ -40,8 +36,6 @@ class Car():
         """
         checks if a refill event has to be generated
         """
-        
-        self.logger.info('Random Tank filling')
         pass
     
     def isHeadingHome(self):
@@ -65,3 +59,8 @@ class Car():
         toDesination indicates the driving direction
         """
         pass
+
+
+class SimpleCar(BaseCar):
+    def __init__(self, commuter_id, route, refill_strategy):
+        super().__init__(commuter_id, route, 50, refill_strategy)

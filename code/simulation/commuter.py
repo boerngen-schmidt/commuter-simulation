@@ -3,8 +3,7 @@ Created on 09.10.2014
 
 @author: benjamin
 '''
-import simpy
-from car.car import Car
+
 
 class Commuter(object):
     '''
