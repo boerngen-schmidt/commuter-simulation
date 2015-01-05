@@ -195,7 +195,7 @@ def match_points():
     """
     import pickle
 
-    number_of_matchers = 3
+    number_of_matchers = 8
 
     logging.info('Start matching points for routes.')
     logging.info('Start filling work queue.')
@@ -204,13 +204,11 @@ def match_points():
 
     with database.get_connection() as conn:
         cur = conn.cursor()
-        # cur.execute('SELECT COUNT(rs) FROM de_commuter') # execute 1.7 Secs
         cur.execute(sql)
         conn.commit()
         counter = Counter(cur.rowcount)
         for rec in cur.fetchall():
             obj = pickle.dumps(MatchingDistribution(rec[0]), protocol=pickle.HIGHEST_PROTOCOL)
-            #print(type(obj))
             cur.execute('INSERT INTO de_sim_matching_queue (distribution) VALUES(%s)', (obj, ))
 
     start = time.time()

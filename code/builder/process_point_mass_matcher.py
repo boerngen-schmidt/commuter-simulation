@@ -27,6 +27,7 @@ class PointMassMatcherProcess(Process):
     """
     Point Mass Matcher Process using PostgreSQL 9.5 feature SKIP LOCKED
     """
+
     def __init__(self, counter: Counter, max_age_distribution=3):
         Process.__init__(self)
         self.logging = logging.getLogger(self.name)
@@ -36,11 +37,11 @@ class PointMassMatcherProcess(Process):
     def run(self):
         while True:
             # Get a MatchingDistribution from database
-            dequeue_sql = 'WITH job AS (SELECT * FROM de_sim_matching_queue ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED) ' \
-                          'DELETE FROM de_sim_matching_queue * WHERE id = (SELECT id FROM job) RETURNING distribution'
+            queue_sql = 'WITH job AS (SELECT * FROM de_sim_matching_queue ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED)' \
+                        ' DELETE FROM de_sim_matching_queue * WHERE id = (SELECT id FROM job) RETURNING distribution'
             with database.get_connection() as conn:
                 cur = conn.cursor()
-                cur.execute(dequeue_sql)
+                cur.execute(queue_sql)
                 distribution = cur.fetchone()
 
             # Check if we got a result, otherwise stop the loop
@@ -141,9 +142,9 @@ class PointMassMatcherProcess(Process):
 
                     # Match the points and save them
                     upsert = 'WITH points AS (' + sql + '), ' \
-                                                        'upsert_start AS (UPDATE de_sim_points_{tbl_s!s} ps SET used = true FROM points p WHERE p.start = ps.id), ' \
-                                                        'upsert_destination AS (UPDATE de_sim_points_{tbl_e!s} pe SET used = true FROM points p WHERE p.destination = pe.id) ' \
-                                                        'INSERT INTO de_sim_routes_{tbl_r!s} (start_point, end_point) SELECT start, destination FROM points'
+                             'upsert_start AS (UPDATE de_sim_points_{tbl_s!s} ps SET used = true FROM points p WHERE p.start = ps.id), ' \
+                             'upsert_destination AS (UPDATE de_sim_points_{tbl_e!s} pe SET used = true FROM points p WHERE p.destination = pe.id) ' \
+                             'INSERT INTO de_sim_routes_{tbl_r!s} (start_point, end_point) SELECT start, destination FROM points'
                     cur.execute(upsert.format(tbl_e=tbl_e, tbl_s=tbl_s, cf=cf, tbl_r=tbl_r), params)
                     conn.commit()
 
@@ -159,9 +160,8 @@ class PointMassMatcherProcess(Process):
                 if current_dist.age < self.max_age_distribution and sum(outgoing) + within > 0:
                     with database.get_connection() as conn:
                         cur = conn.cursor()
-                        cur.execute('INSERT INTO de_sim_matching_queue (distribution) VALUES (%s)',
-                            (pickle.dumps(current_dist.reuse(within, outgoing), protocol=pickle.HIGHEST_PROTOCOL), )
-                        )
+                        obj = pickle.dumps(current_dist.reuse(within, outgoing), protocol=pickle.HIGHEST_PROTOCOL)
+                        cur.execute('INSERT INTO de_sim_matching_queue (distribution) VALUES (%s)', (obj, ))
                     count = self.counter.increment_both()
                 else:
                     count = self.counter.increment()
