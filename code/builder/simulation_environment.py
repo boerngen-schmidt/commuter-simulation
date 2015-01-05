@@ -5,9 +5,11 @@ Generates Simulation Environment
 '''
 from contextlib import contextmanager
 import logging
+from multiprocessing import Event
 import time
 import multiprocessing
 import threading
+import signal
 
 from builder import PointType
 from database import connection
@@ -196,26 +198,34 @@ def match_points():
     import pickle
 
     number_of_matchers = 8
+    max_age_distribution = 3
 
     logging.info('Start matching points for routes.')
     logging.info('Start filling work queue.')
 
-    sql = 'SELECT rs FROM de_commuter ORDER BY RANDOM()'
-
     with connection.get_connection() as conn:
         cur = conn.cursor()
-        cur.execute(sql)
+        cur.execute('SELECT COUNT(id) FROM de_sim_matching_queue')
         conn.commit()
-        counter = Counter(cur.rowcount)
-        for rec in cur.fetchall():
-            obj = pickle.dumps(MatchingDistribution(rec[0]), protocol=pickle.HIGHEST_PROTOCOL)
-            cur.execute('INSERT INTO de_sim_matching_queue (distribution) VALUES(%s)', (obj, ))
+        amount, = cur.fetchone()
+        if amount > 0:
+            counter = Counter(amount)
+        else:
+            cur.execute('SELECT rs FROM de_commuter ORDER BY RANDOM()')
+            conn.commit()
+            counter = Counter(cur.rowcount)
+            for rec in cur.fetchall():
+                obj = pickle.dumps(MatchingDistribution(rec[0]), protocol=pickle.HIGHEST_PROTOCOL)
+                cur.execute('INSERT INTO de_sim_matching_queue (distribution) VALUES(%s)', (obj, ))
 
     start = time.time()
     processes = []
+    # default_handler = signal.getsignal(signal.SIGINT)
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
     for i in range(number_of_matchers):
-        processes.append(PointMassMatcherProcess(counter))
+        processes.append(PointMassMatcherProcess(counter, exit_event, max_age_distribution))
         processes[-1].start()
+    signal.signal(signal.SIGINT, signal_handler)
 
     for p in processes:
         p.join()
@@ -252,6 +262,21 @@ def _queue_feeder(sql, queue, size=5000, sentinels=8):
                 break
             elif not results:
                 break
+
+
+def signal_handler(signum, frame):
+    '''
+    Signal Handler for CTRL + C (SIGINT)
+
+    Sets an exit event, which is passed to the processes, to true.
+    :param signum: Number of the signal
+    :param frame: Python frame
+    '''
+    logging.info('Received SIGINT. Exiting processes')
+    exit_event.set()
+
+
+exit_event = Event()
 
 
 if __name__ == "__main__":

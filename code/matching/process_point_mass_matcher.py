@@ -28,14 +28,18 @@ class PointMassMatcherProcess(Process):
     Point Mass Matcher Process using PostgreSQL 9.5 feature SKIP LOCKED
     """
 
-    def __init__(self, counter: Counter, max_age_distribution=3):
+    def __init__(self, counter: Counter, exit_event, max_age_distribution=3):
         Process.__init__(self)
         self.logging = logging.getLogger(self.name)
+        self.exit_event = exit_event
         self.counter = counter
         self.max_age_distribution = max_age_distribution
 
     def run(self):
         while True:
+            if self.exit_event.is_set():
+                break
+
             # Get a MatchingDistribution from database
             queue_sql = 'WITH job AS (SELECT * FROM de_sim_matching_queue ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED)' \
                         ' DELETE FROM de_sim_matching_queue * WHERE id = (SELECT id FROM job) RETURNING distribution'
