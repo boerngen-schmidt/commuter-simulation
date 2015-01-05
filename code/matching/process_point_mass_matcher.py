@@ -17,8 +17,8 @@ from multiprocessing import Process, Event
 import time
 import pickle
 
-from builder import MatchingType
 from database import connection
+from matching import MatchingType
 from matching.commuter_distribution import MatchingDistribution
 from helper.counter import Counter
 

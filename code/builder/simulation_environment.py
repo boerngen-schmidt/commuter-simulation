@@ -11,9 +11,9 @@ import multiprocessing
 import threading
 import signal
 
-from builder import PointType
 from database import connection
 from matching.process_point_mass_matcher import PointMassMatcherProcess
+from points import PointType
 from routing.process_route_calculation import ProcessRouteCalculation
 from helper import logger
 from points.process_random_point_generator_shapely import PointCreatorProcess, Counter, PointCreationCommand
@@ -277,7 +277,6 @@ def signal_handler(signum, frame):
 
 
 exit_event = Event()
-
 
 if __name__ == "__main__":
     main()

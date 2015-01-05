@@ -20,8 +20,8 @@ from queue import Queue as ThreadQueue
 import time
 
 from database import connection
-from builder import MatchingType
 from builder.commands import PointMatchCommand
+from matching import MatchingType
 from matching.commuter_distribution import MatchingDistribution
 
 

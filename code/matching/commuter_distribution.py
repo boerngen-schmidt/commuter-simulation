@@ -4,7 +4,6 @@ Module to capsule the distribution of commuting distances
 from math import floor
 import logging
 
-from builder import MatchingType
 from database import connection
 
 
@@ -12,7 +11,10 @@ from database import connection
 
 
 
+
 # Could be placed in the database, but for now we keep it static
+from matching import MatchingType
+
 commuter_distribution = {'01': (0.5, 0.28, 0.17, 0.05),
                          '02': (0.5, 0.28, 0.17, 0.05),
                          '03': (0.5, 0.28, 0.17, 0.05),
