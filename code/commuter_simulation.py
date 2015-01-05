@@ -6,8 +6,8 @@ Created on 25.08.2014
 import logging
 import logging.config
 
+from database import connection as db
 import simpy.rt
-from helper import database as db
 
 
 def main():
@@ -33,11 +33,11 @@ def init_logging():
     try:
         cfg_file = file_finder.find('logging.conf')
         with open(cfg_file, 'rt') as f:
-            cfg= yaml.load(f.read())
+            cfg = yaml.load(f.read())
             logging.config.dictConfig(cfg)
     except:
         raise
-    
+
 
 if __name__ == '__main__':
     main()

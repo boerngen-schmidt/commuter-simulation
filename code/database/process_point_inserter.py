@@ -4,7 +4,7 @@ from multiprocessing import Process, Event, Queue, JoinableQueue
 from queue import Empty
 from threading import Thread
 
-from helper import database
+from database import connection
 
 
 class PointInsertingProcess(Process):
@@ -95,7 +95,7 @@ class PointInsertingThread(Thread):
         https://peterman.is/blog/postgresql-bulk-insertion/2013/08/
         """
         self.log.info('Starting inserting thread %s', self.name)
-        with database.get_connection() as conn:
+        with connection.get_connection() as conn:
             cur = conn.cursor()
             for prepare_statement in self.plans:
                 cur.execute(prepare_statement)
@@ -126,7 +126,7 @@ class PointInsertIndexingThread(Thread):
 
     def run(self):
         self.logging.info('Start creating Indexes for de_sim_points_%s tables', self.tbl)
-        with database.get_connection() as conn:
+        with connection.get_connection() as conn:
             cur = conn.cursor()
             start_index = time.time()
             sql = "ALTER TABLE de_sim_points_{tbl!s} SET (FILLFACTOR=100); " \

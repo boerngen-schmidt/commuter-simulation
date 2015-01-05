@@ -19,16 +19,17 @@ from threading import Thread
 from queue import Queue as ThreadQueue
 import time
 
-from helper import database
+from database import connection
 from builder import MatchingType
 from builder.commands import PointMatchCommand
-from helper.commuter_distribution import MatchingDistribution
+from matching.commuter_distribution import MatchingDistribution
 
 
 class PointMatcherProcess(Process):
     """
     Point Matcher class
     """
+
     def __init__(self, district_queue, insert_queue):
         Process.__init__(self)
         self.logging = logging.getLogger(self.name)
@@ -62,7 +63,7 @@ class PointMatcherProcess(Process):
             self.logging.info('Finished matching (%s, %s) in category (%s/%s) for %s in %s seconds',
                               data['within']['commuters'], data['outgoing']['commuters'],
                               current_dist.index, len(current_dist),
-                              current_dist.rs, (end-start))
+                              current_dist.rs, (end - start))
             if current_dist.has_next():
                 # Still categories to do, enqueue again
                 self.dq.put(current_dist)
@@ -76,7 +77,7 @@ class PointMatcherProcess(Process):
         :param outgoing: number of commuters leaving the rs
         :return: None
         """
-        with database.get_connection() as conn:
+        with connection.get_connection() as conn:
             cur = conn.cursor()
 
             cur.execute('SELECT id, ST_AsEWKB(geom) AS geom '
@@ -160,7 +161,7 @@ class PointMatcherThread(Thread):
                     sql_insert = 'EXECUTE de_sim_routes_outgoing_plan ({start!s}, {end!s});'
 
                 # Query the Database for a end point
-                with database.get_connection() as conn:
+                with connection.get_connection() as conn:
                     cur = conn.cursor()
                     cur.execute(sql_search.format(tbl_s=tbl_s, tbl_e=tbl_e, cf=cf, dist=dist), cmd.data)
 

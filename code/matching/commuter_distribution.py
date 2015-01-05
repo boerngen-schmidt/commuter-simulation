@@ -5,7 +5,9 @@ from math import floor
 import logging
 
 from builder import MatchingType
-from helper import database
+from database import connection
+
+
 
 
 
@@ -44,7 +46,7 @@ class MatchingDistribution(object):
         self._index = 0
         self._age = 0
 
-        with database.get_connection() as conn:
+        with connection.get_connection() as conn:
             cur = conn.cursor()
             try:
                 cur.execute('SELECT outgoing, within FROM de_commuter WHERE rs = %s', (rs, ))

@@ -3,7 +3,7 @@ from multiprocessing import Process
 from psycopg2 import InternalError
 import logging
 
-from helper import database
+from database import connection
 
 
 class ProcessRouteCalculation(Process):
@@ -25,7 +25,7 @@ class ProcessRouteCalculation(Process):
             else:
                 (r_id, start, destination) = r_info
 
-            with database.get_connection() as conn:
+            with connection.get_connection() as conn:
                 cur = conn.cursor()
                 '''Generate route'''
                 sql_route = 'INSERT INTO de_sim_routes_calculated ' \

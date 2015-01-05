@@ -19,6 +19,7 @@ from helper.file_finder import find
 
 
 
+
 # module Stuff
 databaseConfig = None
 """ Holds the configuration
@@ -181,13 +182,3 @@ def get_connection(key=None) -> connection:
         conn.commit()
     finally:
         pool.putconn(conn)
-
-
-# if __name__ is "__main__":
-#     loadConfig()
-#
-#     with get_connection() as conn:
-#         curs = conn.cursor()
-#         curs.execute('SELECT 1')
-#         r = curs.fetchone()
-#         print(curs.statusmessage, r)

@@ -9,8 +9,8 @@ import threading
 import queue
 import time
 
+from database import connection
 import yaml
-from helper import database
 
 
 COUNTER_LOCK = threading.Lock()
@@ -24,6 +24,7 @@ class RoutingPointCreator(threading.Thread):
     As basis for how many points should be created within a district,
     the data from the Zensus 2011 should be used.
     """
+
     def __init__(self, name, work_queue):
         """
 
@@ -39,7 +40,7 @@ class RoutingPointCreator(threading.Thread):
     def run(self):
         while not self.q.empty():
             rs = self.q.get()
-            with database.get_connection() as con:
+            with connection.get_connection() as con:
                 cur = con.cursor()
                 sql = 'WITH area AS (SELECT c.*, s.geom FROM de_commuter_gemeinden c JOIN de_shp_gemeinden s ON c.rs = s.rs WHERE c.rs=%s) '
                 sql += 'INSERT INTO de_sim_points (parent_geometry, point_type, geom) SELECT area.rs , \'start\', RandomPointsInPolygon(area.geom, (area.outgoing + area.within)) FROM area '
@@ -47,13 +48,15 @@ class RoutingPointCreator(threading.Thread):
                 num = increase_counter()
 
                 cur.execute('SELECT gen FROM de_shp_gemeinden WHERE rs = %s', (rs,))
-                logging.debug('(%4d/%d) %s: Created points for Gemeinde "%s"' % (num, total, self.name, cur.fetchone()[0],))
+                logging.debug(
+                    '(%4d/%d) %s: Created points for Gemeinde "%s"' % (num, total, self.name, cur.fetchone()[0],))
 
     def _get_total(self):
-        with database.get_connection() as con:
+        with connection.get_connection() as con:
             cur = con.cursor()
             cur.execute('SELECT count(*) FROM de_commuter_gemeinden')
             total = cur.fetchone()[0]
+
 
 def increase_counter():
     global counter
@@ -79,7 +82,7 @@ def main():
     q = queue.Queue()
 
     # Fill the queue
-    with database.get_connection() as conn:
+    with connection.get_connection() as conn:
         cur = conn.cursor()
         ''':type cur: cursor'''
         cur.execute('SELECT rs FROM de_commuter_gemeinden')
@@ -94,12 +97,12 @@ def main():
         threads.append(RoutingPointCreator('Thread %s' % i, q))
         threads[-1].start()
 
-    #wait for all threads to finish
+    # wait for all threads to finish
     for t in threads:
         t.join()
 
     end = time.time()
-    logging.info('Runtime: %s' % (end-start,))
+    logging.info('Runtime: %s' % (end - start,))
 
 
 if __name__ == "__main__":

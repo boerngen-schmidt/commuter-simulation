@@ -10,13 +10,13 @@ import multiprocessing
 import threading
 
 from builder import PointType
-from builder.process_point_mass_matcher import PointMassMatcherProcess
-from builder.process_route_calculation import ProcessRouteCalculation
-from helper import database
+from database import connection
+from matching.process_point_mass_matcher import PointMassMatcherProcess
+from routing.process_route_calculation import ProcessRouteCalculation
 from helper import logger
-from builder.process_random_point_generator_shapely import PointCreatorProcess, Counter, PointCreationCommand
-from builder.process_point_inserter import PointInsertingProcess, PointInsertIndexingThread
-from helper.commuter_distribution import MatchingDistribution
+from points.process_random_point_generator_shapely import PointCreatorProcess, Counter, PointCreationCommand
+from database.process_point_inserter import PointInsertingProcess, PointInsertIndexingThread
+from matching.commuter_distribution import MatchingDistribution
 from shapely.wkb import loads
 from psycopg2.extras import NamedTupleCursor
 
@@ -35,7 +35,7 @@ def generate_routes():
     sql = 'SELECT id, start_point, end_point FROM de_sim_routes'
     threading.Thread(target=_queue_feeder, args=(sql, route_queue, 20000, number_of_processes)).start()
 
-    with database.get_connection() as conn:
+    with connection.get_connection() as conn:
         cur = conn.cursor()
         cur.execute('SELECT COUNT(id) FROM de_sim_routes')  # execute 1.7 Secs
         rec = cur.fetchone()
@@ -81,7 +81,7 @@ def create_points():
          zip(n, t)]
 
     start = time.time()
-    with database.get_connection() as con:
+    with connection.get_connection() as con:
         logging.info('Executing query for Gemeinden ...')
         cur = con.cursor(cursor_factory=NamedTupleCursor)
         sql = 'SELECT ' \
@@ -202,7 +202,7 @@ def match_points():
 
     sql = 'SELECT rs FROM de_commuter ORDER BY RANDOM()'
 
-    with database.get_connection() as conn:
+    with connection.get_connection() as conn:
         cur = conn.cursor()
         cur.execute(sql)
         conn.commit()
@@ -240,7 +240,7 @@ def inserting_process(insert_queue, plans, threads=2, batch_size=5000):
 
 def _queue_feeder(sql, queue, size=5000, sentinels=8):
     while True:
-        with database.get_connection() as conn:
+        with connection.get_connection() as conn:
             cur = conn.cursor()
             cur.execute(sql)
             results = cur.fetchmany(size)

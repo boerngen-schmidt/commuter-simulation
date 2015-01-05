@@ -8,9 +8,9 @@ import math
 import time
 import logging
 
+from database import connection
 import numpy.random as npr
 import pylab
-from helper import database
 from shapely.geometry import Polygon, Point, box, shape
 from shapely.wkb import loads
 from psycopg2.extras import NamedTupleCursor
@@ -63,20 +63,22 @@ class PointCreator(threading.Thread):
         sql = 'SELECT c.*, ST_AsEWKB(s.geom) AS geom_b, ST_Area(s.geom) AS area FROM de_commuter_{tbl} c JOIN de_shp_{tbl} s ON c.rs = s.rs WHERE c.rs=\'{rs}\''
 
         if self.kreise:
-            tbl='kreise'
+            tbl = 'kreise'
         else:
-            tbl='gemeinden'
+            tbl = 'gemeinden'
 
         while not self.queue.empty():
             generation_start = time.time()
             rs = self.queue.get()
-            with database.get_connection() as con:
+            with connection.get_connection() as con:
                 cur = con.cursor(cursor_factory=NamedTupleCursor)
                 cur.execute(sql.format(rs=rs, tbl=tbl))
 
                 if cur.rowcount > 1:
                     records = cur.fetchall()
-                    cur.execute('SELECT SUM(ST_Area(geom)) as total_area FROM de_shp_{tbl} WHERE rs=\'{rs}\';'.format(tbl=tbl, rs=rs))
+                    cur.execute(
+                        'SELECT SUM(ST_Area(geom)) as total_area FROM de_shp_{tbl} WHERE rs=\'{rs}\';'.format(tbl=tbl,
+                                                                                                              rs=rs))
                     total_area = cur.fetchone().total_area
 
                     points = []
@@ -100,7 +102,7 @@ class PointCreator(threading.Thread):
 
                     # Write the number of patches and the total patch area to the figure
                     pylab.text(-25, 25,
-                        "Patches: %d, total area: %.2f" % (len(polygon.geoms), polygon.area))
+                               "Patches: %d, total area: %.2f" % (len(polygon.geoms), polygon.area))
 
                     pylab.savefig('{rs}.png'.format(rs=rs))
 
@@ -129,12 +131,12 @@ class PointCreator(threading.Thread):
                             'VALUES($1, $2, ST_GeomFromWKB(ST_SetSRID($3, 900913)))'
 
         execute_statement = 'EXECUTE de_sim_points_plan({rs!r}, {type!r}, \'\\x{point!s}\'::bytea);'
-        with database.get_connection() as conn:
+        with connection.get_connection() as conn:
             cur = conn.cursor()
             cur.execute(prepare_statement)
 
             # for p in points:
-            #     cur.execute('EXECUTE de_sim_points_plan (%s, %s, %s);', (rs, 'start', p.wkb))
+            # cur.execute('EXECUTE de_sim_points_plan (%s, %s, %s);', (rs, 'start', p.wkb))
             # Creating a list and mass execute it is faster :)
 
             sql_list = []
@@ -199,10 +201,10 @@ class PointCreator(threading.Thread):
             p2 = shape(polygon)
             p2 = p2.difference(bbox_2)
 
-            #k = bisect.bisect_left(u, p1.area / polygon.area)
+            # k = bisect.bisect_left(u, p1.area / polygon.area)
             k = int(round(n * (p1.area / polygon.area)))
 
-            return self._generate_points(p1, k) + self._generate_points(p2, n-k)
+            return self._generate_points(p1, k) + self._generate_points(p2, n - k)
         else:
             v = []
             max_iterations = self.t * n + 5 * math.sqrt(self.t * n)
@@ -234,23 +236,23 @@ class PointCreator(threading.Thread):
 
     def _bbox_left(self, bbox):
         """Returns left half of bbox"""
-        l=(bbox[2]-bbox[0]) / 2
-        return bbox[0], bbox[1], bbox[2]-l, bbox[3]
+        l = (bbox[2] - bbox[0]) / 2
+        return bbox[0], bbox[1], bbox[2] - l, bbox[3]
 
     def _bbox_right(self, bbox):
         """Returns right half of bbox"""
-        l=(bbox[2]-bbox[0]) / 2
-        return bbox[0]+l, bbox[1], bbox[2], bbox[3]
+        l = (bbox[2] - bbox[0]) / 2
+        return bbox[0] + l, bbox[1], bbox[2], bbox[3]
 
     def _bbox_top(self, bbox):
         """Returns top half of bbox"""
-        l=(bbox[3]-bbox[1]) / 2
-        return bbox[0], bbox[1]+l, bbox[2], bbox[3]
+        l = (bbox[3] - bbox[1]) / 2
+        return bbox[0], bbox[1] + l, bbox[2], bbox[3]
 
     def _bbox_bottom(self, bbox):
         """Returns bottom half of bbox"""
-        l=(bbox[3]-bbox[1]) / 2
-        return bbox[0], bbox[1], bbox[2], bbox[3]-l
+        l = (bbox[3] - bbox[1]) / 2
+        return bbox[0], bbox[1], bbox[2], bbox[3] - l
 
     def _get_total(self):
         sql = 'SELECT count(*) FROM {}'
@@ -259,7 +261,7 @@ class PointCreator(threading.Thread):
         else:
             sql = sql.format('de_commuter_gemeinden')
 
-        with database.get_connection() as con:
+        with connection.get_connection() as con:
             cur = con.cursor()
             cur.execute(sql)
             self.total = cur.fetchone()[0]
@@ -272,6 +274,7 @@ def increase_counter():
         result = counter
     return result
 
+
 if __name__ == "__main__":
     import queue
     from shapely import speedups
@@ -279,13 +282,13 @@ if __name__ == "__main__":
     if speedups.available:
         speedups.enable()
 
-    q=queue.Queue()
+    q = queue.Queue()
     q.put('06631')
-    t=PointCreator('test', q)
+    t = PointCreator('test', q)
     t.set_t(1.2)
-    start=time.time()
+    start = time.time()
     t.start()
     t.join()
-    print(time.time()-start)
+    print(time.time() - start)
 
 
