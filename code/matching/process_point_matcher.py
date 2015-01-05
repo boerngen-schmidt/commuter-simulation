@@ -27,7 +27,7 @@ from matching.commuter_distribution import MatchingDistribution
 
 class PointMatcherProcess(Process):
     """
-    Point Matcher class
+    Point Matcher class (OBSOLETE)
     """
 
     def __init__(self, district_queue, insert_queue):

@@ -2,6 +2,7 @@
 Created on 29.09.2014
 
 @author: Benjamin
+@obsolete
 """
 import logging
 import logging.config

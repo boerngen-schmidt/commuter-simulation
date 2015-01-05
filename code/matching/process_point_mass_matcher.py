@@ -13,7 +13,7 @@ Pseudo code:
     if nesessary re-queue the MatchingDistribution
 """
 import logging
-from multiprocessing import Process
+from multiprocessing import Process, Event
 import time
 import pickle
 
@@ -28,7 +28,7 @@ class PointMassMatcherProcess(Process):
     Point Mass Matcher Process using PostgreSQL 9.5 feature SKIP LOCKED
     """
 
-    def __init__(self, counter: Counter, exit_event, max_age_distribution=3):
+    def __init__(self, counter: Counter, exit_event: Event, max_age_distribution=3):
         Process.__init__(self)
         self.logging = logging.getLogger(self.name)
         self.exit_event = exit_event
