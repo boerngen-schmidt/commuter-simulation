@@ -2,6 +2,8 @@ from contextlib import contextmanager
 import logging
 import multiprocessing
 
+from database.process_point_inserter import PointInsertingProcess
+
 
 exit_event = multiprocessing.Event()
 

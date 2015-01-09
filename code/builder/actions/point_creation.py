@@ -1,6 +1,6 @@
 import logging
+import multiprocessing as mp
 import time
-import multiprocessing
 
 from builder import inserting_process
 from builder.commands import PointCreationCommand
@@ -19,8 +19,8 @@ __author__ = 'benjamin'
 def create_points():
     logging.info('Start creation of points')
     logging.info('Start filling work queue')
-    work_queue = multiprocessing.Queue()
-    insert_queue = multiprocessing.JoinableQueue()
+    work_queue = mp.Queue()
+    insert_queue = mp.JoinableQueue()
 
     def add_command(rec):
         """Function to be used by map() to create commands for the work_queue
@@ -103,7 +103,7 @@ def create_points():
     logging.info('Finished filling work queue. Time: %s', time.time() - start)
 
     processes = []
-    counter = Counter()
+    counter = Counter(work_queue.qsize())
     for i in range(6):
         p = PointCreatorProcess(work_queue, insert_queue, counter)
         p.set_t(1.2)

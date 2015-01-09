@@ -72,7 +72,7 @@ class PointMassMatcherProcess(Process):
                               '  SELECT id, geom, row_number() over() as i FROM ( ' \
                               '    SELECT id, geom ' \
                               '    FROM de_sim_points_{tbl_s!s} ' \
-                              '    WHERE parent_geometry {cf!s} ' \
+                              '    WHERE parent_geometry {cf!s} AND NOT used' \
                               '    ORDER BY RANDOM() ' \
                               '    FOR UPDATE SKIP LOCKED' \
                               '  ) AS sq ' \
@@ -81,7 +81,7 @@ class PointMassMatcherProcess(Process):
                               '  SELECT id, geom, row_number() over() as i FROM ( ' \
                               '    SELECT id, geom ' \
                               '    FROM de_sim_points_{tbl_e!s} ' \
-                              '    WHERE parent_geometry {cf!s} ' \
+                              '    WHERE parent_geometry {cf!s}  AND NOT used' \
                               '    ORDER BY RANDOM() ' \
                               '    FOR UPDATE SKIP LOCKED' \
                               '  ) AS t ' \
@@ -149,9 +149,7 @@ class PointMassMatcherProcess(Process):
                 if md.age < self.max_age_distribution and sum(outgoing) + within > 0:
                     md.reuse(within, outgoing)
                     self.mq.put(md)
-                    count = self.counter.increment_both()
-                else:
-                    count = self.counter.increment()
+                count = self.counter.increment()
 
                 self.logging.info('(%4d/%d) Finished matching %6d points for %12s in %.2f',
                                   count, self.counter.maximum, updated,

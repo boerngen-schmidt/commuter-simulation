@@ -1,3 +1,4 @@
+import multiprocessing as mp
 import logging
 import signal
 import time
@@ -20,7 +21,7 @@ def match_points():
 
     number_of_matchers = 8
     max_age_distribution = 3
-    matching_queue = Queue()
+    matching_queue = mp.Queue()
 
     logging.info('Start matching points for routes.')
     logging.info('Start filling work queue.')
@@ -29,7 +30,7 @@ def match_points():
         cur = conn.cursor()
         cur.execute('SELECT rs, outgoing, within FROM de_commuter ORDER BY RANDOM()')
         conn.commit()
-        counter = Counter(cur.rowcount)
+        counter = Counter(cur.rowcount * max_age_distribution)
         for rec in cur.fetchall():
             obj = MatchingDistribution(rec[0], rec[1], rec[2])
             matching_queue.put(obj)
@@ -41,7 +42,7 @@ def match_points():
     for i in range(number_of_matchers):
         processes.append(PointMassMatcherProcess(matching_queue, counter, exit_event, max_age_distribution))
         processes[-1].start()
-    signal.signal(signal.SIGINT, signal_handler())
+    signal.signal(signal.SIGINT, signal_handler)
 
     for p in processes:
         p.join()
