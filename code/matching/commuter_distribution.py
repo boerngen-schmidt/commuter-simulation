@@ -2,18 +2,9 @@
 Module to capsule the distribution of commuting distances
 """
 from math import floor
-import logging
 
-from database import connection
-
-
-
-
-
-
-
-# Could be placed in the database, but for now we keep it static
 from matching import MatchingType
+
 
 commuter_distribution = {'01': (0.5, 0.28, 0.17, 0.05),
                          '02': (0.5, 0.28, 0.17, 0.05),
@@ -43,23 +34,11 @@ delta_commuters = 0.1
 class MatchingDistribution(object):
     __slots__ = ['_rs', '_index', '_data', '_age']
 
-    def __init__(self, rs):
+    def __init__(self, rs, within, outgoing):
         self._rs = rs
         self._index = 0
         self._age = 0
-
-        with connection.get_connection() as conn:
-            cur = conn.cursor()
-            try:
-                cur.execute('SELECT outgoing, within FROM de_commuter WHERE rs = %s', (rs, ))
-            except Exception:
-                outgoing = 0
-                within = 0
-                logging.error('Could not create MatchingDistiribution for rs "%s"', self._rs)
-            else:
-                (outgoing, within) = cur.fetchone()
-            finally:
-                self.__build_data(within, self.__build_outgoing_distribution(outgoing))
+        self.__build_data(within, self.__build_outgoing_distribution(outgoing))
 
     def reuse(self, within, outgoing):
         """

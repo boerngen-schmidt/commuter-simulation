@@ -5,7 +5,7 @@ Generates Simulation Environment
 '''
 from contextlib import contextmanager
 import logging
-from multiprocessing import Event
+from multiprocessing import Event, Queue
 import time
 import multiprocessing
 import threading
@@ -195,35 +195,29 @@ def match_points():
     Matches start and end points with a randomized order of the districts
     :return:
     """
-    import pickle
 
     number_of_matchers = 8
     max_age_distribution = 3
+    matching_queue = Queue()
 
     logging.info('Start matching points for routes.')
     logging.info('Start filling work queue.')
 
     with connection.get_connection() as conn:
         cur = conn.cursor()
-        cur.execute('SELECT COUNT(id) FROM de_sim_matching_queue')
+        cur.execute('SELECT rs, outgoing, within FROM de_commuter ORDER BY RANDOM()')
         conn.commit()
-        amount, = cur.fetchone()
-        if amount > 0:
-            counter = Counter(amount)
-        else:
-            cur.execute('SELECT rs FROM de_commuter ORDER BY RANDOM()')
-            conn.commit()
-            counter = Counter(cur.rowcount)
-            for rec in cur.fetchall():
-                obj = pickle.dumps(MatchingDistribution(rec[0]), protocol=pickle.HIGHEST_PROTOCOL)
-                cur.execute('INSERT INTO de_sim_matching_queue (distribution) VALUES(%s)', (obj, ))
+        counter = Counter(cur.rowcount)
+        for rec in cur.fetchall():
+            obj = MatchingDistribution(rec[0], rec[1], rec[2])
+            matching_queue.put(obj)
 
     start = time.time()
     processes = []
     # default_handler = signal.getsignal(signal.SIGINT)
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     for i in range(number_of_matchers):
-        processes.append(PointMassMatcherProcess(counter, exit_event, max_age_distribution))
+        processes.append(PointMassMatcherProcess(matching_queue, counter, exit_event, max_age_distribution))
         processes[-1].start()
     signal.signal(signal.SIGINT, signal_handler)
 

@@ -13,10 +13,8 @@ Pseudo code:
     if nesessary re-queue the MatchingDistribution
 """
 import logging
-from multiprocessing import Process, Event
+from multiprocessing import Process, Event, Queue
 import time
-import pickle
-import copy
 
 from database import connection
 from matching import MatchingType
@@ -29,44 +27,30 @@ class PointMassMatcherProcess(Process):
     Point Mass Matcher Process using PostgreSQL 9.5 feature SKIP LOCKED
     """
 
-    def __init__(self, counter: Counter, exit_event: Event, max_age_distribution=3):
+    def __init__(self, matching_queue: Queue, counter: Counter, exit_event: Event, max_age_distribution=3):
         Process.__init__(self)
         self.logging = logging.getLogger(self.name)
+        self.mq = matching_queue
         self.exit_event = exit_event
         self.counter = counter
         self.max_age_distribution = max_age_distribution
 
     def run(self):
-        while True:
+        while not self.mq.empty():
             if self.exit_event.is_set():
                 break
 
-            # Get a MatchingDistribution from database
-            queue_sql = 'WITH job AS (SELECT * FROM de_sim_matching_queue ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED)' \
-                        ' DELETE FROM de_sim_matching_queue * WHERE id = (SELECT id FROM job) RETURNING distribution'
-            with connection.get_connection() as conn:
-                cur = conn.cursor()
-                cur.execute(queue_sql)
-                distribution = cur.fetchone()
+            # Get a MatchingDistribution
+            md = self.mq.get()
 
             # Check if we got a result, otherwise stop the loop
-            if distribution:
-                try:
-                    current_dist = pickle.loads(distribution[0].tobytes())
-                except pickle.UnpicklingError as e:
-                    self.logging.error('Unpickle Error %s', e)
-                    time.sleep(0.1)
-                    continue
-            else:
-                break
-
             # Catch the stupid NoneType Error (should not happen with database anymore)
-            if not isinstance(current_dist, MatchingDistribution):
-                self.logging.error('Got %s "%s"', type(current_dist).__name__, distribution[0])
+            if not isinstance(md, MatchingDistribution):
+                self.logging.error('Got %s', type(md).__name__)
                 time.sleep(0.1)
                 continue
 
-            self.logging.debug('Start matching points for: %12s', current_dist.rs)
+            self.logging.debug('Start matching points for: %12s', md.rs)
             start_time = time.time()
 
             # Initialize arguments for MatchingDistribution update
@@ -75,7 +59,7 @@ class PointMassMatcherProcess(Process):
             updated = 0
             with connection.get_connection() as conn:
                 cur = conn.cursor()
-                for params in current_dist:
+                for params in md:
                     # Check if there are commuters to be matched, otherwise look at the next set
                     if params['commuters'] == 0:
                         continue
@@ -162,20 +146,14 @@ class PointMassMatcherProcess(Process):
                         outgoing.append(commuters)
 
                 # Check if MatchingDistribution has reached its max age
-                if current_dist.age < self.max_age_distribution and sum(outgoing) + within > 0:
-                    with connection.get_connection() as conn:
-                        cur = conn.cursor()
-                        reused_distrib = copy.copy(current_dist.reuse(within, outgoing))
-                        obj = pickle.dumps(reused_distrib, protocol=pickle.HIGHEST_PROTOCOL)
-                        cur.execute('INSERT INTO de_sim_matching_queue (distribution) VALUES (%s)', (obj, ))
+                if md.age < self.max_age_distribution and sum(outgoing) + within > 0:
+                    md.reuse(within, outgoing)
+                    self.mq.put(md)
                     count = self.counter.increment_both()
                 else:
                     count = self.counter.increment()
 
                 self.logging.info('(%4d/%d) Finished matching %6d points for %12s in %.2f',
                                   count, self.counter.maximum, updated,
-                                  current_dist.rs, time.time() - start_time)
-
-                # clean up
-                del current_dist
+                                  md.rs, time.time() - start_time)
         self.logging.info('Exiting Matcher Tread: %s', self.name)
