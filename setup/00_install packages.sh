@@ -37,7 +37,9 @@ if [ -d $BASE/bin/osm2po ]; then
 fi
 #wget -P $TMPDIR "http://osm2po.de/download.php?lnk=osm2po-4.9.1.zip" --referer http://osm2po.de --content-disposition -N
 #unzip -q $TMPDIR/osm2po-4.9.1.zip -d $BASE/bin/osm2po
-wget -P $TMPDIR "http://osm2po.de/download.php?lnk=osm2po-4.8.8.zip" --referer http://osm2po.de --content-disposition -N
-unzip -q $TMPDIR/osm2po-4.8.8.zip -d $BASE/bin/osm2po
+#wget -P $TMPDIR "http://osm2po.de/download.php?lnk=osm2po-4.8.8.zip" --referer http://osm2po.de --content-disposition -N
+#unzip -q $TMPDIR/osm2po-4.8.8.zip -d $BASE/bin/osm2po
+wget -P $TMPDIR "http://osm2po.de/download.php?lnk=osm2po-5.0.0.zip" --referer http://osm2po.de --content-disposition -N
+unzip -q $TMPDIR/osm2po-5.0.0.zip -d $BASE/bin/osm2po
 cd $BASE/bin/osm2po
 ln -s osm2po-core-*-signed.jar osm2po.jar

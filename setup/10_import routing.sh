@@ -44,7 +44,7 @@ function f_osm2po {
 	infoMsg "Creating road network"
 	time java -Xmx12g -jar $OSM2PO_HOME/osm2po.jar prefix=de cmd=tjspg workDir=$TMPDIR/osm2po_import $1
 	infoMsg "Importing OSM2PO network into database"
-	time psql -U $USER -d $DATABASE -q -f "$TMPDIR/osm2po_import/de_2po_4pgr.sql"
+	time psql -U $USER -d $DATABASE -q -f "$TMPDIR/osm2po_import/*.sql"
 }
 
 PS3="Choose OSM File for import: "
