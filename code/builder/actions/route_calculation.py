@@ -1,6 +1,7 @@
 import logging
 import threading
 import time
+from multiprocessing import Queue
 
 from database import connection
 from helper.counter import Counter

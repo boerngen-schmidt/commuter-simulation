@@ -8,12 +8,24 @@ strategy of the commuter, which can be either to use a fuel price application or
 
 @author: Benjamin Börngen-Schmidt
 """
+import multiprocessing as mp
+
 from helper import logger
+from routing.route import Route
+from simulation.cars.car import SimpleCar
 
 
 def main():
     logger.setup()
-    pass
+
+    # fetch all commuters
+    commuters = []
+
+    # Generate car and route
+    for c in commuters:
+        route = Route()
+        car = SimpleCar()
+        mp.Pool(16, )
 
 
 if __name__ == '__main__':

@@ -28,8 +28,7 @@ class ProcessRouteCalculation(Process):
             with connection.get_connection() as conn:
                 cur = conn.cursor()
                 '''Generate route'''
-                sql_route = 'INSERT INTO de_sim_routes_calculated ' \
-                            'SELECT %(id)s AS points, seq, id FROM pgr_dijkstra( ' \
+                sql_route = 'SELECT %(id)s AS points, seq, id FROM pgr_dijkstra( ' \
                             '  \'SELECT id, source, target, cost FROM de_2po_4pgr, ' \
                             '    (SELECT ST_Expand(ST_Extent(the_geom),0.1) as box FROM de_2po_4pgr_vertices_pgr ' \
                             '      WHERE id = (SELECT id::integer FROM de_2po_4pgr_vertices_pgr ORDER BY the_geom <-> ST_Transform((SELECT geom FROM de_sim_points WHERE id =%(start)s), 4326) LIMIT 1) ' \

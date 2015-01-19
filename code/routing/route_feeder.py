@@ -18,10 +18,10 @@ def __route_feeder_thread(route_queue: Queue, size=200, sentinels=0):
             cur.execute(sql)
             results = cur.fetchmany(size)
             for rec in results:
-                queue.put(rec)
+                route_queue.put(rec)
             if sentinels > 0 and not results:
                 for i in range(sentinels):
-                    queue.put(StopIteration)
+                    route_queue.put(StopIteration)
                 break
             elif not results:
                 break
