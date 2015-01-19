@@ -11,7 +11,14 @@ mysqladmin -uroot -p$MYSQL_PASSWD create spritsim
 
 infoMsg "Importing fuelprices into mySQL database"
 mysql -uroot -p$MYSQL_PASSWD -D spritsim < $BASE/data/fuel/stations.sql
-mysql -uroot -p$MYSQL_PASSWD -D spritsim < $BASE/data/fuel/priceinfo.sql
+#mysql -uroot -p$MYSQL_PASSWD -D spritsim < $BASE/data/fuel/priceinfo.sql
+mysql -uroot -p$MYSQL_PASSWD -D spritsim < $BASE/data/fuel/2014_06.sql
+mysql -uroot -p$MYSQL_PASSWD -D spritsim < $BASE/data/fuel/2014_07.sql
+mysql -uroot -p$MYSQL_PASSWD -D spritsim < $BASE/data/fuel/2014_08_01.sql
+mysql -uroot -p$MYSQL_PASSWD -D spritsim < $BASE/data/fuel/2014_08_02.sql
+mysql -uroot -p$MYSQL_PASSWD -D spritsim < $BASE/data/fuel/2014_09.sql
+mysql -uroot -p$MYSQL_PASSWD -D spritsim < $BASE/data/fuel/2014_10.sql
+
 
 infoMsg "Migrating data to PostgreSQL"
 source $BASE/python2-venv/bin/activate

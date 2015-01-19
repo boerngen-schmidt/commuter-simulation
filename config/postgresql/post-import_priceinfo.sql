@@ -18,11 +18,10 @@ WITH (
 ALTER TABLE priceinfo
   OWNER TO benjamin;
 
-CREATE INDEX index_station_id
-   ON de_tt_priceinfo (station_id ASC NULLS LAST);
-
 INSERT INTO de_tt_priceinfo (SELECT id, station_id, received::timestamptz AT TIME ZONE 'Europe/Berlin', e5, e10, diesel from priceinfo);
 
+CREATE INDEX index_station_id
+   ON de_tt_priceinfo (station_id ASC NULLS LAST);
 
 -- Drop old table
 DROP TABLE priceinfo;

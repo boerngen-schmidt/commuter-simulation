@@ -29,7 +29,7 @@ WITH (
 ALTER TABLE stations
   OWNER TO benjamin;
 -- Add Geometry column
-SELECT AddGeometryColumn('de_tt_stations', 'geom', 900913, 'POINT', 2);
+SELECT AddGeometryColumn('de_tt_stations', 'geom', 4326, 'POINT', 2);
 CREATE INDEX de_tt_stations_geom_index
   ON de_tt_stations
   USING gist
@@ -45,7 +45,7 @@ INSERT INTO de_tt_stations (
   SELECT id, name, brand, street, "number", zip, city, 
   premium_e5_time, premium_e5_value, premium_e10_time, premium_e10_value, diesel_time, diesel_value, 
   holiday_identifier, opening_times, opening_times_extended, override_opening_times,
-  ST_Transform(ST_SetSRID(ST_POINT(longitude, latitude), 4326), 900913) AS geom
+  ST_SetSRID(ST_POINT(longitude, latitude), 4326) AS geom
   FROM stations;
   
 -- DROP old table
