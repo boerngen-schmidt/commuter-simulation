@@ -53,7 +53,11 @@ class Commuter(object):
         """Initializes the two main routes the commuter drives."""
         self._home_route = rc.route_home(route_id)
         self._work_route = rc.route_to_work(route_id)
-        self.env.route = self._work_route
+
+        if not self._home_route.distance or not self._work_route.distance:
+            raise CommuterRouteError('No Route found for commuter %s' % self._id)
+        else:
+            self.env.route = self._work_route
 
     @property
     def id(self):
@@ -112,6 +116,9 @@ class Commuter(object):
                 raise CommuterError('No state given')
 
 
-
 class CommuterError(Exception):
+    pass
+
+
+class CommuterRouteError(CommuterError):
     pass

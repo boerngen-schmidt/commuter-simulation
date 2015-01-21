@@ -4,24 +4,26 @@ if [ ! $INSCRIPT ]; then
 	exit 1
 fi
 
-infoMsg "Installing nessesary Packages"
-case $(currentDistribution) in
-	$DIST_DEBIAN)
-		sudo add-apt-repository -y ppa:georepublic/pgrouting >/dev/null 2>&1
-		sudo apt-get -q update >/dev/null
+if [ ! $(ynQuestion "Install system Packages?") ]; then
+	infoMsg "Installing nessesary Packages"
+	case $(currentDistribution) in
+		$DIST_DEBIAN)
+			sudo add-apt-repository -y ppa:georepublic/pgrouting >/dev/null 2>&1
+			sudo apt-get -q update >/dev/null
 		
-		PACKAGES="postgresql postgresql-contrib postgis postgresql-9.3-pgrouting osm2pgrouting osm2pgsql pgadmin3 python-dev mysql-server mysql-client libmysqlclient-dev"
-		sudo apt-get -q -y install $PACKAGES
-		;;
-	$DIST_GENTOO)
-		PACKAGES="postgresql-server postgis pgrouting mysql virtualenv dev-python/pip"
-		doemerge $PACKAGES
-		;;
-	*)
-		warnMsg "Could not determine Linux distribution for installing needed packages"
-		exit 1
-		;;
-esac		
+			PACKAGES="postgresql postgresql-contrib postgis postgresql-9.3-pgrouting osm2pgrouting osm2pgsql pgadmin3 python-dev mysql-server mysql-client libmysqlclient-dev"
+			sudo apt-get -q -y install $PACKAGES
+			;;
+		$DIST_GENTOO)
+			PACKAGES="postgresql postgis pgrouting mysql virtualenv dev-python/pip"
+			doemerge $PACKAGES
+			;;
+		*)
+			warnMsg "Could not determine Linux distribution for installing needed packages"
+			exit 1
+			;;
+	esac		
+fi
 
 infoMsg "Fetching OSM data"
 if [ $(ynQuestion "Download latest OSM Germany Map?") ]; then

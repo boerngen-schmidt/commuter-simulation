@@ -3,6 +3,7 @@ from abc import ABCMeta, abstractmethod
 from psycopg2.extras import NamedTupleCursor
 from routing.route import Route
 import routing.calculation as rc
+from simulation.commuter import CommuterError
 from simulation.environment import SimulationEnvironment
 from database import connection as db
 from simulation.event import Event
@@ -67,8 +68,13 @@ class SimpleRefillStrategy(BaseRefillStrategy):
         with db.get_connection() as conn:
             cur = conn.cursor()
             sql = 'SELECT diesel, e5, e10 FROM de_tt_priceinfo WHERE station_id = %(station_id)s AND recieved <= %(now)s LIMIT 1'
-            cur.execute(sql, dict(station_id=station_id, now=self.env.now))
-            diesel, e5, e10, = cur.fetchone()
+            args = dict(station_id=station_id, now=self.env.now)
+            cur.execute(sql, args)
+            result = cur.fetchone()
+            if result:
+                diesel, e5, e10, = result
+            else:
+                raise NoPriceError('No Prices where found for Query: "%s"' % cur.mogrify(sql, args))
 
             refill_amount = self.env.car.tank_size - self.env.car.current_filling
             cur.execute('INSERT INTO de_sim_data_refill (c_id, amount, price, time, station, type) VALUES (%s, %s, %s, %s, %s, %s)',
@@ -77,5 +83,9 @@ class SimpleRefillStrategy(BaseRefillStrategy):
             conn.commit()
 
 
-class FillingStationError(Exception):
+class FillingStationError(CommuterError):
+    pass
+
+
+class NoPriceError(CommuterError):
     pass
