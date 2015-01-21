@@ -1,11 +1,14 @@
-from psycopg2.extras import NamedTupleCursor
+import logging
+
+from psycopg2.extras import DictCursor
 from routing.route import RouteFragment, Route
 from database import connection as db
 from simulation.event import Event
 
+
 dijkstra_sql = 'SELECT id, source, target, cost FROM de_2po_4pgr, ' \
                '  (SELECT ST_Expand(ST_Extent(geom_vertex),0.1) as box FROM de_2po_vertex ' \
-               '    WHERE id = %(start)s) OR id = %(dest)s LIMIT 1) ' \
+               '    WHERE id = %(start)s OR id = %(dest)s LIMIT 1 ' \
                '  ) as box WHERE geom_way && box.box'
 
 
@@ -19,7 +22,11 @@ def route_to_work(route_id):
               ' (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> ST_Transform(' \
               '   (SELECT geom FROM de_sim_points WHERE id = (SELECT dest FROM info)), 4326) LIMIT 1) AS d '
         cur = conn.cursor()
-        cur.execute(sql, {'id': route_id})
+        try:
+            cur.execute(sql, dict(id=route_id))
+        except Exception:
+            logging.error(cur.query)
+            raise
         start, destination = cur.fetchone()
     return calculate_route(start, destination, Event.ArrivedAtWork)
 
@@ -34,7 +41,11 @@ def route_home(route_id):
               ' (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> ST_Transform(' \
               '   (SELECT geom FROM de_sim_points WHERE id = (SELECT dest FROM info)), 4326) LIMIT 1) AS d '
         cur = conn.cursor()
-        cur.execute(sql, {'id': route_id})
+        try:
+            cur.execute(sql, dict(id=route_id))
+        except Exception:
+            logging.error(cur.query)
+            raise
         start, destination = cur.fetchone()
     return calculate_route(start, destination, Event.ArrivedAtHome)
 
@@ -54,23 +65,26 @@ def calculate_route(start, destination, event):
         sql_route = 'DROP TABLE IF EXISTS route; ' \
                     'CREATE TEMP TABLE route ON COMMIT DROP AS ' \
                     'SELECT seq, source, target, km, kmh, clazz, geom_way FROM ' \
-                    '  pgr_dijkstra( %(dijkstra_sql)s, %(start)s, %(dest)s), false, false) route ' \
+                    '  pgr_dijkstra({dijkstra_sql!r}, %(start)s, %(dest)s, false, false) route' \
                     '  LEFT JOIN de_2po_4pgr AS info ON route.id2 = info.id'
-        cur = conn.cursor(cursor_factory=NamedTupleCursor)
+        cur = conn.cursor(cursor_factory=DictCursor)
         try:
-            cur.execute(sql_route, dict(start=start, dest=destination, dijkstra_sql=dijkstra_sql))
+            cur.execute(sql_route.format(dijkstra_sql=dijkstra_sql), dict(start=start, dest=destination))
         except Exception:
             conn.rollback()
             raise
 
-        cur.execute('SELECT seq, source, target, km, kmh, clazz FROM route')
+        cur.execute('SELECT seq, source, target, km, kmh, clazz FROM route WHERE seq < (SELECT COUNT(seq)-1 FROM route) ORDER BY seq')
         fragments = []
         for rec in cur.fetchall():
             fragments.append(
                 RouteFragment(rec['seq'], rec['source'], rec['target'], rec['kmh'], rec['km'], rec['clazz']))
 
-        cur.execute('SELECT ST_LineMerge(ST_union(geom_way)) FROM route')
+        cur.execute('SELECT ST_AsEWKB(ST_LineMerge(ST_union(geom_way))) FROM route')
         line, = cur.fetchone()
-        conn.commit()
 
-    return Route(start, destination, fragments, event, line)
+        cur.execute('SELECT SUM(km) FROM route')
+        distance, = cur.fetchone()
+
+        conn.commit()
+    return Route(start, destination, fragments, event, line, distance)

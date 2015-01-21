@@ -13,18 +13,19 @@ class Route(object):
 
     The Route class encapsulates the route fragments and makes the route itself iterable.
     """
-    def __init__(self, start, destination, fragments: [RouteFragment], event: Event, geom_line):
+    def __init__(self, start, destination, fragments, event: Event, geom_line, distance):
         self._fragments = fragments
         self._index = 0
         self._start = start
         self._dest = destination
         self._event = event
         self._line = geom_line
+        self._distance = distance
 
     def __iter__(self):
         return self
 
-    def __next__(self) -> RouteFragment:
+    def __next__(self):
         if self._index >= len(self._fragments):
             self._index = 0     # reset the index, so the route could be automatically reused
             raise StopIteration
@@ -50,6 +51,10 @@ class Route(object):
     @property
     def geom_line(self):
         return self._line
+
+    @property
+    def distance(self):
+        return self._distance
 
 
 class RouteFragment(object):
@@ -104,26 +109,18 @@ class RouteFragment(object):
 
 
 class RouteClazz(Enum):
-    motorway = 11
-    motorway_link = 12
-    trunk = 13
-    trunk_link = 14
-    primary = 15
-    primary_link = 16
-    secondary = 21
+    motorway =  11
+    motorway_link =  12
+    trunk =          13
+    trunk_link =     14
+    primary =        15
+    primary_link =   16
+    secondary =      21
     secondary_link = 22
-    tertiary = 31
-    residential = 32
-    road = 41
-    unclassified = 42
-    service = 51
-    living_street = 63
-    pedestrian = 62
-    track = 71
-    path = 72
-    cycleway = 81
-    footway = 91
-    steps = 92
-    ferry = 1
-    shuttle_train = 2
-    rail = 3
+    tertiary =       31
+    tertiary_link =  32
+    residential =    41
+    road =           42
+    unclassified =   43
+    service =        51
+    living_street =  63

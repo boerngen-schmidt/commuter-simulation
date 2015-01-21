@@ -1,10 +1,5 @@
 import datetime as dt
 
-from routing.route import Route
-from simulation.cars.car import BaseCar
-from simulation.commuter import Commuter
-from simulation.strategy import BaseRefillStrategy
-
 
 __author__ = 'benjamin'
 
@@ -44,11 +39,19 @@ class SimulationEnvironment():
         return self._event
 
     @property
-    def commuter(self) -> Commuter:
+    def commuter(self):
+        """Returns the commuter of the simulation environment
+
+        :return: The Commuter of the environment
+        :rtype simulation.commuter.Commuter:
+        """
         return self._commuter
 
     @commuter.setter
-    def commuter(self, commuter: Commuter):
+    def commuter(self, commuter):
+        from simulation.commuter import Commuter
+        if not isinstance(commuter, Commuter):
+            raise ValueError('Expected object to be an instance of simulation.commuter.Commuter')
         self._commuter = commuter
 
     @property
@@ -56,7 +59,7 @@ class SimulationEnvironment():
         return self._current_route
 
     @route.setter
-    def route(self, route: Route):
+    def route(self, route):
         self._current_route = route
 
     @property
@@ -64,7 +67,7 @@ class SimulationEnvironment():
         return self._car
 
     @car.setter
-    def car(self, car: BaseCar):
+    def car(self, car):
         self._car = car
 
     @property
@@ -72,5 +75,5 @@ class SimulationEnvironment():
         return self._refill_strategy
 
     @refilling_strategy.setter
-    def refilling_strategy(self, refilling_strategy: BaseRefillStrategy):
+    def refilling_strategy(self, refilling_strategy):
         self._refill_strategy = refilling_strategy

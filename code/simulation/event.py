@@ -6,18 +6,18 @@ __author__ = 'benjamin'
 class Event(Enum):
     ArrivedAtWork = 1
     ArrivedAtHome = 2
-    ReserveTank = 3
-    FinishedWork = 4
-    LeavingHome = 5
-    FillingStation = 6
+    Drive = 3
+    RefillCar = 4
+    FinishedWork = 5
+    LeavingHome = 6
+    LeavingFillingStation = 7
+    FillingStation = 8
 
 
 class SimEvent(object):
     def __init__(self, event_type: Event, data: dict={}):
         self._event_type = event_type
         self._data = data
-        if not self._check_data():
-            raise AttributeError('Missing Attributes for Event: "%s"' % event_type.name)
 
     @property
     def data(self) -> dict:
@@ -32,7 +32,7 @@ class SimEvent(object):
         e = self._event_type
         if e is Event.ArrivedAtHome or e is Event.ArrivedAtWork:
             return keys in ['time_driven']
-        elif e is Event.ReserveTank:
+        elif e is Event.RefillCar:
             return keys in ['route_start', 'route_destination', 'current_position', 'time_driven', 'route_event']
         elif e is Event.FillingStation:
             return keys in ['time_driven', 'current_position', 'route_destination','route_event']

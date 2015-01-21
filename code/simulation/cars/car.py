@@ -20,11 +20,11 @@ class BaseCar(metaclass=ABCMeta):
         """
         Constructor
         """
-        env.car(self)
+        env.car = self
         self.env = env
         self.id = commuter_id
         self._tankFilling = BaseCar._random_tank_filling(tank_size)
-        self._tankSize = tank_size
+        self._tankSize = float(tank_size)
         #self.log = logging.getLogger('spritsim.Car' + commuter_id)
 
     @staticmethod
@@ -39,12 +39,29 @@ class BaseCar(metaclass=ABCMeta):
         """
         return random.uniform(10, maximum)
 
+    @property
+    def tank_size(self):
+        return self._tankSize
+
+    @property
+    def current_filling(self):
+        return self._tankFilling
+
     @abstractmethod
     def consume_fuel(self, speed, distance, road_type):
         pass
 
+    @property
     @abstractmethod
-    def drive(self, route: Route, event: Event) -> SimEvent:
+    def consumption_per_km(self):
+        pass
+
+    def refilled(self):
+        """Car has been refilled at a filling station"""
+        self._tankFilling = self._tankSize
+
+    @abstractmethod
+    def drive(self, route: Route, event: Event, data: dict={}) -> SimEvent:
         """Lets the car drive the given route
 
          On arrival at the destination the a SimEvent is
@@ -73,26 +90,31 @@ class SimpleCar(BaseCar):
     def __init__(self, commuter_id, env: SimulationEnvironment):
         super().__init__(commuter_id, env, 50)
 
-    def consume_fuel(self, speed, distance, road_type):
+    @property
+    def consumption_per_km(self):
         """Consumes standard of 10l per 100km"""
-        consumption = 50 / 500
-        self._tankFilling -= consumption * distance
+        return 50 / 500
 
-    def drive(self, route: Route, event: Event):
+    def consume_fuel(self, speed, distance, road_type):
+        self._tankFilling -= self.consumption_per_km * distance
+
+    def drive(self, route: Route, event: Event, data: dict={}) -> SimEvent:
         time = datetime.timedelta()
         for segment in route:
             self._do_driving(segment)
             time += datetime.timedelta(seconds=segment.travel_time)
 
             # check if driving the segment has
-            if self._tankFilling <= 5:
+            if self._tankFilling <= 5.0 and event is not Event.FillingStation:
                 event_data = dict(route_start=route.start,
                                   route_destination=route.destination,
                                   current_position=segment.target,
                                   time_driven=time,
                                   route_event=route.event_type
                 )
-                return SimEvent(Event.ReserveTank, event_data)
+                event_data.update(data)
+                return SimEvent(Event.RefillCar, event_data)
 
         event_data = dict(time_driven=time)
+        event_data.update(data)
         return SimEvent(event, event_data)

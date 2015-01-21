@@ -10,22 +10,29 @@ strategy of the commuter, which can be either to use a fuel price application or
 """
 import multiprocessing as mp
 
+from database import connection as db
 from helper import logger
-from routing.route import Route
-from simulation.cars.car import SimpleCar
+from simulation.process import CommuterSimulationProcess
 
 
 def main():
     logger.setup()
 
     # fetch all commuters
-    commuters = []
+    commuter_sim_queue = mp.Queue()
 
-    # Generate car and route
-    for c in commuters:
-        route = Route()
-        car = SimpleCar()
-        mp.Pool(16, )
+    with db.get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute('SELECT id FROM de_sim_routes LIMIT 100')
+        [commuter_sim_queue.put(rec[0]) for rec in cur.fetchall()]
+
+    processes = []
+    for i in range(1):
+        processes.append(CommuterSimulationProcess(commuter_sim_queue))
+        processes[-1].start()
+
+    for p in processes:
+        p.join()
 
 
 if __name__ == '__main__':
