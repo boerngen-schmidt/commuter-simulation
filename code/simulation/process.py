@@ -16,8 +16,10 @@ class CommuterSimulationProcess(mp.Process):
         self._q = commuter_queue
 
     def run(self):
-        while not self._q.empty():
+        while True:
             c_id = self._q.get()
+            if not c_id:
+                break
 
             # Generate Commuter
             tz = datetime.timezone(datetime.timedelta(hours=1))
