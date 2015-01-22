@@ -46,22 +46,27 @@ fi
 
 PS3="Choose style File for import: "
 style_choices=( $(find $BASE/config/osm2pgsql -type f -iname "*.style") )
-select choice in ${osmfile_stylechoices[@]}
+select choice in ${style_choices[@]}
 do
 	if (( $REPLY > 0 && $REPLY <= ${#osmfile_choices[@]} )); then
-		OSMFILE=$choice
+		STYLEFILE=$choice
 		break
 	else
-		echo "Invailid choice, please select a OSM File"
+		echo "Invailid choice, please select a style File"
 	fi
 	echo
 	REPLY=
 done
 
 OSM2PGSQL_OPTIONS="--number-processes 8 -c -d $DATABASE -U $USER -p de_osm -C 12000 \
-					-S $BASE/config/osm2pgsql/commuter_simulation.style \
-					--cache-strategy sparse $OSM_OPTS"
+					-S $STYLEFILE -l \
+					$OSM_OPTS"
+if [ $(ynQuestion "Do you want to build osm2pgsql from sources?") ]; then
+	# remove old stuff
+	rm -rf $TMPDIR/osm2pgsql
+	buildOSM2PGSQL
 
+fi
 if [ -e $BASE/bin/osm2pgsql ]; then
 	infoMsg "Runnung local version of osm2pgsql"
 	time $BASE/bin/osm2pgsql $OSM2PGSQL_OPTIONS $OSMFILE

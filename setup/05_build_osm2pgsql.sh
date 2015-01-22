@@ -13,10 +13,12 @@ function buildOSM2PGSQL {
 	fi
 	
 	infoMsg "Cloning git repository"
-	git -C $TMPDIR clone git://github.com/MapQuest/osm2pgsql.git		
+	git -C $TMPDIR clone https://github.com/openstreetmap/osm2pgsql.git
+	cd $TMPDIR/osm2pgsql
+	latestTag=$(git describe --tags `git rev-list --tags --max-count=1`)
+	git checkout tags/${latestTag}
 				
 	infoMsg "Compiling osm2pgsql C++"
-	cd $TMPDIR/osm2pgsql
 	./autogen.sh
 	./configure && make -j 8
 
