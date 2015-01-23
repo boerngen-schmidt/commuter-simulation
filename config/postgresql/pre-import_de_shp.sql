@@ -19,7 +19,7 @@ CREATE TABLE de_shp
   length numeric,
   shape_leng numeric,
   shape_area numeric,
-  geom geometry(MultiPolygon,900913),
+  geom geometry(MultiPolygon,4326),
   CONSTRAINT de_shp_pkey PRIMARY KEY (gid)
 )
 WITH (
