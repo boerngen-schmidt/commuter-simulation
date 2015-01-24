@@ -3,7 +3,7 @@ Module to capsule the distribution of commuting distances
 """
 from math import floor
 
-from matching import MatchingType
+from builder.enums import MatchingType
 
 
 commuter_distribution = {'01': (0.5, 0.28, 0.17, 0.05),

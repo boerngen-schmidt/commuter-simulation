@@ -11,7 +11,7 @@ A Commuter has the following properties
 import random
 import datetime as dt
 
-import routing.calculation as rc
+from simulation import routing as rc
 from simulation.environment import SimulationEnvironment
 from simulation.event import Event, SimEvent
 from database import connection as db

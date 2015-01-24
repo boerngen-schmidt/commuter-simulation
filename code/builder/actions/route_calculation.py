@@ -5,7 +5,7 @@ from multiprocessing import Queue
 
 from database import connection
 from helper.counter import Counter
-from routing.process_route_calculation import ProcessRouteCalculation
+from builder.processes.route_calculation import ProcessRouteCalculation
 
 
 __author__ = 'benjamin'

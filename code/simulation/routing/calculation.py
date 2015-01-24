@@ -1,7 +1,7 @@
 import logging
 
 from psycopg2.extras import DictCursor
-from routing.route import RouteFragment, Route
+from simulation.routing.route import RouteFragment, Route
 from database import connection as db
 from simulation.event import Event
 

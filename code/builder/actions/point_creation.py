@@ -6,10 +6,9 @@ from builder import inserting_process
 from builder.commands import PointCreationCommand
 from database.process_point_inserter import PointInsertIndexingThread
 from helper.counter import Counter
-from points import PointType
-from points.process_random_point_generator_shapely import PointCreatorProcess
+from builder.enums import PointType
+from builder.processes.random_point_generator_shapely import PointCreatorProcess
 from psycopg2.extras import NamedTupleCursor
-from shapely.wkb import loads
 from database import connection
 
 
@@ -21,6 +20,7 @@ def create_points():
     logging.info('Start filling work queue')
     work_queue = mp.Queue()
     insert_queue = mp.JoinableQueue()
+    number_of_processes = 6
 
     def add_command(rec):
         """Function to be used by map() to create commands for the work_queue
@@ -28,15 +28,15 @@ def create_points():
         :param rec: A database record with named tuple having
                         (rs, name, geom_b, area, total_area, incomming, outgoing, within)
         """
-        n = [rec.outgoing, rec.incoming, rec.within, rec.within]
-        t = ['start', 'end', 'within_start', 'within_end']
+        commuters = [rec.outgoing, rec.incoming, rec.within, rec.within]
         try:
-            polygon = loads(bytes(rec.geom_b))
+            # polygon = loads(bytes(rec.geom_b)) TODO reomve?
+            polygon = None
         except TypeError:
-            logging.error('Bad record: rs: %s, name: %s values: %s', rec.rs, rec.name, n)
+            logging.error('Bad record: rs: %s, name: %s values: %s', rec.rs, rec.name, commuters)
             return
-        [work_queue.put(PointCreationCommand(rec.rs, rec.name, polygon, amount, p_type)) for amount, p_type in
-         zip(n, t)]
+        [work_queue.put(PointCreationCommand(rec.rs, rec.name, polygon, amount, p_type.value))
+         for amount, p_type in zip(commuters, PointType)]
 
     start = time.time()
     with connection.get_connection() as con:
@@ -75,7 +75,7 @@ def create_points():
               '  SELECT DISTINCT  ' \
               '  k.rs     AS rs,  ' \
               '  CASE WHEN geo.geom IS NULL  ' \
-              '    THEN ST_GeomFromText(\'POLYGON EMPTY\', 900913) ' \
+              '    THEN ST_GeomFromText(\'POLYGON EMPTY\', 4326) ' \
               '    ELSE geo.geom ' \
               '  END AS geom ' \
               '  FROM de_shp_kreise AS k  ' \
@@ -95,7 +95,8 @@ def create_points():
               '  SUM(outgoing)       AS outgoing  ' \
               '  FROM de_commuter_gemeinden  ' \
               '  GROUP BY SUBSTRING(rs FOR 5)  ' \
-              ') sums ON (sums.rs = ck.rs) '
+              ') sums ON (sums.rs = ck.rs) ' \
+              'WHERE NOT ST_IsEmpty(ST_Difference(k.geom, geo.geom))'
 
         cur.execute(sql)
         con.commit()
@@ -104,26 +105,27 @@ def create_points():
 
     processes = []
     counter = Counter(work_queue.qsize())
-    for i in range(6):
+    for i in range(number_of_processes):
+        work_queue.put(None)        # Add Sentinel for each process
         p = PointCreatorProcess(work_queue, insert_queue, counter)
         p.set_t(1.2)
         processes.append(p)
 
     plans = ['PREPARE de_sim_points_start_plan (varchar, geometry) AS '
              'INSERT INTO de_sim_points_start (parent_geometry, geom) '
-             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 900913)))',
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)))',
 
              'PREPARE de_sim_points_within_start_plan (varchar, geometry) AS '
              'INSERT INTO de_sim_points_within_start (parent_geometry, geom) '
-             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 900913)))',
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)))',
 
              'PREPARE de_sim_points_end_plan (varchar, geometry) AS '
              'INSERT INTO de_sim_points_end (parent_geometry, geom) '
-             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 900913)))',
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)))',
 
              'PREPARE de_sim_points_within_end_plan (varchar, geometry) AS '
              'INSERT INTO de_sim_points_within_end (parent_geometry, geom) '
-             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 900913)))']
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)))']
     with inserting_process(insert_queue, plans, 4):
         start = time.time()
         for p in processes:

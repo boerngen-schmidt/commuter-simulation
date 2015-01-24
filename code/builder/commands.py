@@ -1,11 +1,10 @@
-from shapely.geometry.polygon import Polygon
 
 __author__ = 'Benjamin'
 
 
 class PointCreationCommand(object):
     __slots__ = ['_rs', '_polygon', '_num_points', '_name', '_type_points']
-    def __init__(self, rs: str, name: str, polygon: Polygon, points: int, point_type: str):
+    def __init__(self, rs: str, name: str, polygon, points: int, point_type: str):
         self._rs = rs
         self._polygon = polygon
         self._num_points = points
@@ -37,11 +36,11 @@ class PointCreationCommand(object):
         self._type_points = value
 
     @property
-    def type_points(self):
+    def point_type(self):
         return self._type_points
 
-    @type_points.setter
-    def type_points(self, value):
+    @point_type.setter
+    def point_type(self, value):
         self._num_points = value
 
     @property

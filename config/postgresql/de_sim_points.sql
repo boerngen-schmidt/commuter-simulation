@@ -8,7 +8,7 @@ CREATE TABLE de_sim_points
   CONSTRAINT de_sim_points_pkey PRIMARY KEY (id)
 );
 
-SELECT AddGeometryColumn('de_sim_points', 'geom', 900913, 'POINT', 2);
+SELECT AddGeometryColumn('de_sim_points', 'geom', 4326, 'POINT', 2);
 
 CREATE TABLE de_sim_points_start
 (

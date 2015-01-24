@@ -8,11 +8,14 @@ import time
 import logging
 from multiprocessing import Process, JoinableQueue, Queue
 
+from builder.enums import PointType
 from builder.commands import PointCreationCommand
 from helper.counter import Counter
 import numpy as np
-import pylab
+from psycopg2.extras import NamedTupleCursor
 from shapely.geometry import Polygon, Point, box, shape
+from database import connection as db
+from shapely.wkb import loads
 
 
 class PointCreatorProcess(Process):
@@ -38,11 +41,11 @@ class PointCreatorProcess(Process):
         self.logging = logging.getLogger(self.name)
         self.total = info_queue.qsize()
         self.t = 2
-        self.plot = False
 
     def set_t(self, t):
         """Tuning Parameter
 
+        Based on t the function decides wether the polygon should be further split or not
         :param float t: Parameter for tuning the SRS function
         """
         if 2 >= t >= 1:
@@ -53,67 +56,67 @@ class PointCreatorProcess(Process):
     def run(self):
         execute_statement = 'EXECUTE de_sim_points_{type!s}_plan ({rs!r}, \'\\x{point!s}\'::bytea);'
 
-        while not self.queue.empty():
+        while True:
             generation_start = time.time()
             cmd = self.queue.get()
+            if not cmd:
+                break
             assert isinstance(cmd, PointCreationCommand)
 
-            if cmd.polygon.area <= 0 or cmd.num_points <= 0:
-                num = self.counter.increment()
-                self.logging.info(
-                    '(%4d/%d) %s: Skipped creating points for "%s". Polygon Area: %s, Number of Point: %s',
-                    num, self.total, self.name, cmd.name, cmd.polygon.area, cmd.num_points)
-                del cmd
-                continue
+            # Get all the residential stuff
 
-            rs = cmd.rs
-            points = self._generate_points(cmd.polygon, cmd.num_points)
+            # Choose the right sql based on the point type
+            landuse = 'landuse = \'residential\''
+            if cmd.point_type in (PointType.End, PointType.Within_End):
+                landuse += ' OR landuse =\'industrial\''
 
-            if self.plot:
-                pylab.figure(num=None, figsize=(20, 20), dpi=200)
-                self._plot_polygon(cmd.polygon)
+            # Choose right de_shp table based on rs
+            if len(cmd.rs) is 12:
+                shp = 'gemeinden'
+            else:
+                shp = 'kreise'
 
-                # Plot the generated points
-                pylab.plot([p.x for p in points], [p.y for p in points], 'bs', alpha=0.75)
+            # Replace this polygon with a query from the database with the residential areas
+            with db.get_connection() as conn:
+                cur = conn.cursor(cursor_factory=NamedTupleCursor)
+                sql = 'CREATE TEMPORARY TABLE living_areas ON COMMIT DROP AS ' \
+                      'SELECT ' \
+                      ' way as geom, ' \
+                      ' CASE WHEN p.landuse = \'residential\' THEN (%(w)s*ST_Area(way)) ELSE ST_Area(way) END AS area '\
+                      'FROM de_osm_polygon p ' \
+                      'INNER JOIN de_shp_{shp!s} s ON (s.rs = %(rs)s AND ST_Within(p.way, s.geom)) ' \
+                      'WHERE {landuse!s}'
+                args = dict(rs=cmd.rs, w=0.5)
+                cur.execute(sql.format(shp=shp, landuse=landuse), args)     # created temporary table
 
-                # Write the number of patches and the total patch area to the figure
-                pylab.text(-25, 25, "Patches: %d, total area: %.2f" % (1, cmd.polygon.area, ))
+                sql = 'SELECT SUM(ST_Area(geom)) FROM living_areas'
+                cur.execute(sql)
+                total_area, = cur.fetchone()
 
-                pylab.savefig('{rs}.png'.format(rs=rs))
+                sql = 'SELECT ST_AsEWKB(geom) AS geom_b, area FROM living_areas'
+                cur.execute(sql)
+                areas = cur.fetchall()
 
-            [self.output.put(execute_statement.format(rs=rs, type=cmd.type_points, point=p.wkb_hex)) for p in points]
+            created_points = 0
+            for area in areas:
+                polygon = loads(bytes(area.geom_b))
+                num_points = int(math.floor(cmd.num_points * area.area / total_area))
+                rs = cmd.rs
+                points = self._generate_points(polygon, num_points)
+                created_points += len(points)
+
+                [self.output.put(execute_statement.format(rs=rs, type=cmd.point_type, point=p.wkb_hex))
+                 for p in points]
 
             generation_time = time.time() - generation_start
             num = self.counter.increment()
             self.logging.info('(%4d/%d) %s: Created %s points for "%s". Generation time: %s',
                               num, self.total,
-                              self.name, len(points), cmd.name,
+                              self.name, created_points, cmd.name,
                               generation_time)
-            del points, cmd
-            time.sleep(0.5)  # Sleep for 500ms
 
         self.logging.info('Exiting %s', self.name)
         self.output.close()
-
-    def _plot_polygon(self, polygon):
-        if polygon.geom_type is 'MultiPolygon':
-            for patch in polygon.geoms:
-                self._plot_polygon(patch)
-            return
-
-        assert polygon.geom_type in ['Polygon']
-        assert polygon.is_valid
-
-        # Fill and outline each patch
-        x, y = polygon.exterior.xy
-        pylab.fill(x, y, color='#FFFFFF', aa=True)
-        pylab.plot(x, y, color='#666666', aa=True, lw=1.0)
-
-        # Do the same for the holes of the patch
-        for hole in polygon.interiors:
-            x, y = hole.xy
-            pylab.fill(x, y, color='#ffffff', aa=True)
-            pylab.plot(x, y, color='#999999', aa=True, lw=1.0)
 
     def _generate_points(self, polygon: Polygon, n) -> list:
         """Generates sample points within a given geometry

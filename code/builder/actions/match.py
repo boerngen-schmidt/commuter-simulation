@@ -6,8 +6,8 @@ import time
 from builder import signal_handler, exit_event
 from database import connection
 from helper.counter import Counter
-from matching.commuter_distribution import MatchingDistribution
-from matching.process_point_mass_matcher import PointMassMatcherProcess
+from builder.commuter_distribution import MatchingDistribution
+from builder.processes.mass_matcher import PointMassMatcherProcess
 
 
 __author__ = 'benjamin'

@@ -7,7 +7,7 @@ from abc import ABCMeta, abstractmethod
 import random
 import datetime
 
-from routing.route import RouteFragment, Route
+from simulation.routing.route import RouteFragment, Route
 from simulation.environment import SimulationEnvironment
 from simulation.event import SimEvent, Event
 

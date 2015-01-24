@@ -17,8 +17,8 @@ from multiprocessing import Process, Event, Queue
 import time
 
 from database import connection
-from matching import MatchingType
-from matching.commuter_distribution import MatchingDistribution
+from builder.enums import MatchingType
+from builder.commuter_distribution import MatchingDistribution
 from helper.counter import Counter
 
 
