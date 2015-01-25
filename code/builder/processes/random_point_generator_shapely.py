@@ -3,10 +3,11 @@ Created on 29.09.2014
 
 @author: Benjamin
 """
+from functools import partial
 import math
 import time
 import logging
-from multiprocessing import Process, JoinableQueue, Queue
+from multiprocessing import Process, Queue
 from multiprocessing.pool import ThreadPool
 
 from builder.enums import PointType
@@ -27,7 +28,7 @@ class PointCreatorProcess(Process):
     the data from the Zensus 2011 should be used.
     """
 
-    def __init__(self, info_queue: Queue, output_queue: JoinableQueue, counter: Counter):
+    def __init__(self, info_queue: Queue, output_queue: Queue, counter: Counter):
         """
 
         :param info_queue:
@@ -55,8 +56,6 @@ class PointCreatorProcess(Process):
             raise ValueError('Value for t should be between 1 and 2')
 
     def run(self):
-        execute_statement = 'EXECUTE de_sim_points_{type!s}_plan ({rs!r}, \'\\x{point!s}\'::bytea);'
-
         while True:
             generation_start = time.time()
             cmd = self.queue.get()
@@ -96,21 +95,12 @@ class PointCreatorProcess(Process):
                 cur.execute(sql)
                 areas = cur.fetchall()
 
-            def _map(area):
-                """Map function for ThreadPool
-
-                :param area: A psycopg2 record
-                :return: Number of generated points
-                """
-                polygon = loads(bytes(area.geom_b))
-                num_points = int(math.floor(cmd.num_points * area.area / total_area))
-                points = self._generate_points(polygon, num_points)
-                [self.output.put(execute_statement.format(rs=cmd.rs, type=cmd.point_type, point=p.wkb_hex))
-                 for p in points]
-                return len(points)
-
             pool = ThreadPool(4)
-            created_points = pool.map(_map, areas)
+            _map_partial = partial(self._map, output_queue=self.output, rs=cmd.rs, point_type=cmd.point_type,
+                                             num_points=cmd.num_points, total_area=total_area)
+            created_points = pool.map(_map_partial, areas)
+            pool.close()
+            pool.join()
 
             generation_time = time.time() - generation_start
             num = self.counter.increment()
@@ -121,6 +111,20 @@ class PointCreatorProcess(Process):
 
         self.logging.info('Exiting %s', self.name)
         self.output.close()
+
+    def _map(self, area, output_queue, rs, point_type, num_points, total_area):
+        """Map function for ThreadPool
+
+        :param area: A psycopg2 record
+        :return: Number of generated points
+        """
+        execute_statement = 'EXECUTE de_sim_points_{type!s}_plan ({rs!r}, \'\\x{point!s}\'::bytea);'
+        polygon = loads(bytes(area.geom_b))
+        num_points = int(math.floor(num_points * area.area / total_area))
+        points = self._generate_points(polygon, num_points)
+        [output_queue.put(execute_statement.format(rs=rs, type=point_type, point=p.wkb_hex))
+         for p in points]
+        return len(points)
 
     def _generate_points(self, polygon: Polygon, n) -> list:
         """Generates sample points within a given geometry
