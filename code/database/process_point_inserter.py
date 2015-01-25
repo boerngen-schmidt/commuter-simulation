@@ -1,6 +1,6 @@
 import logging
 import time
-from multiprocessing import Process, Event, Queue, JoinableQueue
+from multiprocessing import Process, Event, Queue
 from queue import Empty
 from threading import Thread
 
@@ -15,7 +15,7 @@ class PointInsertingProcess(Process):
     After inserting of the points is done, indexes are generated for the tables.
     """
 
-    def __init__(self, input_queue: JoinableQueue, plans):
+    def __init__(self, input_queue: Queue, plans):
         Process.__init__(self)
         self.q = input_queue
         self.thread_queue = Queue()
@@ -51,14 +51,12 @@ class PointInsertingProcess(Process):
                 if len(sql_commands) >= self.batch_size:
                     self.thread_queue.put(sql_commands)
                     sql_commands = []
-                self.q.task_done()
             finally:
                 if self.stop_request.is_set():
                     self.logging.info('Recieved stop event. Queue size %s, SQL commands %s',
                                       self.q.qsize(), len(sql_commands))
                     while not self.q.empty():
                         sql_commands.append(self.q.get())
-                        self.q.task_done()
                     self.thread_queue.put(sql_commands)
 
                     self.logging.info('Doing last inserts. Queue size %s, SQL commands %s',
@@ -86,7 +84,7 @@ class PointInsertingThread(Thread):
         Thread.__init__(self)
         self.q = queue
         self.stop_request = stop_request
-        self.log = logging.getLogger(self.name)
+        self.log = logging.getLogger(self.__class__.__name__)
         self.plans = plans
 
     def run(self):

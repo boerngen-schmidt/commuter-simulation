@@ -2,9 +2,8 @@ import logging
 import multiprocessing as mp
 import time
 
-from builder import inserting_process
 from builder.commands import PointCreationCommand
-from database.process_point_inserter import PointInsertIndexingThread
+from database.process_point_inserter import PointInsertIndexingThread, PointInsertingProcess
 from helper.counter import Counter
 from builder.enums import PointType
 from builder.processes.random_point_generator_shapely import PointCreatorProcess
@@ -19,7 +18,7 @@ def create_points():
     logging.info('Start creation of points')
     logging.info('Start filling work queue')
     work_queue = mp.Queue()
-    insert_queue = mp.JoinableQueue()
+    insert_queue = mp.Queue()
     number_of_processes = 6
 
     def add_command(rec):
@@ -111,38 +110,43 @@ def create_points():
         p.set_t(1.2)
         processes.append(p)
 
+    # SQL inserting process
     plans = ['PREPARE de_sim_points_start_plan (varchar, geometry) AS '
              'INSERT INTO de_sim_points_start (parent_geometry, geom) '
-             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)))',
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), ST_Transform(ST_GeomFromWKB(ST_SetSRID($2, 4326)), 900913))',
 
              'PREPARE de_sim_points_within_start_plan (varchar, geometry) AS '
              'INSERT INTO de_sim_points_within_start (parent_geometry, geom) '
-             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)))',
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), ST_Transform(ST_GeomFromWKB(ST_SetSRID($2, 4326)), 900913))',
 
              'PREPARE de_sim_points_end_plan (varchar, geometry) AS '
              'INSERT INTO de_sim_points_end (parent_geometry, geom) '
-             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)))',
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), ST_Transform(ST_GeomFromWKB(ST_SetSRID($2, 4326)), 900913))',
 
              'PREPARE de_sim_points_within_end_plan (varchar, geometry) AS '
              'INSERT INTO de_sim_points_within_end (parent_geometry, geom) '
-             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)))']
-    with inserting_process(insert_queue, plans, 4):
-        start = time.time()
-        for p in processes:
-            p.start()
-        for p in processes:
-            p.join()
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), ST_Transform(ST_GeomFromWKB(ST_SetSRID($2, 4326)), 900913))']
+    insert_process = PointInsertingProcess(insert_queue, plans)
+    insert_process.set_batch_size(5000)
+    insert_process.set_insert_threads(4)
+    insert_process.start()
+        
+    start = time.time()
+    for p in processes:
+        p.start()
+    for p in processes:
+        p.join()
+    insert_process.join()
 
-        logging.info('Creating Indexes for Tables...')
-        threads = []
-        for table in PointType:
-            t = PointInsertIndexingThread(table.value)
-            threads.append(t)
-            t.start()
-
-        for t in threads:
-            t.join()
-        logging.info("Finished creating Indexes.")
+    logging.info('Creating Indexes for Tables...')
+    threads = []
+    for table in PointType:
+        t = PointInsertIndexingThread(table.value)
+        threads.append(t)
+        t.start()
+    for t in threads:
+        t.join()
+    logging.info("Finished creating Indexes.")
 
     end = time.time()
     logging.info('Runtime Point Creation: %s', (end - start))

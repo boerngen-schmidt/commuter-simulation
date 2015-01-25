@@ -21,4 +21,6 @@ shp2pgsql -I -W 'LATIN1' -s 4326 -a VG250_Gemeinden.shp de_shp_gemeinden | psql 
 infoMsg "Import Verwaltungsgemeinschaften"
 shp2pgsql -I -W 'LATIN1' -s 4326 -a VG250_Verwaltungsgemeinschaften.shp de_shp_verwaltungsgemeinschaften | psql -U $USER -d $DATABASE -q
 
+infoMsg "Running post-import script"
+psql -U $USER -d $DATABASE -q -f $BASE/config/postgresql/post-import_de_shp.sql
 cd $BASE

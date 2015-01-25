@@ -26,7 +26,6 @@ class PointMassMatcherProcess(Process):
     """
     Point Mass Matcher Process using PostgreSQL 9.5 feature SKIP LOCKED
     """
-
     def __init__(self, matching_queue: Queue, counter: Counter, exit_event: Event, max_age_distribution=3):
         Process.__init__(self)
         self.logging = logging.getLogger(self.name)
@@ -69,8 +68,8 @@ class PointMassMatcherProcess(Process):
                         '''Match within'''
                         sql = 'SELECT s.id AS start, e.id AS destination ' \
                               'FROM ( ' \
-                              '  SELECT id, geom, row_number() over() as i FROM ( ' \
-                              '    SELECT id, geom ' \
+                              '  SELECT id, geom_meter, row_number() over() as i FROM ( ' \
+                              '    SELECT id, geom_meter ' \
                               '    FROM de_sim_points_{tbl_s!s} ' \
                               '    WHERE parent_geometry {cf!s} AND NOT used' \
                               '    ORDER BY RANDOM() ' \
@@ -78,15 +77,15 @@ class PointMassMatcherProcess(Process):
                               '  ) AS sq ' \
                               ') AS s ' \
                               'INNER JOIN ( ' \
-                              '  SELECT id, geom, row_number() over() as i FROM ( ' \
-                              '    SELECT id, geom ' \
+                              '  SELECT id, geom_meter, row_number() over() as i FROM ( ' \
+                              '    SELECT id, geom_meter ' \
                               '    FROM de_sim_points_{tbl_e!s} ' \
                               '    WHERE parent_geometry {cf!s}  AND NOT used' \
                               '    ORDER BY RANDOM() ' \
                               '    FOR UPDATE SKIP LOCKED' \
                               '  ) AS t ' \
                               ') AS e ' \
-                              'ON s.i = e.i AND NOT ST_DWithin(s.geom, e.geom, %(min_d)s)'
+                              'ON s.i = e.i AND NOT ST_DWithin(s.geom_meter, e.geom_meter, %(min_d)s)'
                         tbl_s = 'within_start'
                         tbl_e = 'within_end'
                         tbl_r = 'within'
@@ -95,8 +94,8 @@ class PointMassMatcherProcess(Process):
                         '''Matching outgoing'''
                         sql = 'SELECT s.id AS start, e.id AS destination ' \
                               'FROM ( ' \
-                              '  SELECT id, geom, row_number() over() as i FROM ( ' \
-                              '    SELECT id, geom ' \
+                              '  SELECT id, geom_meter, row_number() over() as i FROM ( ' \
+                              '    SELECT id, geom_meter ' \
                               '    FROM de_sim_points_{tbl_s!s} ' \
                               '    WHERE parent_geometry = %(rs)s AND NOT used' \
                               '    ORDER BY RANDOM() ' \
@@ -105,9 +104,9 @@ class PointMassMatcherProcess(Process):
                               '  ) AS sq ' \
                               ') AS s ' \
                               'INNER JOIN ( ' \
-                              '  SELECT id, geom, row_number() over() as i ' \
+                              '  SELECT id, geom_meter, row_number() over() as i ' \
                               '  FROM ( ' \
-                              '    SELECT id, geom ' \
+                              '    SELECT id, geom_meter ' \
                               '    FROM de_sim_points_{tbl_e!s} ' \
                               '    WHERE parent_geometry {cf!s} AND NOT used' \
                               '    ORDER BY RANDOM() ' \
@@ -116,14 +115,15 @@ class PointMassMatcherProcess(Process):
                               '  ) AS t ' \
                               ') AS e ' \
                               'ON s.i = e.i ' \
-                              'WHERE NOT ST_DWithin(s.geom, e.geom, %(min_d)s) AND ST_DWithin(s.geom, e.geom, %(max_d)s)'
+                              'WHERE NOT ST_DWithin(s.geom_meter, e.geom_meter, %(min_d)s) ' \
+                              '  AND ST_DWithin(s.geom_meter, e.geom_meter, %(max_d)s)'
                         cf = 'SELECT sk.rs FROM de_commuter_kreise ck ' \
                              'INNER JOIN de_shp_kreise sk ON sk.rs=ck.rs AND ST_DWithin(' \
-                             '  (SELECT ST_Union(geom) FROM de_shp_kreise WHERE rs = %(rs)s), sk.geom, %(max_d)s) ' \
+                             '  (SELECT ST_Union(geom_meter) FROM de_shp_kreise WHERE rs = %(rs)s), sk.geom_meter, %(max_d)s) ' \
                              'UNION  ' \
                              'SELECT cg.rs FROM de_commuter_gemeinden cg  ' \
                              'INNER JOIN de_shp_gemeinden sg ON sg.rs=cg.rs AND ST_DWithin(' \
-                             '  (SELECT ST_Union(geom) FROM de_shp_gemeinden WHERE rs = %(rs)s), sg.geom, %(max_d)s)'
+                             '  (SELECT ST_Union(geom_meter) FROM de_shp_gemeinden WHERE rs = %(rs)s), sg.geom_meter, %(max_d)s)'
                         tbl_s = 'start'
                         tbl_e = 'end'
                         tbl_r = 'outgoing'

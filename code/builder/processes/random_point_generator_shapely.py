@@ -7,6 +7,7 @@ import math
 import time
 import logging
 from multiprocessing import Process, JoinableQueue, Queue
+from multiprocessing.pool import ThreadPool
 
 from builder.enums import PointType
 from builder.commands import PointCreationCommand
@@ -63,12 +64,10 @@ class PointCreatorProcess(Process):
                 break
             assert isinstance(cmd, PointCreationCommand)
 
-            # Get all the residential stuff
-
             # Choose the right sql based on the point type
             landuse = 'landuse = \'residential\''
             if cmd.point_type in (PointType.End, PointType.Within_End):
-                landuse += ' OR landuse =\'industrial\''
+                landuse += ' OR landuse =\'industrial\' OR landuse=\'commercial\' OR landuse=\'retail\''
 
             # Choose right de_shp table based on rs
             if len(cmd.rs) is 12:
@@ -82,12 +81,12 @@ class PointCreatorProcess(Process):
                 sql = 'CREATE TEMPORARY TABLE living_areas ON COMMIT DROP AS ' \
                       'SELECT ' \
                       ' way as geom, ' \
-                      ' CASE WHEN p.landuse = \'residential\' THEN (%(w)s*ST_Area(way)) ELSE ST_Area(way) END AS area '\
+                      ' CASE WHEN p.landuse = \'residential\' THEN (%(w)s*ST_Area(way)) ELSE ST_Area(way) END AS area ' \
                       'FROM de_osm_polygon p ' \
                       'INNER JOIN de_shp_{shp!s} s ON (s.rs = %(rs)s AND ST_Within(p.way, s.geom)) ' \
                       'WHERE {landuse!s}'
                 args = dict(rs=cmd.rs, w=0.5)
-                cur.execute(sql.format(shp=shp, landuse=landuse), args)     # created temporary table
+                cur.execute(sql.format(shp=shp, landuse=landuse), args)  # created temporary table
 
                 sql = 'SELECT SUM(ST_Area(geom)) FROM living_areas'
                 cur.execute(sql)
@@ -97,22 +96,27 @@ class PointCreatorProcess(Process):
                 cur.execute(sql)
                 areas = cur.fetchall()
 
-            created_points = 0
-            for area in areas:
+            def _map(area):
+                """Map function for ThreadPool
+
+                :param area: A psycopg2 record
+                :return: Number of generated points
+                """
                 polygon = loads(bytes(area.geom_b))
                 num_points = int(math.floor(cmd.num_points * area.area / total_area))
-                rs = cmd.rs
                 points = self._generate_points(polygon, num_points)
-                created_points += len(points)
-
-                [self.output.put(execute_statement.format(rs=rs, type=cmd.point_type, point=p.wkb_hex))
+                [self.output.put(execute_statement.format(rs=cmd.rs, type=cmd.point_type, point=p.wkb_hex))
                  for p in points]
+                return len(points)
+
+            pool = ThreadPool(4)
+            created_points = pool.map(_map, areas)
 
             generation_time = time.time() - generation_start
             num = self.counter.increment()
             self.logging.info('(%4d/%d) %s: Created %s points for "%s". Generation time: %s',
                               num, self.total,
-                              self.name, created_points, cmd.name,
+                              self.name, sum(created_points), cmd.name,
                               generation_time)
 
         self.logging.info('Exiting %s', self.name)
@@ -131,12 +135,6 @@ class PointCreatorProcess(Process):
 
         if polygon.area <= 0:
             return []
-
-        # # DEBUG Plot
-        # pylab.figure(num=None, figsize=(20, 20), dpi=400)
-        # self._plot_polygon(polygon)
-        # pylab.savefig('{n}.png'.format(n=n))
-        # pylab.close()
 
         bbox = polygon.envelope
         """(minx, miny, maxx, maxy) bbox"""
