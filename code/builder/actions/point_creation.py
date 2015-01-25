@@ -112,19 +112,19 @@ def create_points():
 
     # SQL inserting process
     plans = ['PREPARE de_sim_points_start_plan (varchar, geometry) AS '
-             'INSERT INTO de_sim_points_start (parent_geometry, geom) '
+             'INSERT INTO de_sim_points_start (parent_geometry, geom, geom_meter) '
              'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), ST_Transform(ST_GeomFromWKB(ST_SetSRID($2, 4326)), 900913))',
 
              'PREPARE de_sim_points_within_start_plan (varchar, geometry) AS '
-             'INSERT INTO de_sim_points_within_start (parent_geometry, geom) '
+             'INSERT INTO de_sim_points_within_start (parent_geometry, geom, geom_meter) '
              'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), ST_Transform(ST_GeomFromWKB(ST_SetSRID($2, 4326)), 900913))',
 
              'PREPARE de_sim_points_end_plan (varchar, geometry) AS '
-             'INSERT INTO de_sim_points_end (parent_geometry, geom) '
+             'INSERT INTO de_sim_points_end (parent_geometry, geom, geom_meter) '
              'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), ST_Transform(ST_GeomFromWKB(ST_SetSRID($2, 4326)), 900913))',
 
              'PREPARE de_sim_points_within_end_plan (varchar, geometry) AS '
-             'INSERT INTO de_sim_points_within_end (parent_geometry, geom) '
+             'INSERT INTO de_sim_points_within_end (parent_geometry, geom, geom_meter) '
              'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), ST_Transform(ST_GeomFromWKB(ST_SetSRID($2, 4326)), 900913))']
     insert_process = PointInsertingProcess(insert_queue, plans)
     insert_process.set_batch_size(5000)
