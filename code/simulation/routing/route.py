@@ -65,7 +65,7 @@ class RouteFragment(object):
         if speed <= 0:
             raise ValueError('Value of speed cannot be zero or negative')
 
-        if distance <= 0:
+        if distance < 0:
             raise ValueError('Value of distance cannot be zero or negative')
 
         '''Class attributes'''
@@ -109,7 +109,7 @@ class RouteFragment(object):
 
 
 class RouteClazz(Enum):
-    motorway =  11
+    motorway =       11
     motorway_link =  12
     trunk =          13
     trunk_link =     14
