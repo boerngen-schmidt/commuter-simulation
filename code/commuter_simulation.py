@@ -8,32 +8,14 @@ strategy of the commuter, which can be either to use a fuel price application or
 
 @author: Benjamin Börngen-Schmidt
 """
-import logging
 import multiprocessing as mp
 import threading
 import signal
 
 from database import connection as db
 from helper import logger
+from helper import signal as sig
 from simulation.process import CommuterSimulationProcess
-
-
-exit_event = mp.Event()
-default_handler = signal.getsignal(signal.SIGINT)
-
-
-def signal_handler(signum, frame):
-    '''
-    Signal Handler for CTRL + C (SIGINT)
-
-    Sets an exit event, which is passed to the processes, to true.
-    :param signum: Number of the signal
-    :param frame: Python frame
-    '''
-    logging.info('Received SIGINT. Exiting processes')
-    exit_event.set()
-    # Reset to default handler to be able to kill force killing of process
-    signal.signal(signal.SIGINT, default_handler)
 
 
 def main():
@@ -52,7 +34,7 @@ def main():
         processes.append(CommuterSimulationProcess(commuter_sim_queue))
         processes[-1].start()
 
-    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGINT, sig.signal_handler)
 
     for p in processes:
         p.join()

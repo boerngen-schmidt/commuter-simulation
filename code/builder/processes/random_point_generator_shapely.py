@@ -65,7 +65,7 @@ class PointCreatorProcess(Process):
 
             # Choose the right sql based on the point type
             landuse = 'landuse = \'residential\''
-            if cmd.point_type in (PointType.End, PointType.Within_End):
+            if cmd.point_type in (PointType.End.value, PointType.Within_End.value):
                 landuse += ' OR landuse =\'industrial\' OR landuse=\'commercial\' OR landuse=\'retail\''
 
             # Choose right de_shp table based on rs

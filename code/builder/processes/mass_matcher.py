@@ -145,8 +145,8 @@ class PointMassMatcherProcess(Process):
                     else:
                         outgoing.append(commuters)
 
-                # Check if MatchingDistribution has reached its max age
-                if md.age < self.max_age_distribution and sum(outgoing) + within > 0:
+                # Check if MatchingDistribution has reached its max age (+1 since it has already been processed)
+                if md.age + 1 < self.max_age_distribution and sum(outgoing) + within > 0:
                     md.reuse(within, outgoing)
                     self.mq.put(md)
                 count = self.counter.increment()

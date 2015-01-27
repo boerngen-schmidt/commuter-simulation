@@ -1,9 +1,11 @@
 import logging
 import multiprocessing as mp
 import time
+import signal
 
 from builder.commands import PointCreationCommand
 from database.process_point_inserter import PointInsertIndexingThread, PointInsertingProcess
+from helper import signal as sig
 from helper.counter import Counter
 from builder.enums import PointType
 from builder.processes.random_point_generator_shapely import PointCreatorProcess
@@ -126,14 +128,17 @@ def create_points():
              'PREPARE de_sim_points_within_end_plan (varchar, geometry) AS '
              'INSERT INTO de_sim_points_within_end (parent_geometry, geom, geom_meter) '
              'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), ST_Transform(ST_GeomFromWKB(ST_SetSRID($2, 4326)), 900913))']
-    insert_process = PointInsertingProcess(insert_queue, plans)
+    insert_process = PointInsertingProcess(insert_queue, plans, sig.exit_event)
     insert_process.set_batch_size(5000)
     insert_process.set_insert_threads(4)
     insert_process.start()
-        
+
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
     start = time.time()
     for p in processes:
         p.start()
+
+    signal.signal(signal.SIGINT, sig.signal_handler)
     for p in processes:
         p.join()
     insert_process.join()

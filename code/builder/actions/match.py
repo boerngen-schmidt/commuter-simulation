@@ -18,7 +18,6 @@ def match_points():
     Matches start and end points with a randomized order of the districts
     :return:
     """
-
     number_of_matchers = 8
     max_age_distribution = 3
     matching_queue = mp.Queue()
@@ -37,7 +36,6 @@ def match_points():
 
     start = time.time()
     processes = []
-    # default_handler = signal.getsignal(signal.SIGINT)
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     for i in range(number_of_matchers):
         processes.append(PointMassMatcherProcess(matching_queue, counter, exit_event, max_age_distribution))

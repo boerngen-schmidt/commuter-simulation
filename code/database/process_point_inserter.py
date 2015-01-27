@@ -15,12 +15,13 @@ class PointInsertingProcess(Process):
     After inserting of the points is done, indexes are generated for the tables.
     """
 
-    def __init__(self, input_queue: Queue, plans):
+    def __init__(self, input_queue: Queue, plans, exit_event):
         Process.__init__(self)
         self.q = input_queue
         self.thread_queue = Queue()
         self.batch_size = 5000
         self.insert_threads = 2
+        self.exit_event = exit_event
         self.stop_request = Event()
         self.logging = logging.getLogger(self.name)
         self.plans = plans
@@ -52,6 +53,8 @@ class PointInsertingProcess(Process):
                     self.thread_queue.put(sql_commands)
                     sql_commands = []
             finally:
+                if self.exit_event.is_set():
+                    self.stop_threads()
                 if self.stop_request.is_set():
                     self.logging.info('Recieved stop event. Queue size %s, SQL commands %s',
                                       self.q.qsize(), len(sql_commands))
@@ -62,16 +65,12 @@ class PointInsertingProcess(Process):
                     self.logging.info('Doing last inserts. Queue size %s, SQL commands %s',
                                       self.q.qsize(), len(sql_commands))
                     break
-
+        self.stop_threads()
         for t in threads:
             t.join()
 
-    def stop(self):
+    def stop_threads(self):
         self.stop_request.set()
-
-    def join(self, timeout=None):
-        self.stop_request.set()
-        super(PointInsertingProcess, self).join(timeout)
 
 
 class PointInsertingThread(Thread):
@@ -127,7 +126,7 @@ class PointInsertIndexingThread(Thread):
         with connection.get_connection() as conn:
             cur = conn.cursor()
             start_index = time.time()
-            sql = "ALTER TABLE de_sim_points_{tbl!s} SET (FILLFACTOR=100); " \
+            sql = "ALTER TABLE de_sim_points_{tbl!s} SET (FILLFACTOR=50); " \
                   "CREATE INDEX de_sim_points_{tbl!s}_parent_relation_idx " \
                   "  ON de_sim_points_{tbl!s} USING btree (parent_geometry) WITH (FILLFACTOR=100); " \
                   "CREATE INDEX de_sim_points_{tbl!s}_geom_idx " \
