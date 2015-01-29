@@ -28,17 +28,18 @@ class PointCreatorProcess(Process):
     the data from the Zensus 2011 should be used.
     """
 
-    def __init__(self, info_queue: Queue, output_queue: Queue, counter: Counter):
+    def __init__(self, info_queue: Queue, output_queue: Queue, counter: Counter, exit_event):
         """
 
         :param info_queue:
         :param multiprocessing.queue.Queue output_queue:
         :param Counter counter: Ze Counter class for counting counts
         """
-        Process.__init__(self)
+        super().__init__()
         self.queue = info_queue
         self.output = output_queue
         self.counter = counter
+        self.exit_event = exit_event
 
         self.logging = logging.getLogger(self.name)
         self.total = info_queue.qsize()
@@ -59,14 +60,16 @@ class PointCreatorProcess(Process):
         while True:
             generation_start = time.time()
             cmd = self.queue.get()
-            if not cmd:
+            if not cmd or self.exit_event.is_set():
+                self.queue.close()
+                self.output.close()
                 break
             assert isinstance(cmd, PointCreationCommand)
 
             # Choose the right sql based on the point type
-            landuse = 'landuse = \'residential\''
+            landuse = '\'residential\''
             if cmd.point_type in (PointType.End.value, PointType.Within_End.value):
-                landuse += ' OR landuse =\'industrial\' OR landuse=\'commercial\' OR landuse=\'retail\''
+                landuse += ', \'industrial\', \'commercial\', \'retail\''
 
             # Choose right de_shp table based on rs
             if len(cmd.rs) is 12:
@@ -79,11 +82,11 @@ class PointCreatorProcess(Process):
                 cur = conn.cursor(cursor_factory=NamedTupleCursor)
                 sql = 'CREATE TEMPORARY TABLE living_areas ON COMMIT DROP AS ' \
                       'SELECT ' \
-                      ' way as geom, ' \
+                      ' CASE WHEN ST_Intersects(p.way , s.geom) THEN ST_Intersection(p.way ,s.geom) ELSE p.way END AS geom, ' \
                       ' CASE WHEN p.landuse = \'residential\' THEN (%(w)s*ST_Area(way)) ELSE ST_Area(way) END AS area ' \
                       'FROM de_osm_polygon p ' \
-                      'INNER JOIN de_shp_{shp!s} s ON (s.rs = %(rs)s AND ST_Within(p.way, s.geom)) ' \
-                      'WHERE {landuse!s}'
+                      'INNER JOIN de_shp_{shp!s} s ON (s.rs = %(rs)s AND (ST_Within(p.way, s.geom) OR ST_Intersects(p.way , s.geom))) ' \
+                      'WHERE landuse IN ({landuse!s})'
                 args = dict(rs=cmd.rs, w=0.5)
                 cur.execute(sql.format(shp=shp, landuse=landuse), args)  # created temporary table
 
@@ -110,7 +113,6 @@ class PointCreatorProcess(Process):
                               generation_time)
 
         self.logging.info('Exiting %s', self.name)
-        self.output.close()
 
     def _map(self, area, output_queue, rs, point_type, num_points, total_area):
         """Map function for ThreadPool
@@ -118,11 +120,18 @@ class PointCreatorProcess(Process):
         :param area: A psycopg2 record
         :return: Number of generated points
         """
-        execute_statement = 'EXECUTE de_sim_points_{type!s}_plan ({rs!r}, \'\\x{point!s}\'::bytea);'
+        with db.get_connection() as conn:
+            cur = conn.cursor()
+            args = dict(rs=rs, area=area.geom_b, pt=point_type)
+            cur.execute('INSERT INTO de_sim_points_lookup (rs, geom_meter, type) '
+                        'VALUES(%(rs)s, ST_Transform(ST_Centroid(ST_GeomFromEWKB(%(area)s)), 900913), %(pt)s) RETURNING id', args)
+            lookup, = cur.fetchone()
+            conn.commit()
+        execute_statement = 'EXECUTE de_sim_points_{type!s}_plan ({rs!r}, \'\\x{point!s}\'::bytea, {lookup!s});'
         polygon = loads(bytes(area.geom_b))
         num_points = int(math.floor(num_points * area.area / total_area))
         points = self._generate_points(polygon, num_points)
-        [output_queue.put(execute_statement.format(rs=rs, type=point_type, point=p.wkb_hex))
+        [output_queue.put(execute_statement.format(rs=rs, type=point_type, point=p.wkb_hex, lookup=lookup))
          for p in points]
         return len(points)
 

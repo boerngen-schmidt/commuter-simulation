@@ -97,7 +97,7 @@ class PointMassMatcherProcess(Process):
                               '  SELECT id, geom_meter, row_number() over() as i FROM ( ' \
                               '    SELECT id, geom_meter ' \
                               '    FROM de_sim_points_{tbl_s!s} ' \
-                              '    WHERE parent_geometry = %(rs)s AND NOT used' \
+                              '    WHERE NOT used AND parent_geometry = %(rs)s' \
                               '    ORDER BY RANDOM() ' \
                               '    LIMIT %(commuters)s ' \
                               '    FOR UPDATE SKIP LOCKED' \
@@ -108,7 +108,7 @@ class PointMassMatcherProcess(Process):
                               '  FROM ( ' \
                               '    SELECT id, geom_meter ' \
                               '    FROM de_sim_points_{tbl_e!s} ' \
-                              '    WHERE parent_geometry {cf!s} AND NOT used' \
+                              '    WHERE NOT used AND parent_geometry {cf!s}' \
                               '    ORDER BY RANDOM() ' \
                               '    LIMIT %(commuters)s ' \
                               '    FOR UPDATE SKIP LOCKED' \

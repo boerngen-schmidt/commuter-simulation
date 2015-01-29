@@ -3,7 +3,7 @@ import logging
 import signal
 import time
 
-from builder import signal_handler, exit_event
+from helper import signal as sig
 from database import connection
 from helper.counter import Counter
 from builder.commuter_distribution import MatchingDistribution
@@ -38,9 +38,9 @@ def match_points():
     processes = []
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     for i in range(number_of_matchers):
-        processes.append(PointMassMatcherProcess(matching_queue, counter, exit_event, max_age_distribution))
+        processes.append(PointMassMatcherProcess(matching_queue, counter, sig.exit_event, max_age_distribution))
         processes[-1].start()
-    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGINT, sig.signal_handler)
 
     for p in processes:
         p.join()

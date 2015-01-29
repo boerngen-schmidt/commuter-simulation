@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractmethod
 
 from psycopg2.extras import NamedTupleCursor
 from simulation.routing.route import Route
-from simulation import routing as rc
+from simulation.routing import calculation as rc
 from simulation.commuter import CommuterError
 from simulation.environment import SimulationEnvironment
 from database import connection as db

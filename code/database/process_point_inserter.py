@@ -43,6 +43,10 @@ class PointInsertingProcess(Process):
 
         sql_commands = []
         while True:
+            if self.exit_event.is_set():
+                while not self.q.empty():
+                    self.q.get()
+                break
             try:
                 sql_commands.append(self.q.get(block=True, timeout=0.5))
             except Empty:
@@ -53,8 +57,6 @@ class PointInsertingProcess(Process):
                     self.thread_queue.put(sql_commands)
                     sql_commands = []
             finally:
-                if self.exit_event.is_set():
-                    self.stop_threads()
                 if self.stop_request.is_set():
                     self.logging.info('Recieved stop event. Queue size %s, SQL commands %s',
                                       self.q.qsize(), len(sql_commands))
@@ -65,11 +67,11 @@ class PointInsertingProcess(Process):
                     self.logging.info('Doing last inserts. Queue size %s, SQL commands %s',
                                       self.q.qsize(), len(sql_commands))
                     break
-        self.stop_threads()
+        self.stop()
         for t in threads:
             t.join()
 
-    def stop_threads(self):
+    def stop(self):
         self.stop_request.set()
 
 
@@ -129,6 +131,8 @@ class PointInsertIndexingThread(Thread):
             sql = "ALTER TABLE de_sim_points_{tbl!s} SET (FILLFACTOR=50); " \
                   "CREATE INDEX de_sim_points_{tbl!s}_parent_relation_idx " \
                   "  ON de_sim_points_{tbl!s} USING btree (parent_geometry) WITH (FILLFACTOR=100); " \
+                  "CREATE INDEX de_sim_points_{tbl!s}_lookup_idx " \
+                  "  ON de_sim_points_{tbl!s} USING btree (lookup) WITH (FILLFACTOR=100); " \
                   "CREATE INDEX de_sim_points_{tbl!s}_geom_idx " \
                   "  ON de_sim_points_{tbl!s} USING gist (geom) WITH (FILLFACTOR=100); " \
                   "CREATE INDEX de_sim_points_{tbl!s}_used_idx ON de_sim_points_{tbl!s} (used ASC NULLS LAST) WITH (FILLFACTOR=100);" \
