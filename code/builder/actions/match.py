@@ -6,7 +6,7 @@ import time
 from helper import signal as sig
 from database import connection
 from helper.counter import Counter
-from builder.commuter_distribution import MatchingDistribution
+from builder.commuter_distribution import MatchingDistributionLookup as MatchingDistribution
 from builder.processes.mass_matcher import PointMassMatcherProcess
 
 

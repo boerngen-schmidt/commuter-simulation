@@ -107,9 +107,9 @@ class PointCreatorProcess(Process):
 
             generation_time = time.time() - generation_start
             num = self.counter.increment()
-            self.logging.info('(%4d/%d) %s: Created %s points for "%s". Generation time: %s',
+            self.logging.info('(%4d/%d) %s: Created %s/%s points for "%s". Generation time: %s',
                               num, self.total,
-                              self.name, sum(created_points), cmd.name,
+                              self.name, sum(created_points), cmd.num_points, cmd.name,
                               generation_time)
 
         self.logging.info('Exiting %s', self.name)

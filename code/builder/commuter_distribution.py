@@ -31,6 +31,25 @@ commuting_distance = ({'min_d': 2000, 'max_d': 10000},
 delta_commuters = 0.1
 
 
+class MatchingDistributionLookup(object):
+    def __init__(self, rs, outgoing, within):
+        self._rs = rs
+        self._within = within
+        self._outgoing = outgoing
+
+    @property
+    def rs(self):
+        return self._rs
+
+    @property
+    def within(self):
+        return self._within
+
+    @property
+    def outgoing(self):
+        return self._outgoing
+
+
 class MatchingDistribution(object):
     __slots__ = ['_rs', '_index', '_data', '_age']
 
