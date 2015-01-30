@@ -80,21 +80,30 @@ class PointCreatorProcess(Process):
             # Replace this polygon with a query from the database with the residential areas
             with db.get_connection() as conn:
                 cur = conn.cursor(cursor_factory=NamedTupleCursor)
-                sql = 'CREATE TEMPORARY TABLE living_areas ON COMMIT DROP AS ' \
+                sql = 'CREATE TEMPORARY TABLE areas ON COMMIT DROP AS ' \
                       'SELECT ' \
                       ' CASE WHEN ST_Intersects(p.way , s.geom) THEN ST_Intersection(p.way ,s.geom) ELSE p.way END AS geom, ' \
-                      ' CASE WHEN p.landuse = \'residential\' THEN (%(w)s*ST_Area(way)) ELSE ST_Area(way) END AS area ' \
+                      ' p.landuse as landuse, ' \
+                      ' 0::double precision AS area ' \
                       'FROM de_osm_polygon p ' \
                       'INNER JOIN de_shp_{shp!s} s ON (s.rs = %(rs)s AND (ST_Within(p.way, s.geom) OR ST_Intersects(p.way , s.geom))) ' \
                       'WHERE landuse IN ({landuse!s})'
+
                 args = dict(rs=cmd.rs, w=0.5)
                 cur.execute(sql.format(shp=shp, landuse=landuse), args)  # created temporary table
 
-                sql = 'SELECT SUM(ST_Area(geom)) FROM living_areas'
+                # Update areas temp table with correct area
+                if cmd.point_type in (PointType.End.value, PointType.Within_End.value):
+                    sql = 'UPDATE areas SET area = CASE WHEN landuse = \'residential\' THEN (%(w)s*ST_Area(geom)) ELSE ST_Area(geom) END'
+                else:
+                    sql = 'UPDATE areas SET area = ST_Area(geom)'
+                cur.execute(sql, args)
+
+                sql = 'SELECT SUM(area) FROM areas'
                 cur.execute(sql)
                 total_area, = cur.fetchone()
 
-                sql = 'SELECT ST_AsEWKB(geom) AS geom_b, area FROM living_areas'
+                sql = 'SELECT ST_AsEWKB(geom) AS geom_b, area FROM areas'
                 cur.execute(sql)
                 areas = cur.fetchall()
 
@@ -107,7 +116,7 @@ class PointCreatorProcess(Process):
 
             generation_time = time.time() - generation_start
             num = self.counter.increment()
-            self.logging.info('(%4d/%d) %s: Created %s/%s points for "%s". Generation time: %s',
+            self.logging.info('(%4d/%d) %s: Created %6s/%6s points for "%s". Generation time: %.2f sec.',
                               num, self.total,
                               self.name, sum(created_points), cmd.num_points, cmd.name,
                               generation_time)
@@ -129,7 +138,7 @@ class PointCreatorProcess(Process):
             conn.commit()
         execute_statement = 'EXECUTE de_sim_points_{type!s}_plan ({rs!r}, \'\\x{point!s}\'::bytea, {lookup!s});'
         polygon = loads(bytes(area.geom_b))
-        num_points = int(math.floor(num_points * area.area / total_area))
+        num_points = int(round(num_points * area.area / total_area, 0))
         points = self._generate_points(polygon, num_points)
         [output_queue.put(execute_statement.format(rs=rs, type=point_type, point=p.wkb_hex, lookup=lookup))
          for p in points]
