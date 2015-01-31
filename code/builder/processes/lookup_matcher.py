@@ -62,8 +62,8 @@ class PointLookupMatcherProcess(mp.Process):
                     result = cur.fetchall()
                     conn.commit()
                 for lookup in result:
-                    self._lookup_match_within(lookup[0])
-                    self._lookup_match_outgoing(lookup[0])
+                    self._lookup_match_within(lookup[0], md.rs)
+                    self._lookup_match_outgoing(lookup[0], md.rs)
 
     def _lookup_match_within(self, lookup_id, rs):
         sql = 'WITH reachable AS (' \
@@ -93,12 +93,49 @@ class PointLookupMatcherProcess(mp.Process):
               '  ) AS t ' \
               ') AS e ' \
               'ON s.i = e.i'
-
-        args = dict(end_type='within_end', distance=2000, lookup=lookup_id, rs=rs)
+        #TODO UPSERT
+        args = dict(end_type=PointType.Within_End.value, distance=2000, lookup=lookup_id, rs=rs)
         with db.get_connection() as conn:
             cur = conn.cursor()
             cur.execute(sql, args)
+            conn.commit()
 
-
-        def _lookup_match_outgoing(self, lookup_id):
-            pass
+    def _lookup_match_outgoing(self, lookup_id, rs):
+        sql = 'WITH ' \
+              ' reachable AS (' \
+              '  SELECT id FROM de_sim_points_lookup ' \
+              '  WHERE type = %(end_type)s AND rs != %(rs)s' \
+              '   AND NOT ST_DWithin(geom_meter, (SELECT geom_meter FROM de_sim_points_lookup WHERE id = %(lookup)s), %(d_min)s)' \
+              '   AND ST_DWithin(geom_meter, (SELECT geom_meter FROM de_sim_points_lookup WHERE id = %(lookup)s), %(d_max)s)' \
+              '   ),' \
+              ' amount AS (' \
+              '  SELECT SUM(*) FROM de_sim_points_start WHERE lookup = %(lookup)s)' \
+              'SELECT s.id AS start, e.id AS destination ' \
+              'FROM ( ' \
+              '  SELECT id, row_number() over() as i FROM ( ' \
+              '    SELECT id ' \
+              '    FROM de_sim_points_start ' \
+              '    WHERE lookup = %(lookup)s AND NOT used' \
+              '    LIMIT ROUND((SELECT * FROM amount) * %(percent)s)' \
+              '    FOR UPDATE SKIP LOCKED' \
+              '  ) AS sq ' \
+              ') AS s ' \
+              'INNER JOIN ( ' \
+              '  SELECT id, row_number() over() as i FROM ( ' \
+              '    SELECT id ' \
+              '    FROM de_sim_points_end' \
+              '    WHERE NOT used AND lookup IN (SELECT * FROM reachable)' \
+              '    ORDER BY RANDOM()' \
+              '    LIMIT ROUND((SELECT * FROM amount) * %(percent)s)' \
+              '    FOR UPDATE SKIP LOCKED' \
+              '  ) AS t ' \
+              ') AS e ' \
+              'ON s.i = e.i '
+        #TODO UPSERT
+        for distances, percent in zip(commuting_distance, commuter_distribution[rs[:2]]):
+            args = dict(rs=rs, lookup=lookup_id, end_type=PointType.End.value, percent=percent)
+            args.update(distances)
+            with db.get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute(sql, args)
+                conn.commit()
