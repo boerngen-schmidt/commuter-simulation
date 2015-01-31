@@ -2,7 +2,6 @@ import logging
 import time
 import multiprocessing as mp
 
-from builder.commuter_distribution import MatchingDistributionLookup
 from builder.enums import PointType
 from helper.counter import Counter
 import database.connection as db
@@ -45,11 +44,8 @@ class PointLookupMatcherProcess(mp.Process):
             md = self.q.get()
             if not md or self.exit_event.is_set():
                 break
-            if not isinstance(md, MatchingDistributionLookup):
-                self.logging.error('Got %s', type(md).__name__)
-                time.sleep(0.1)
-                continue
             start_time = time.time()
+            updated = dict(outgoing=0, within=0)
             # Do Matching for each point type
             for p_start, p_end in zip((PointType.Start, PointType.Within_Start), (PointType.End, PointType.Within_End)):
                 with db.get_connection() as conn:
@@ -60,21 +56,34 @@ class PointLookupMatcherProcess(mp.Process):
                     cur.execute(sql, args)
                     result = cur.fetchall()
                     conn.commit()
+                    matched_points = 0
                     for lookup in result:
-                        self._lookup_match(lookup[0], md.rs, p_start, p_end)
+                        matched_points += self._lookup_match(lookup[0], md.rs, p_start, p_end)
+                    if p_start is PointType.Start:
+                        updated['outgoing'] = matched_points
+                    else:
+                        updated['within'] = matched_points
+            count = self.counter.increment()
+            self.logging.info('(%4d/%d) Finished matching for %12s in %.2f. Outgoing (%6d/%6d). Within (%6d/%6d).',
+                              count, self.counter.maximum, md.rs, time.time() - start_time,
+                              updated['outgoing'], md.outgoing, updated['within'], md.within)
+        self.logging.info('Exiting Matcher Tread: %s', self.name)
 
     def _lookup_match(self, lookup_id, rs, p_start, p_end):
         if p_start is PointType.Start:
-            reachable = 'SELECT id FROM de_sim_points_lookup WHERE type = %(end_type)s AND rs != %(rs)s' \
+            reachable = 'SELECT id FROM de_sim_points_lookup WHERE type = %(end_type)s AND rs != %(rs)s ' \
                         'AND NOT ST_DWithin(geom_meter, (SELECT geom_meter FROM de_sim_points_lookup WHERE id = %(lookup)s), %(d_min)s)' \
                         'AND ST_DWithin(geom_meter, (SELECT geom_meter FROM de_sim_points_lookup WHERE id = %(lookup)s), %(d_max)s)'
             tbl_r = 'outgoing'
             limit = 'ROUND((SELECT * FROM amount) * %(percent)s)'
-        else:
+        elif p_start is PointType.Within_Start:
             reachable = 'SELECT id FROM de_sim_points_lookup WHERE type = %(end_type)s AND rs = %(rs)s ' \
                         'AND NOT ST_DWithin(geom_meter, (SELECT geom_meter FROM de_sim_points_lookup WHERE id = %(lookup)s), %(d_min)s)'
             tbl_r = 'within'
             limit = '(SELECT * FROM amount)'
+        else:
+            logging.error('No PointType was given')
+            return
 
         sql = 'WITH reachable AS ({reachable!s}), ' \
               ' amount AS (SELECT SUM(*) FROM de_sim_points_within_start WHERE lookup = %(lookup)s),' \
@@ -103,6 +112,7 @@ class PointLookupMatcherProcess(mp.Process):
               'INSERT INTO de_sim_routes_{tbl_r!s} (start_point, end_point) SELECT start, destination FROM points'
         sql = sql.format(tbl_s=p_start.value, tbl_e=p_end.value, tbl_r=tbl_r, reachable=reachable, limit=limit)
 
+        updated = 0
         if p_start is PointType.Start:
             for distances, percent in zip(commuting_distance, commuter_distribution[rs[:2]]):
                 args = dict(rs=rs, lookup=lookup_id, end_type=p_end.value, percent=percent)
@@ -111,11 +121,12 @@ class PointLookupMatcherProcess(mp.Process):
                     cur = conn.cursor()
                     cur.execute(sql, args)
                     conn.commit()
+                    updated = cur.rowcount
         elif p_start is PointType.Within_Start:
             args = dict(end_type=p_end.value, d_min=2000, lookup=lookup_id, rs=rs)
             with db.get_connection() as conn:
                 cur = conn.cursor()
                 cur.execute(sql, args)
                 conn.commit()
-        else:
-            logging.error('No PointType was given')
+                updated = cur.rowcount
+        return updated
