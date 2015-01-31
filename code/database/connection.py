@@ -4,7 +4,6 @@ Created on 29.09.2014
 @author: Benjamin Börngen-Schmidt
 """
 import logging
-import atexit
 from contextlib import contextmanager
 from configparser import ConfigParser, NoSectionError
 from threading import RLock
@@ -12,9 +11,11 @@ import os
 
 from psycopg2._psycopg import connection
 
+import atexit
 import psycopg2.extensions
 from psycopg2.pool import ThreadedConnectionPool
 from helper.file_finder import find
+
 
 
 
@@ -182,3 +183,15 @@ def get_connection(key=None) -> connection:
         conn.commit()
     finally:
         pool.putconn(conn)
+
+
+def run_commands(sql):
+    """Runs a SQL
+
+    for example using the multiprocessing.pool's map function
+    :type sql: str SQL command to execute
+    """
+    with get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute(sql)
+        conn.commit()

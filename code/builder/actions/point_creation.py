@@ -1,10 +1,11 @@
 import logging
 import multiprocessing as mp
+from multiprocessing.pool import ThreadPool
 import time
 import signal
 
 from builder.commands import PointCreationCommand
-from database.process_point_inserter import PointInsertIndexingThread, PointInsertingProcess
+from database.process_point_inserter import PointInsertingProcess
 from helper import signal as sig
 from helper.counter import Counter
 from builder.enums import PointType
@@ -22,7 +23,7 @@ def create_points():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     work_queue = mp.Queue()
     insert_queue = mp.Queue()
-    number_of_processes = 8
+    number_of_processes = 7
 
     def add_command(rec):
         """Function to be used by map() to create commands for the work_queue
@@ -108,7 +109,7 @@ def create_points():
     processes = []
     counter = Counter(work_queue.qsize())
     for i in range(number_of_processes):
-        work_queue.put(None)        # Add Sentinel for each process
+        work_queue.put(None)  # Add Sentinel for each process
         p = PointCreatorProcess(work_queue, insert_queue, counter, sig.exit_event)
         p.set_t(1.75)
         processes.append(p)
@@ -147,20 +148,40 @@ def create_points():
     insert_process.join()
 
     logging.info('Creating Indexes for Tables...')
-    threads = []
-    for table in PointType:
-        t = PointInsertIndexingThread(table.value)
-        threads.append(t)
-        t.start()
+    with ThreadPool(processes=8) as pool:
+        pool.map_async(_create_index_points, PointType)
 
-    with connection.get_connection as conn:
-        cur = conn.cursor()
-        cur.execute('CREATE INDEX de_sim_points_lookup_geom_meter_idx ON public.de_sim_points_lookup USING gist (geom_meter)')
-        cur.execute('CREATE INDEX de_sim_points_lookup_type_idx ON public.de_sim_points_lookup USING btree (type COLLATE pg_catalog."default")')
-
-    for t in threads:
-        t.join()
+        sqls = ('CREATE INDEX de_sim_points_lookup_geom_meter_idx ON de_sim_points_lookup USING GIST (geom_meter); CLUSTER de_sim_points_lookup USING de_sim_points_lookup_geom_meter_idx',
+                'CREATE INDEX de_sim_points_lookup_rs_idx ON de_sim_points_lookup USING BTREE (rs)',
+                'CREATE INDEX de_sim_points_lookup_type_idx ON de_sim_points_lookup USING BTREE (type)')
+        pool.map_async(connection.run_commands, sqls)
     logging.info("Finished creating Indexes.")
 
     end = time.time()
     logging.info('Runtime Point Creation: %s', (end - start))
+
+
+def _create_index_points(point_type):
+    assert isinstance(point_type, PointType)
+    table = point_type.value
+    logging.info('Start creating Indexes for de_sim_points_%s tables', table)
+    with connection.get_connection() as conn:
+        cur = conn.cursor()
+        start_index = time.time()
+        sql = "ALTER TABLE de_sim_points_{tbl!s} SET (FILLFACTOR=50); " \
+              "CREATE INDEX de_sim_points_{tbl!s}_parent_relation_idx " \
+              "  ON de_sim_points_{tbl!s} USING BTREE (parent_geometry) WITH (FILLFACTOR=100); " \
+              "CREATE INDEX de_sim_points_{tbl!s}_lookup_idx " \
+              "  ON de_sim_points_{tbl!s} USING BTREE (lookup) WITH (FILLFACTOR=100); " \
+              "CREATE INDEX de_sim_points_{tbl!s}_geom_idx " \
+              "  ON de_sim_points_{tbl!s} USING GIST (geom) WITH (FILLFACTOR=100); " \
+              "CREATE INDEX de_sim_points_{tbl!s}_used_idx ON de_sim_points_{tbl!s} (used ASC NULLS LAST) WITH (FILLFACTOR=100);" \
+              "CLUSTER de_sim_points_{tbl!s} USING de_sim_points_{tbl!s}_geom_idx; "
+        cur.execute(sql.format(tbl=table))
+        conn.commit()
+        conn.set_isolation_level(0)
+        cur.execute('VACUUM ANALYSE de_sim_points_{tbl!s}'.format(tbl=table))
+        conn.commit()
+        finish_index = time.time()
+        logging.info('Finished creating indexes on de_sim_points_%s in %.2f', table, (finish_index - start_index))
+

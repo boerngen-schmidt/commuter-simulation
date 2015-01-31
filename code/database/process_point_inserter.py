@@ -115,6 +115,8 @@ class PointInsertingThread(Thread):
                         break
                     else:
                         continue
+                else:
+                    time.sleep(0.5)
 
 
 class PointInsertIndexingThread(Thread):
