@@ -38,7 +38,7 @@ def match_points():
     processes = []
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     for i in range(number_of_matchers):
-        processes.append(PointMassMatcherProcess(matching_queue, counter, sig.exit_event, ))
+        processes.append(PointMassMatcherProcess(matching_queue, counter, sig.exit_event, max_age_distribution))
         processes[-1].start()
     signal.signal(signal.SIGINT, sig.signal_handler)
 
