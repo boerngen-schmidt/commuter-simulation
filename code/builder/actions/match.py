@@ -3,11 +3,11 @@ import logging
 import signal
 import time
 
+from builder.processes.mass_matcher import PointMassMatcherProcess
 from helper import signal as sig
 from database import connection
 from helper.counter import Counter
-from builder.commuter_distribution import MatchingDistributionLookup as MatchingDistribution
-from builder.processes.mass_matcher import PointMassMatcherProcess
+from builder.commuter_distribution import MatchingDistribution
 
 
 __author__ = 'benjamin'
@@ -38,7 +38,7 @@ def match_points():
     processes = []
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     for i in range(number_of_matchers):
-        processes.append(PointMassMatcherProcess(matching_queue, counter, sig.exit_event, max_age_distribution))
+        processes.append(PointMassMatcherProcess(matching_queue, counter, sig.exit_event, ))
         processes[-1].start()
     signal.signal(signal.SIGINT, sig.signal_handler)
 
