@@ -17,6 +17,8 @@ if [ ! $(ynQuestion "Install system Packages?") ]; then
 		$DIST_GENTOO)
 			PACKAGES="postgresql postgis pgrouting mysql virtualenv dev-python/pip"
 			doemerge $PACKAGES
+			infoMsg "Set login path for mySQL"
+			mysql_config_editor set --login-path=local --host=localhost --user=username --password
 			;;
 		*)
 			warnMsg "Could not determine Linux distribution for installing needed packages"

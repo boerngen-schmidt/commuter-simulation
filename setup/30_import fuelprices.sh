@@ -5,19 +5,19 @@ if [ ! $INSCRIPT ]; then
 fi
 
 infoMsg "Droping mySQL database for fuelprices"
-read -s -p "Please enter password for mysql user 'root': " MYSQL_PASSWD
-mysqladmin -uroot -p$MYSQL_PASSWD drop spritsim
-mysqladmin -uroot -p$MYSQL_PASSWD create spritsim
+#read -s -p "Please enter password for mysql user 'root': " MYSQL_PASSWD
+mysqladmin --login-path=local drop spritsim
+mysqladmin --login-path=local create spritsim
 
 infoMsg "Importing fuelprices into mySQL database"
-mysql -uroot -p$MYSQL_PASSWD -D spritsim < $BASE/data/fuel/stations.sql
-#mysql -uroot -p$MYSQL_PASSWD -D spritsim < $BASE/data/fuel/priceinfo.sql
-mysql -uroot -p$MYSQL_PASSWD -D spritsim < $BASE/data/fuel/2014_06.sql
-mysql -uroot -p$MYSQL_PASSWD -D spritsim < $BASE/data/fuel/2014_07.sql
-mysql -uroot -p$MYSQL_PASSWD -D spritsim < $BASE/data/fuel/2014_08_01.sql
-mysql -uroot -p$MYSQL_PASSWD -D spritsim < $BASE/data/fuel/2014_08_02.sql
-mysql -uroot -p$MYSQL_PASSWD -D spritsim < $BASE/data/fuel/2014_09.sql
-mysql -uroot -p$MYSQL_PASSWD -D spritsim < $BASE/data/fuel/2014_10.sql
+mysql --login-path=local -D spritsim < $BASE/data/fuel/stations.sql
+#mysql --login-path=local -D spritsim < $BASE/data/fuel/priceinfo.sql
+mysql --login-path=local -D spritsim < $BASE/data/fuel/2014_06.sql
+mysql --login-path=local -D spritsim < $BASE/data/fuel/2014_07.sql
+mysql --login-path=local -D spritsim < $BASE/data/fuel/2014_08_01.sql
+mysql --login-path=local -D spritsim < $BASE/data/fuel/2014_08_02.sql
+mysql --login-path=local -D spritsim < $BASE/data/fuel/2014_09.sql
+mysql --login-path=local -D spritsim < $BASE/data/fuel/2014_10.sql
 
 
 infoMsg "Migrating data to PostgreSQL"

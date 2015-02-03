@@ -21,14 +21,14 @@ INSERT INTO de_tt_priceinfo (SELECT id, station_id, recieved::timestamptz AT TIM
 -- Set the start price to the first known price
 INSERT INTO de_tt_priceinfo (station_id, recieved, e5, e10, diesel)
 SELECT t1.station_id as station_id, '2014-06-01 00:00:01+2'::timestamptz as recieved, e5, e10, diesel
-FROm de_tt_priceinfo t1
+FROM de_tt_priceinfo t1
 INNER JOIN
 (
   SELECT min(recieved) minval, station_id
   FROM de_tt_priceinfo
   GROUP BY station_id
 ) t2
-ON t1.recieved = t2.minval AND t1.station_id = t2.station_id
+ON t1.recieved = t2.minval AND t1.station_id = t2.station_id;
 
 CREATE INDEX de_tt_priceinfo_recieved_station_id_idx
   ON public.de_tt_priceinfo

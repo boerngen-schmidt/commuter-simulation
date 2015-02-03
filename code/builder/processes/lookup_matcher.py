@@ -72,13 +72,14 @@ class PointLookupMatcherProcess(mp.Process):
     def _lookup_match(self, lookup_id, rs, p_start, p_end):
         if p_start is PointType.Start:
             reachable = 'SELECT id FROM de_sim_points_lookup WHERE type = %(end_type)s AND rs != %(rs)s ' \
-                        'AND NOT ST_DWithin(geom_meter, (SELECT geom_meter FROM de_sim_points_lookup WHERE id = %(lookup)s), %(d_min)s)' \
-                        'AND ST_DWithin(geom_meter, (SELECT geom_meter FROM de_sim_points_lookup WHERE id = %(lookup)s), %(d_max)s)'
+                        'AND NOT ST_DWithin(geom_meter, (SELECT geom_meter FROM de_sim_points_lookup WHERE id = %(lookup)s), %(min_d)s)' \
+                        'AND ST_DWithin(geom_meter, (SELECT geom_meter FROM de_sim_points_lookup WHERE id = %(lookup)s), %(max_d)s) ' \
+                        'ORDER BY RANDOM() LIMIT 10000'
             tbl_r = 'outgoing'
             limit = 'ROUND((SELECT * FROM amount) * %(percent)s)'
         elif p_start is PointType.Within_Start:
             reachable = 'SELECT id FROM de_sim_points_lookup WHERE type = %(end_type)s AND rs = %(rs)s ' \
-                        'AND NOT ST_DWithin(geom_meter, (SELECT geom_meter FROM de_sim_points_lookup WHERE id = %(lookup)s), %(d_min)s)'
+                        'AND NOT ST_DWithin(geom_meter, (SELECT geom_meter FROM de_sim_points_lookup WHERE id = %(lookup)s), %(min_d)s)'
             tbl_r = 'within'
             limit = '(SELECT * FROM amount)'
         else:
@@ -86,14 +87,14 @@ class PointLookupMatcherProcess(mp.Process):
             return
 
         sql = 'WITH reachable AS ({reachable!s}), ' \
-              ' amount AS (SELECT SUM(*) FROM de_sim_points_within_start WHERE lookup = %(lookup)s),' \
+              ' amount AS (SELECT COUNT(*) FROM de_sim_points_{tbl_s!s} WHERE lookup = %(lookup)s),' \
               ' points AS (SELECT s.id AS start, e.id AS destination FROM ( ' \
               '             SELECT id, row_number() over() as i FROM ( ' \
               '               SELECT id ' \
               '               FROM de_sim_points_{tbl_s!s} ' \
               '               WHERE lookup = %(lookup)s AND NOT used' \
               '               ORDER BY RANDOM() ' \
-              '           	   LIMIT {limit!s}' \
+              '               LIMIT {limit!s}' \
               '               FOR UPDATE SKIP LOCKED' \
               '             ) AS sq ' \
               '           ) AS s ' \
@@ -103,10 +104,10 @@ class PointLookupMatcherProcess(mp.Process):
               '               FROM de_sim_points_{tbl_e!s} ' \
               '               WHERE NOT used AND lookup IN (SELECT * FROM reachable)' \
               '               ORDER BY RANDOM()' \
-              '           	   LIMIT {limit!s}' \
+              '               LIMIT {limit!s}' \
               '               FOR UPDATE SKIP LOCKED' \
               '             ) AS t ' \
-              '           ) AS e ON s.i = e.i' \
+              '           ) AS e ON s.i = e.i),' \
               ' upsert_start AS (UPDATE de_sim_points_{tbl_s!s} ps SET used = true FROM points p WHERE p.start = ps.id), ' \
               ' upsert_destination AS (UPDATE de_sim_points_{tbl_e!s} pe SET used = true FROM points p WHERE p.destination = pe.id) ' \
               'INSERT INTO de_sim_routes_{tbl_r!s} (start_point, end_point) SELECT start, destination FROM points'
@@ -119,14 +120,20 @@ class PointLookupMatcherProcess(mp.Process):
                 args.update(distances)
                 with db.get_connection() as conn:
                     cur = conn.cursor()
-                    cur.execute(sql, args)
+                    logging.info(
+                        cur.mogrify(sql, args)
+                    )
+                    #cur.execute(sql, args)
                     conn.commit()
                     updated = cur.rowcount
         elif p_start is PointType.Within_Start:
-            args = dict(end_type=p_end.value, d_min=2000, lookup=lookup_id, rs=rs)
+            args = dict(end_type=p_end.value, min_d=2000, lookup=lookup_id, rs=rs)
             with db.get_connection() as conn:
                 cur = conn.cursor()
-                cur.execute(sql, args)
+                #cur.execute(sql, args)
+                logging.info(
+                        cur.mogrify(sql, args)
+                    )
                 conn.commit()
                 updated = cur.rowcount
         return updated

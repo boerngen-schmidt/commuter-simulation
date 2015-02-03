@@ -138,7 +138,7 @@ class PointInsertIndexingThread(Thread):
                   "CREATE INDEX de_sim_points_{tbl!s}_geom_idx " \
                   "  ON de_sim_points_{tbl!s} USING gist (geom) WITH (FILLFACTOR=100); " \
                   "CREATE INDEX de_sim_points_{tbl!s}_used_idx ON de_sim_points_{tbl!s} (used ASC NULLS LAST) WITH (FILLFACTOR=100);" \
-                  "ALTER TABLE de_sim_points_{tbl!s} CLUSTER ON de_sim_points_{tbl!s}_geom_idx; "
+                  "CLUSTER de_sim_points_{tbl!s} USING de_sim_points_{tbl!s}_geom_idx; "
             cur.execute(sql.format(tbl=self.tbl))
             conn.commit()
             conn.set_isolation_level(0)
