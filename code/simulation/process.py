@@ -11,14 +11,26 @@ from database import connection as db
 
 
 class CommuterSimulationProcess(mp.Process):
-    def __init__(self, commuter_queue: mp.Queue):
+    def __init__(self, commuter_queue: mp.Queue, exit_event: mp.Event, counter):
         super().__init__()
         self._q = commuter_queue
+        self.exit_event = exit_event
+        self.counter = counter
+        self.log = logging.getLogger(self.__class__.__name__)
+
+    def __del__(self):
+        if self.exit_event.is_set():
+            self.log.warn('Cleaning %d elements from Queue ... ', self._q.qsize())
+            while not self._q.empty():
+                self._q.get()
 
     def run(self):
+        i = 0
+        start = time.time()
+        self.log.info('Starting process %s', self.name)
         while True:
             c_id = self._q.get()
-            if not c_id:
+            if not c_id or self.exit_event.is_set():
                 break
 
             # Generate Commuter
@@ -27,9 +39,8 @@ class CommuterSimulationProcess(mp.Process):
             end_time = datetime.datetime(2014, 10, 31, 23, 59, 59, 0, tz)
             env = SimulationEnvironment(start_time)
 
-            start = time.time()
             try:
-                # Setup Environment (done by __init__ functions)
+                # Setup Environment (done by __init__ functions of objects)
                 SimpleCar(c_id, env)
                 Commuter(c_id, env)
                 SimpleRefillStrategy(env)
@@ -44,7 +55,14 @@ class CommuterSimulationProcess(mp.Process):
                 logging.error(e)
                 self._insert_error(c_id, e)
             else:
-                logging.info('Finished commuter %s in %s', c_id, time.time()-start)
+                if i >= 10:
+                    count = self.counter.increment(10)
+                    self.log.info('Finished (%s/%s) commuter in %s', count, self.counter.maximum, time.time()-start)
+                    start = time.time()
+                    i = 0
+                else:
+                    i += 1
+        self.log.info('Exiting %s', self.name)
 
     def _insert_error(self, commuter_id, error):
         with db.get_connection() as conn:
