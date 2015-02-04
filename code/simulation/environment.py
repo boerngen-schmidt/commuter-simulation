@@ -5,6 +5,7 @@ __author__ = 'benjamin'
 
 
 class SimulationEnvironment():
+    """Simulation environment is also the context of the StateMachine"""
     def __init__(self, initial_time: dt.datetime):
         self._current_route = None
         self._commuter = None
