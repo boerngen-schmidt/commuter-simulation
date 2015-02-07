@@ -29,7 +29,7 @@ def main():
     # fetch all commuters
     logging.info('Filling simulation queue')
     commuter_sim_queue = mp.Queue(maxsize=2000)
-    sql = 'SELECT id FROM de_sim_routes'
+    sql = 'SELECT id FROM de_sim_routes LIMIT 100'
     threading.Thread(target=_queue_feeder, args=(sql, commuter_sim_queue, sig.exit_event, 500, number_of_processes)).start()
 
     logging.info('Starting Simulation')
@@ -74,7 +74,7 @@ def _queue_feeder(sql, queue: mp.Queue, exit_event, size=500, sentinels=0):
         if sentinels > 0:
             for i in range(sentinels):
                 queue.put(None)
-        queue.close()
+        #queue.close()
         conn.commit()
 
 if __name__ == '__main__':

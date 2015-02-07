@@ -3,9 +3,11 @@ import logging
 import multiprocessing as mp
 import time
 
-from simulation.cars.car import SimpleCar
+from simulation.car import SimpleCar
 from simulation.commuter import Commuter, CommuterRouteError
+from simulation.state import CommuterState, initialize_states
 from simulation.environment import SimulationEnvironment
+from simulation.state_machine import StateMachine
 from simulation.strategy import SimpleRefillStrategy, FillingStationError, NoPriceError
 from database import connection as db
 
@@ -39,12 +41,18 @@ class CommuterSimulationProcess(mp.Process):
             end_time = datetime.datetime(2014, 10, 31, 23, 59, 59, 0, tz)
             env = SimulationEnvironment(start_time)
 
+            # Set the environment for every state
+            initialize_states(env)
+
             try:
                 # Setup Environment (done by __init__ functions of objects)
                 SimpleCar(c_id, env)
                 Commuter(c_id, env)
                 SimpleRefillStrategy(env)
-                env.run(end_time)
+                sm = StateMachine(CommuterState.Start)
+                while env.now < end_time:
+                    action = sm.state.run()
+                    sm.state = sm.state.next(action)
             except FillingStationError as e:
                 logging.error('No Fillingstation found for commuter %s', c_id)
                 self._insert_error(c_id, e)

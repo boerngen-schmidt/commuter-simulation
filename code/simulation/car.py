@@ -7,25 +7,25 @@ from abc import ABCMeta, abstractmethod
 import random
 import datetime
 
-from simulation.routing.route import RouteFragment, Route
-from simulation.environment import SimulationEnvironment
-from simulation.event import SimEvent, Event
-
 
 class BaseCar(metaclass=ABCMeta):
     """
     Represents a car
     """
-    def __init__(self, commuter_id, env: SimulationEnvironment, tank_size):
+    def __init__(self, commuter_id, env, tank_size):
         """
         Constructor
+        :type tank_size: int
+        :type env: simulation.environment.SimulationEnvironment
+        :type commuter_id: int
         """
         env.car = self
         self.env = env
         self.id = commuter_id
-        self._tankFilling = BaseCar._random_tank_filling(tank_size)
         self._tankSize = float(tank_size)
-        #self.log = logging.getLogger('spritsim.Car' + commuter_id)
+        self._tankFilling = BaseCar._random_tank_filling(self._tankSize)
+        self._current_position = None
+        # self.log = logging.getLogger('spritsim.Car' + commuter_id)
 
     @staticmethod
     def _random_tank_filling(maximum):
@@ -40,11 +40,28 @@ class BaseCar(metaclass=ABCMeta):
         return random.uniform(10, maximum)
 
     @property
+    def current_position(self):
+        """Returns the nodes target ID
+        :rtype: int
+        """
+        return self._current_position
+
+    @property
     def tank_size(self):
+        """
+
+        :return: Size of the car's tank in litre
+        :rtype: float
+        """
         return self._tankSize
 
     @property
     def current_filling(self):
+        """
+
+        :return: Current filling of the car's tank
+        :rtype: float
+        """
         return self._tankFilling
 
     @abstractmethod
@@ -61,33 +78,32 @@ class BaseCar(metaclass=ABCMeta):
         self._tankFilling = self._tankSize
 
     @abstractmethod
-    def drive(self, route: Route, event: Event, data: dict={}) -> SimEvent:
+    def drive(self):
         """Lets the car drive the given route
 
-         On arrival at the destination the a SimEvent is
-
-        :param route: Route that should be driven
-        :param event: The event that will be returned on successfully driving the given route
-        :return: An event to indicate the result of the driving
-        :rtype SimEvent:
+         On arrival at the destination the a CommuterAction for the route is returned or if the car needs refilling
+         the action to search for a refilling station is returned.
+        :return: An action to indicate the result of the driving
+        :rtype: simulation.enums.CommuterAction:
         """
         pass
 
-    def _do_driving(self, segment: RouteFragment):
+    def _do_driving(self, segment):
         """
         Drives the given route segment
 
         Uses the segment data to simulate the driving of the car. Thereby fuel is consumed to the amount calculated
-        by the
+        by the consume_fuel method.
 
         :param segment: a single fragment of the route
-        :type segment RouteFragment:
+        :type segment: simulation.routing.route.RouteFragment
         """
         self.consume_fuel(segment.speed_limit, segment.length, segment.road_type)
+        self._current_position = segment.target
 
 
 class SimpleCar(BaseCar):
-    def __init__(self, commuter_id, env: SimulationEnvironment):
+    def __init__(self, commuter_id, env):
         super().__init__(commuter_id, env, 50)
 
     @property
@@ -98,23 +114,13 @@ class SimpleCar(BaseCar):
     def consume_fuel(self, speed, distance, road_type):
         self._tankFilling -= self.consumption_per_km * distance
 
-    def drive(self, route: Route, event: Event, data: dict={}) -> SimEvent:
-        time = datetime.timedelta()
-        for segment in route:
+    def drive(self):
+        from simulation import CommuterAction
+        for segment in self.env.route:
             self._do_driving(segment)
-            time += datetime.timedelta(seconds=segment.travel_time)
+            self.env.consume_time(datetime.timedelta(seconds=segment.travel_time))
 
             # check if driving the segment has
-            if self._tankFilling <= 5.0 and event is not Event.FillingStation:
-                event_data = dict(route_start=route.start,
-                                  route_destination=route.destination,
-                                  current_position=segment.target,
-                                  time_driven=time,
-                                  route_event=route.event_type
-                )
-                event_data.update(data)
-                return SimEvent(Event.RefillCar, event_data)
-
-        event_data = dict(time_driven=time)
-        event_data.update(data)
-        return SimEvent(event, event_data)
+            if self._tankFilling <= 5.0 and self.env.route.action is not CommuterAction.ArrivedAtFillingStation:
+                return CommuterAction.SearchFillingStation
+        return self.env.route.action

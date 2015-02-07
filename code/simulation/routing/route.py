@@ -5,7 +5,7 @@ Module for information about routes
 """
 from enum import Enum
 
-from simulation.event import Event
+from simulation import CommuterAction
 
 
 class Route(object):
@@ -13,12 +13,12 @@ class Route(object):
 
     The Route class encapsulates the route fragments and makes the route itself iterable.
     """
-    def __init__(self, start, destination, fragments, event: Event, geom_line, distance):
+    def __init__(self, start, destination, fragments, action: CommuterAction, geom_line, distance):
         self._fragments = fragments
         self._index = 0
         self._start = start
         self._dest = destination
-        self._event = event
+        self._action = action
         self._line = geom_line
         self._distance = distance
 
@@ -37,8 +37,8 @@ class Route(object):
         self._index = 0
 
     @property
-    def event_type(self):
-        return self._event
+    def action(self):
+        return self._action
 
     @property
     def start(self):
@@ -76,6 +76,10 @@ class RouteFragment(object):
         self._clazz = RouteClazz(clazz)
         self._source = source
         self._target = target
+
+    @property
+    def seq(self):
+        return self._fragment_id
 
     @property
     def travel_time(self):
