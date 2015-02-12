@@ -5,7 +5,7 @@ class StateMachine:
     @property
     def state(self):
         """Current state of the state machine
-        :rtype: simulation.state.CommuterState
+        :rtype: simulation.state.State
         :return: the current state of the state machine
         """
         return self._currentState
@@ -15,7 +15,7 @@ class StateMachine:
         """Set the next state for the state machine
 
         :param next_state: the next state that is executed
-        :type next_state: simulation.state.CommuterState
+        :type next_state: simulation.state.State
         """
         self._currentState = next_state
 
