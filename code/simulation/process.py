@@ -55,12 +55,15 @@ class CommuterSimulationProcess(mp.Process):
                     sm.state = sm.state.next(action)
             except FillingStationError as e:
                 logging.error('No Fillingstation found for commuter %s', c_id)
+                self.counter.increment()
                 self._insert_error(c_id, e)
             except CommuterRouteError as e:
                 logging.error(e)
+                self.counter.increment()
                 self._insert_error(c_id, e)
             except NoPriceError as e:
                 logging.error(e)
+                self.counter.increment()
                 self._insert_error(c_id, e)
             else:
                 if i >= 10:
@@ -68,6 +71,7 @@ class CommuterSimulationProcess(mp.Process):
                     self.log.info('Finished (%s/%s) commuter in %s', count, self.counter.maximum, time.time()-start)
                     start = time.time()
                     i = 0
+                    time.sleep(0.5)
                 else:
                     i += 1
         self.log.info('Exiting %s', self.name)

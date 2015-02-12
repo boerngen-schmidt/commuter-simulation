@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+import logging
 
 from psycopg2.extras import NamedTupleCursor
 from database import connection as db
@@ -38,6 +39,7 @@ class SimpleRefillStrategy(BaseRefillStrategy):
     """
     def __init__(self, env):
         super().__init__(env)
+        self._lookup_filling_stations()
 
     def _lookup_filling_stations(self):
         sql = 'CREATE TEMP TABLE filling (destination integer, station_id character varying(64)) ON COMMIT DROP;' \
@@ -62,9 +64,6 @@ class SimpleRefillStrategy(BaseRefillStrategy):
 
         :return: The closest point in the routing network to the filling station
         """
-        if not self._refillstations:
-            self._lookup_filling_stations()
-
         sql = 'SELECT seq, id1 as start, id2 as destination, cost as distance FROM pgr_kdijkstraCost(' \
               '\'SELECT id, source, target, km as cost FROM de_2po_4pgr, (SELECT ST_Expand(ST_Extent(geom_vertex),0.05) as box FROM de_2po_vertex WHERE id = %(r_start)s OR id = %(r_dest)s LIMIT 1) as box WHERE geom_way && box.box\', ' \
               '%(start)s, %(destinations)s, false, false) AS result ORDER BY cost LIMIT 1'
@@ -72,7 +71,13 @@ class SimpleRefillStrategy(BaseRefillStrategy):
         with db.get_connection() as conn:
             cur = conn.cursor(cursor_factory=NamedTupleCursor)
             args = dict(start=self.env.car.current_position, destinations=self.refillstation_points, r_start=self.env.route.start, r_dest=self.env.route.destination)
-            cur.execute(sql, args)
+            try:
+                cur.execute(sql, args)
+            except Exception as e:
+                log = logging.getLogger('sql_error')
+                log.critical(e)
+                log.critical(cur.mogrify(sql, args))
+                raise FillingStationError
             station = cur.fetchone()
             conn.commit()
         self._target_station = self.station_id(station.seq)

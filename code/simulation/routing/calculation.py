@@ -28,6 +28,7 @@ def route_to_work(route_id):
             raise
         start, destination = cur.fetchone()
     route = calculate_route(start, destination, CommuterAction.ArrivedAtWork)
+    _save_route_info(route_id, route)
     return route
 
 
@@ -48,6 +49,7 @@ def route_home(route_id):
             raise
         start, destination = cur.fetchone()
     route = calculate_route(start, destination, CommuterAction.ArrivedAtHome)
+    _save_route_info(route_id, route)
     return route
 
 
@@ -59,13 +61,12 @@ def calculate_route(start, destination, action):
 
     :param int start: Id of a point in table de_2po_4pgr
     :param int destination: Id of a point in table de_2po_4pgr
-    :param CommuterAction action: Action returned after driving the route
-    :return: Route
+    :param simulation.state.CommuterAction action: Action returned after driving the route
+    :return: simulation.routing.route.Route
     """
     with db.get_connection() as conn:
         '''Generate route'''
-        sql_route = 'DROP TABLE IF EXISTS route; ' \
-                    'CREATE TEMP TABLE route ON COMMIT DROP AS ' \
+        sql_route = 'CREATE TEMP TABLE route ON COMMIT DROP AS ' \
                     'SELECT seq, source, target, km, kmh, clazz, geom_way FROM ' \
                     '  pgr_dijkstra({dijkstra_sql!r}, %(start)s, %(dest)s, false, false) route' \
                     '  LEFT JOIN de_2po_4pgr AS info ON route.id2 = info.id'
@@ -99,6 +100,6 @@ def _save_route_info(commuter_id, route):
         for s in route:
             assert isinstance(s, RouteFragment)
             sql = 'INSERT INTO de_sim_data_routes (c_id, seq, source, destination, clazz, kmh, work) VALUES (%s, %s, %s, %s, %s, %s, %s)'
-            cur.execute(sql, (commuter_id, s.seq, s.source, s.target, s.road_type, s.speed_limit, work))
+            cur.execute(sql, (commuter_id, s.seq, s.source, s.target, s.road_type.value, s.speed_limit, work))
 
 
