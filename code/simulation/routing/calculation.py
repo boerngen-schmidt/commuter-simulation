@@ -1,14 +1,13 @@
 import logging
 
 from psycopg2.extras import DictCursor
-from simulation.routing.route import RouteFragment, Route
 from database import connection as db
-from simulation.event import Event
+from simulation import CommuterAction, RouteFragment, Route
 
 
 dijkstra_sql = 'SELECT id, source, target, cost FROM de_2po_4pgr, ' \
                '  (SELECT ST_Expand(ST_Extent(geom_vertex),0.1) as box FROM de_2po_vertex ' \
-               '    WHERE id = %(start)s OR id = %(dest)s LIMIT 1 ' \
+               '    WHERE id = %(start)s OR id = %(dest)s ' \
                '  ) as box WHERE geom_way && box.box'
 
 
@@ -28,7 +27,9 @@ def route_to_work(route_id):
             logging.error(cur.query)
             raise
         start, destination = cur.fetchone()
-    return calculate_route(start, destination, Event.ArrivedAtWork)
+    route = calculate_route(start, destination, CommuterAction.ArrivedAtWork)
+    _save_route_info(route_id, route)
+    return route
 
 
 def route_home(route_id):
@@ -47,29 +48,32 @@ def route_home(route_id):
             logging.error(cur.query)
             raise
         start, destination = cur.fetchone()
-    return calculate_route(start, destination, Event.ArrivedAtHome)
+    route = calculate_route(start, destination, CommuterAction.ArrivedAtHome)
+    _save_route_info(route_id, route)
+    return route
 
 
-def calculate_route(start, destination, event):
+def calculate_route(start, destination, action):
     """Calculates the route and returns its fragments
 
     Route will be calculated from the start point, which have to be part of the generated points for the simulation, to
     the given destination, also part of the generated points.
 
-    :param start: Id of a point in table de_2po_4pgr
-    :param destination: Id of a point in table de_2po_4pgr
-    :return: Route
+    :param int start: Id of a point in table de_2po_4pgr
+    :param int destination: Id of a point in table de_2po_4pgr
+    :param simulation.state.CommuterAction action: Action returned after driving the route
+    :return: simulation.routing.route.Route
     """
     with db.get_connection() as conn:
         '''Generate route'''
-        sql_route = 'DROP TABLE IF EXISTS route; ' \
-                    'CREATE TEMP TABLE route ON COMMIT DROP AS ' \
+        sql_route = 'CREATE TEMP TABLE route ON COMMIT DROP AS ' \
                     'SELECT seq, source, target, km, kmh, clazz, geom_way FROM ' \
                     '  pgr_dijkstra({dijkstra_sql!r}, %(start)s, %(dest)s, false, false) route' \
                     '  LEFT JOIN de_2po_4pgr AS info ON route.id2 = info.id'
         cur = conn.cursor(cursor_factory=DictCursor)
         try:
-            cur.execute(sql_route.format(dijkstra_sql=dijkstra_sql), dict(start=start, dest=destination))
+            args = dict(start=start, dest=destination)
+            cur.execute(sql_route.format(dijkstra_sql=dijkstra_sql), args)
         except Exception:
             conn.rollback()
             raise
@@ -87,4 +91,15 @@ def calculate_route(start, destination, event):
         distance, = cur.fetchone()
 
         conn.commit()
-    return Route(start, destination, fragments, event, line, distance)
+    return Route(start, destination, fragments, action, line, distance)
+
+def _save_route_info(commuter_id, route):
+    with db.get_connection() as conn:
+        cur = conn.cursor()
+        work = (route.action is CommuterAction.ArrivedAtWork)
+        for s in route:
+            assert isinstance(s, RouteFragment)
+            sql = 'INSERT INTO de_sim_data_routes (c_id, seq, source, destination, clazz, kmh, work) VALUES (%s, %s, %s, %s, %s, %s, %s)'
+            cur.execute(sql, (commuter_id, s.seq, s.source, s.target, s.road_type.value, s.speed_limit, work))
+
+
