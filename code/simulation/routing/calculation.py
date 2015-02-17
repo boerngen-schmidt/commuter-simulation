@@ -7,7 +7,7 @@ from simulation import CommuterAction, RouteFragment, Route
 
 dijkstra_sql = 'SELECT id, source, target, cost FROM de_2po_4pgr, ' \
                '  (SELECT ST_Expand(ST_Extent(geom_vertex),0.1) as box FROM de_2po_vertex ' \
-               '    WHERE id = %(start)s OR id = %(dest)s LIMIT 1 ' \
+               '    WHERE id = %(start)s OR id = %(dest)s ' \
                '  ) as box WHERE geom_way && box.box'
 
 

@@ -65,7 +65,7 @@ class SimpleRefillStrategy(BaseRefillStrategy):
         :return: The closest point in the routing network to the filling station
         """
         sql = 'SELECT seq, id1 as start, id2 as destination, cost as distance FROM pgr_kdijkstraCost(' \
-              '\'SELECT id, source, target, km as cost FROM de_2po_4pgr, (SELECT ST_Expand(ST_Extent(geom_vertex),0.1) as box FROM de_2po_vertex WHERE id = %(r_start)s OR id = %(r_dest)s LIMIT 1) as box WHERE geom_way && box.box\', ' \
+              '\'SELECT id, source, target, km as cost FROM de_2po_4pgr, (SELECT ST_Expand(ST_Extent(geom_vertex),0.1) as box FROM de_2po_vertex WHERE id = %(r_start)s OR id = %(r_dest)s) as box WHERE geom_way && box.box\', ' \
               '%(start)s, %(destinations)s, false, false) AS result ORDER BY cost LIMIT 1'
 
         with db.get_connection() as conn:
