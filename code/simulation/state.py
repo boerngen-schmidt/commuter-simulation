@@ -9,6 +9,10 @@ class State(metaclass=ABCMeta):
 
     @property
     def env(self):
+        """
+        :return: The simulation environment
+        :rtype: simulation.environment.SimulationEnvironment
+        """
         return self._env
 
     @abstractmethod
@@ -45,7 +49,11 @@ class Home(State):
     def run(self):
         c = self.env.commuter
         hour, minute = int(c.leave_time.total_seconds() // 3600), int(c.leave_time.total_seconds() // 60 % 60)
-        self.env.fast_forward_time(hour, minute)
+        if self.env.now.weekday() is 5:     # 0 = Monday, 6 = Sunday
+            import datetime
+            self.env.fast_forward_time(hour, minute, datetime.timedelta(days=2))
+        else:
+            self.env.fast_forward_time(hour, minute)
         self.env.route = c.work_route
         return CommuterAction.LeavingHome
 
