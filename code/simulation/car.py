@@ -71,7 +71,20 @@ class BaseCar(metaclass=ABCMeta):
     @property
     @abstractmethod
     def consumption_per_km(self):
+        """
+        :return: The fuel consumption of the car per km
+        :rtype: float
+        """
         pass
+
+    @property
+    def km_left(self):
+        """
+        Returns the remaining km the car can drive
+        :return: Distance car is able to drive
+        :rtype: float
+        """
+        return self.current_filling / self.consumption_per_km
 
     def refilled(self):
         """Car has been refilled at a filling station"""
@@ -109,7 +122,7 @@ class SimpleCar(BaseCar):
     @property
     def consumption_per_km(self):
         """Consumes standard of 10l per 100km"""
-        return 50 / 500
+        return float(50 / 500)
 
     def consume_fuel(self, speed, distance, road_type):
         self._tankFilling -= self.consumption_per_km * distance

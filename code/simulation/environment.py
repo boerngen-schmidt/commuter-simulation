@@ -101,7 +101,7 @@ class SimulationEnvironment():
     def car(self):
         """
         :return: The Car the commuter drives
-        :rtype simulation.car.BaseCar:
+        :rtype: simulation.car.BaseCar
         """
         return self._car
 
