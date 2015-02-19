@@ -18,25 +18,28 @@ WITH (
 
 INSERT INTO de_tt_priceinfo (SELECT id, station_id, recieved::timestamptz AT TIME ZONE 'Europe/Berlin', e5, e10, diesel from priceinfo);
 
--- Set the start price to the first known price
-INSERT INTO de_tt_priceinfo (station_id, recieved, e5, e10, diesel)
-SELECT t1.station_id as station_id, '2014-06-01 00:00:01+2'::timestamptz as recieved, e5, e10, diesel
-FROM de_tt_priceinfo t1
-INNER JOIN
-(
-  SELECT min(recieved) minval, station_id
-  FROM de_tt_priceinfo
-  GROUP BY station_id
-) t2
-ON t1.recieved = t2.minval AND t1.station_id = t2.station_id;
-
 CREATE INDEX de_tt_priceinfo_recieved_station_id_idx
   ON public.de_tt_priceinfo
   USING btree
   (recieved, station_id COLLATE pg_catalog."default");
 
-CREATE INDEX index_station_id
-   ON de_tt_priceinfo (station_id ASC NULLS LAST);
+-- Index for best serach speed for prices
+CREATE INDEX de_tt_priceinfo_station_id_recieved_idx
+  ON public.de_tt_priceinfo (station_id ASC NULLS LAST, recieved ASC NULLS LAST);
+
+-- Set the start price to the first known price
+INSERT INTO de_tt_priceinfo (station_id, recieved, e5, e10, diesel)
+SELECT station_id, '2014-06-01 00:00:01+2'::timestamptz as recieved, e5, e10, diesel
+FROM  (SELECT min(recieved) minval, station_id FROM de_tt_priceinfo GROUP BY station_id) s
+LEFT JOIN LATERAL (
+    SELECT e5, e10, diesel, recieved
+    FROM   de_tt_priceinfo
+    WHERE  station_id = s.station_id
+    AND    recieved = s.minval
+    ORDER  BY recieved DESC
+    LIMIT  1
+   )  p ON TRUE;
+
 
 -- Drop old table
 DROP TABLE priceinfo;

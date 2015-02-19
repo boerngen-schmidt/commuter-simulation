@@ -21,20 +21,11 @@ CREATE TABLE de_tt_stations
   opening_times text,
   opening_times_extended text,
   override_opening_times text,
+  geom geometry(Point,4326),
   CONSTRAINT de_tt_stations_id_pkey PRIMARY KEY (id)
-)
-WITH (
-  OIDS=FALSE
 );
-ALTER TABLE stations
-  OWNER TO benjamin;
--- Add Geometry column
-SELECT AddGeometryColumn('de_tt_stations', 'geom', 4326, 'POINT', 2);
-CREATE INDEX de_tt_stations_geom_index
-  ON de_tt_stations
-  USING gist
-  (geom)
-  WITH (FILLFACTOR=100);
+ALTER TABLE stations OWNER TO benjamin;
+CREATE INDEX de_tt_stations_geom_index ON public.de_tt_stations USING gist (geom) WITH (FILLFACTOR=100);
 
 -- Populate Table
 INSERT INTO de_tt_stations (
