@@ -26,6 +26,12 @@ class PointInsertingProcess(Process):
         self.logging = logging.getLogger(self.name)
         self.plans = plans
 
+    def __del__(self):
+        if self.exit_event.is_set():
+            self.logging.warn('Cleaning %d elements from Queue ... ', self.q.qsize())
+            while not self.q.empty():
+                self.q.get()
+
     def set_batch_size(self, value: int):
         self.batch_size = value
 
@@ -43,14 +49,11 @@ class PointInsertingProcess(Process):
 
         sql_commands = []
         while True:
-            if self.exit_event.is_set():
-                while not self.q.empty():
-                    self.q.get()
-                break
             try:
-                sql_commands.append(self.q.get(block=True, timeout=0.5))
+                sql_commands.append(self.q.get(timeout=0.5))
             except Empty:
-                # Nothing there yet. Wait for data again.
+                if self.exit_event.is_set():
+                    break
                 continue
             else:
                 if len(sql_commands) >= self.batch_size:
@@ -58,21 +61,15 @@ class PointInsertingProcess(Process):
                     sql_commands = []
             finally:
                 if self.stop_request.is_set():
-                    self.logging.info('Recieved stop event. Queue size %s, SQL commands %s',
-                                      self.q.qsize(), len(sql_commands))
-                    while not self.q.empty():
-                        sql_commands.append(self.q.get())
-                    self.thread_queue.put(sql_commands)
-
-                    self.logging.info('Doing last inserts. Queue size %s, SQL commands %s',
-                                      self.q.qsize(), len(sql_commands))
                     break
-        self.stop()
+
+        # Flush Queue to sql commands
+        while not self.q.empty():
+            sql_commands.append(self.q.get())
+        self.thread_queue.put(sql_commands)
+        self.stop_request.set()
         for t in threads:
             t.join()
-
-    def stop(self):
-        self.stop_request.set()
 
 
 class PointInsertingThread(Thread):
@@ -80,7 +77,6 @@ class PointInsertingThread(Thread):
 
     Thread reads commands from queue and executes one of the pre-made execution plans.
     """
-
     def __init__(self, queue: Queue, stop_request: Event, plans):
         Thread.__init__(self)
         self.q = queue
@@ -102,7 +98,7 @@ class PointInsertingThread(Thread):
 
             while True:
                 try:
-                    sql_list = self.q.get(block=True, timeout=0.05)
+                    sql_list = self.q.get(timeout=0.05)
                     start = time.time()
                     cur.execute('\n'.join(sql_list))
                     conn.commit()
@@ -113,10 +109,15 @@ class PointInsertingThread(Thread):
                 except Empty:
                     if self.stop_request.is_set():
                         break
-                    else:
-                        continue
+                    continue
                 else:
                     time.sleep(0.5)
+                finally:
+                    if self.stop_request.is_set():
+                        break
+            self.log.warn('Cleaning %d elements from Queue ... ', self.q.qsize())
+            while not self.q.empty():
+                self.q.get()
 
 
 class PointInsertIndexingThread(Thread):
@@ -132,7 +133,7 @@ class PointInsertIndexingThread(Thread):
             start_index = time.time()
             sql = "ALTER TABLE de_sim_points_{tbl!s} SET (FILLFACTOR=50); " \
                   "CREATE INDEX de_sim_points_{tbl!s}_parent_relation_idx " \
-                  "  ON de_sim_points_{tbl!s} USING btree (parent_geometry) WITH (FILLFACTOR=100); " \
+                  "  ON de_sim_points_{tbl!s} USING btree (rs) WITH (FILLFACTOR=100); " \
                   "CREATE INDEX de_sim_points_{tbl!s}_lookup_idx " \
                   "  ON de_sim_points_{tbl!s} USING btree (lookup) WITH (FILLFACTOR=100); " \
                   "CREATE INDEX de_sim_points_{tbl!s}_geom_idx " \

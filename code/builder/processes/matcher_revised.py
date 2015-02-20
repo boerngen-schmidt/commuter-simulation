@@ -36,31 +36,31 @@ class PointMatcherRevised(mp.Process):
 
             assert isinstance(md, MatchingDistributionRevised)
             start_time = time.time()
-            sql = 'WITH start_points AS (SELECT id, geom_meter, row_number() over() as i FROM (SELECT id, geom_meter FROM de_sim_points_{tbl_s!s} WHERE NOT used AND parent_geometry = %(rs)s ORDER BY RANDOM() LIMIT %(limit)s FOR UPDATE SKIP LOCKED) AS sp), ' \
-                  '     start_centroid AS (SELECT ST_Centroid(ST_Collect(Array(SELECT geom_meter FROM start_points)))), ' \
-                  '     end_points AS (SELECT id, geom_meter, row_number() over() as i FROM ( ' \
-                  '       SELECT id, geom_meter FROM de_sim_points_{tbl_e!s} WHERE NOT used AND parent_geometry {reachable!s} ' \
+            sql = 'WITH start_points AS (SELECT id, geom, row_number() over() as i FROM (SELECT id, geom FROM de_sim_points_{tbl_s!s} WHERE NOT used AND rs = %(rs)s ORDER BY RANDOM() LIMIT %(limit)s FOR UPDATE SKIP LOCKED) AS sp), ' \
+                  '     start_centroid AS (SELECT ST_Centroid(ST_Collect(Array(SELECT geom FROM start_points)))), ' \
+                  '     end_points AS (SELECT id, geom, row_number() over() as i FROM ( ' \
+                  '       SELECT id, geom FROM de_sim_points_{tbl_e!s} WHERE NOT used AND rs {reachable!s} ' \
                   '       LIMIT %(limit)s FOR UPDATE SKIP LOCKED) as ep), ' \
                   '     upsert_start AS (UPDATE de_sim_points_{tbl_s!s} ps SET used = true FROM start_points p WHERE p.id = ps.id), ' \
                   '     upsert_destination AS (UPDATE de_sim_points_{tbl_e!s} pe SET used = true FROM end_points p WHERE p.id = pe.id) ' \
                   'INSERT INTO de_sim_routes_{tbl_r!s} (start_point, end_point, distance_meter)  ' \
-                  'SELECT s.id AS start, e.id AS destination, ST_Distance(s.geom_meter, e.geom_meter) AS distance_meter FROM start_points s INNER JOIN end_points e USING(i) '
+                  'SELECT s.id AS start, e.id AS destination, ST_Distance(s.geom::geography, e.geom::geography) AS distance_meter FROM start_points s INNER JOIN end_points e USING(i) '
 
             if md.matching_type is MatchingType.outgoing:
                 tbl_s = 'start'
                 tbl_e = 'end'
                 tbl_r = 'outgoing'
                 reachable = 'IN (' \
-                            ' WITH ZeGeom as (SELECT ST_Union(geom_meter) FROM de_shp_{tbl_shp!s} WHERE rs = %(rs)s) ' \
+                            ' WITH ZeGeom as (SELECT ST_Union(geom) FROM de_shp_{tbl_shp!s} WHERE rs = %(rs)s) ' \
                             '  SELECT sk.rs FROM de_commuter_kreise ck  ' \
                             '    INNER JOIN de_shp_kreise sk ON sk.rs=ck.rs ' \
-                            '    WHERE ST_Buffer((SELECT * FROM ZeGeom), %(max_d)s, \'quad_segs=2\') && sk.geom_meter ' \
+                            '    WHERE ST_Buffer((SELECT * FROM ZeGeom)::geography, %(max_d)s, \'quad_segs=2\') && sk.geom::geography' \
                             '  UNION ALL ' \
                             '  SELECT sg.rs FROM de_commuter_gemeinden cg  ' \
                             '    INNER JOIN de_shp_gemeinden sg ON sg.rs=cg.rs ' \
-                            '    WHERE ST_Buffer((SELECT * FROM ZeGeom), %(max_d)s, \'quad_segs=2\') && sg.geom_meter) ' \
-                            'AND ST_Contains(ST_Buffer((SELECT * FROM start_centroid), %(max_d)s, \'quad_segs=2\'), geom_meter) ' \
-                            'AND NOT ST_Contains(ST_Buffer((SELECT * FROM start_centroid), %(min_d)s, \'quad_segs=2\'), geom_meter) '
+                            '    WHERE ST_Buffer((SELECT * FROM ZeGeom)::geography, %(max_d)s, \'quad_segs=2\') && sg.geom::geography) ' \
+                            'AND ST_Contains(ST_Buffer((SELECT * FROM start_centroid)::geography, %(max_d)s, \'quad_segs=2\'), geom::geography) ' \
+                            'AND NOT ST_Contains(ST_Buffer((SELECT * FROM start_centroid)::geography, %(min_d)s, \'quad_segs=2\'), geom::geography) '
                 if len(md.rs) == 12:
                     tbl_shp = 'gemeinden'
                 else:

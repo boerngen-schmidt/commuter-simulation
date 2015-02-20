@@ -108,6 +108,7 @@ def create_points():
 
     processes = []
     counter = Counter(work_queue.qsize())
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
     for i in range(number_of_processes):
         work_queue.put(None)  # Add Sentinel for each process
         p = PointCreatorProcess(work_queue, insert_queue, counter, sig.exit_event)
@@ -116,23 +117,24 @@ def create_points():
 
     # SQL inserting process
     plans = ['PREPARE de_sim_points_start_plan (varchar, geometry, integer) AS '
-             'INSERT INTO de_sim_points_start (parent_geometry, geom, geom_meter, lookup) '
-             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), ST_Transform(ST_GeomFromWKB(ST_SetSRID($2, 4326)), 900913), $3)',
+             'INSERT INTO de_sim_points_start (rs, geom, lookup) '
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), $3)',
 
              'PREPARE de_sim_points_within_start_plan (varchar, geometry, integer) AS '
-             'INSERT INTO de_sim_points_within_start (parent_geometry, geom, geom_meter, lookup) '
-             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), ST_Transform(ST_GeomFromWKB(ST_SetSRID($2, 4326)), 900913), $3)',
+             'INSERT INTO de_sim_points_within_start (rs, geom, lookup) '
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), $3)',
 
              'PREPARE de_sim_points_end_plan (varchar, geometry, integer) AS '
-             'INSERT INTO de_sim_points_end (parent_geometry, geom, geom_meter, lookup) '
-             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), ST_Transform(ST_GeomFromWKB(ST_SetSRID($2, 4326)), 900913), $3)',
+             'INSERT INTO de_sim_points_end (rs, geom, lookup) '
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), $3)',
 
              'PREPARE de_sim_points_within_end_plan (varchar, geometry, integer) AS '
-             'INSERT INTO de_sim_points_within_end (parent_geometry, geom, geom_meter, lookup) '
-             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), ST_Transform(ST_GeomFromWKB(ST_SetSRID($2, 4326)), 900913), $3)']
+             'INSERT INTO de_sim_points_within_end (rs, geom, lookup) '
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), $3)']
     insert_process = PointInsertingProcess(insert_queue, plans, sig.exit_event)
     insert_process.set_batch_size(5000)
     insert_process.set_insert_threads(4)
+    insert_process.daemon = True
     insert_process.start()
 
     start = time.time()
@@ -142,17 +144,15 @@ def create_points():
 
     for p in processes:
         p.join()
+    sig.exit_event.set()
     logging.info('JOINT!')
-    # Stop the inserting threads
-    insert_process.stop()
-    insert_process.join()
 
     logging.info('Creating Indexes for Tables...')
     args = [(_create_index_points, p.value) for p in PointType]
-    sqls = ('CREATE INDEX de_sim_points_lookup_geom_meter_idx ON de_sim_points_lookup USING GIST (geom_meter); '
-            '  CLUSTER de_sim_points_lookup USING de_sim_points_lookup_geom_meter_idx',
+    sqls = ('CREATE INDEX de_sim_points_lookup_geom_idx ON de_sim_points_lookup USING GIST (geom); '
+            '  CLUSTER de_sim_points_lookup USING de_sim_points_lookup_geom_idx',
             'CREATE INDEX de_sim_points_lookup_rs_idx ON de_sim_points_lookup USING BTREE (rs)',
-            'CREATE INDEX de_sim_points_lookup_type_idx ON de_sim_points_lookup USING BTREE (type)')
+            'CREATE INDEX de_sim_points_lookup_point_type_idx ON de_sim_points_lookup USING BTREE (point_type)')
     args += [(connection.run_commands, s) for s in sqls]
     with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
         result = [executor.submit(a[0], a[1]) for a in args]
@@ -172,8 +172,8 @@ def _create_index_points(table):
         cur = conn.cursor()
         start_index = time.time()
         sql = "ALTER TABLE de_sim_points_{tbl!s} SET (FILLFACTOR=50); " \
-              "CREATE INDEX de_sim_points_{tbl!s}_parent_relation_idx " \
-              "  ON de_sim_points_{tbl!s} USING BTREE (parent_geometry) WITH (FILLFACTOR=100); " \
+              "CREATE INDEX de_sim_points_{tbl!s}_rs_idx " \
+              "  ON de_sim_points_{tbl!s} USING BTREE (rs) WITH (FILLFACTOR=100); " \
               "CREATE INDEX de_sim_points_{tbl!s}_lookup_idx " \
               "  ON de_sim_points_{tbl!s} USING BTREE (lookup) WITH (FILLFACTOR=100); " \
               "CREATE INDEX de_sim_points_{tbl!s}_geom_idx " \

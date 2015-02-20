@@ -51,7 +51,7 @@ class PointLookupMatcherProcess(mp.Process):
                 with db.get_connection() as conn:
                     cur = conn.cursor()
                     # SELECT the lookup points to a given rs
-                    sql = 'SELECT id FROM de_sim_points_lookup WHERE rs = %(rs)s AND type = %(p_type)s ORDER BY RANDOM()'
+                    sql = 'SELECT id FROM de_sim_points_lookup WHERE rs = %(rs)s AND point_type = %(p_type)s ORDER BY RANDOM()'
                     args = dict(rs=md.rs, p_type=p_start.value)
                     cur.execute(sql, args)
                     result = cur.fetchall()
@@ -71,15 +71,15 @@ class PointLookupMatcherProcess(mp.Process):
 
     def _lookup_match(self, lookup_id, rs, p_start, p_end):
         if p_start is PointType.Start:
-            reachable = 'SELECT id FROM de_sim_points_lookup WHERE type = %(end_type)s AND rs != %(rs)s ' \
-                        'AND NOT ST_DWithin(geom_meter, (SELECT geom_meter FROM de_sim_points_lookup WHERE id = %(lookup)s), %(min_d)s)' \
-                        'AND ST_DWithin(geom_meter, (SELECT geom_meter FROM de_sim_points_lookup WHERE id = %(lookup)s), %(max_d)s) ' \
+            reachable = 'SELECT id FROM de_sim_points_lookup WHERE point_type = %(end_type)s AND rs != %(rs)s ' \
+                        'AND NOT ST_DWithin(geom::geography, (SELECT geom::geography FROM de_sim_points_lookup WHERE id = %(lookup)s), %(min_d)s)' \
+                        'AND ST_DWithin(geom::geography, (SELECT geom::geography FROM de_sim_points_lookup WHERE id = %(lookup)s), %(max_d)s) ' \
                         'ORDER BY RANDOM() LIMIT 10000'
             tbl_r = 'outgoing'
             limit = 'ROUND((SELECT * FROM amount) * %(percent)s)'
         elif p_start is PointType.Within_Start:
-            reachable = 'SELECT id FROM de_sim_points_lookup WHERE type = %(end_type)s AND rs = %(rs)s ' \
-                        'AND NOT ST_DWithin(geom_meter, (SELECT geom_meter FROM de_sim_points_lookup WHERE id = %(lookup)s), %(min_d)s)'
+            reachable = 'SELECT id FROM de_sim_points_lookup WHERE point_type = %(end_type)s AND rs = %(rs)s ' \
+                        'AND NOT ST_DWithin(geom::geography, (SELECT geom::geography FROM de_sim_points_lookup WHERE id = %(lookup)s), %(min_d)s)'
             tbl_r = 'within'
             limit = '(SELECT * FROM amount)'
         else:

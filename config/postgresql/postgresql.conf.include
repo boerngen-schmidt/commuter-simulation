@@ -1,3 +1,7 @@
+# Connection
+listen_addresses = '*'
+max_connections = 16
+
 # Logging
 log_destination = 'csvlog'
 log_directory = 'pg_log'
@@ -5,30 +9,30 @@ logging_collector = on
 log_filename = 'postgres-%Y-%m-%d_%H%M%S.log'
 log_rotation_age = 1d
 log_rotation_size = 1GB
-log_min_duration_statement = 250ms
-log_checkpoints = on
-log_connections = on
-log_disconnections = on
+log_min_duration_statement = 500ms
+#log_checkpoints = on
+#log_connections = on
+#log_disconnections = on
 log_lock_waits = on
-log_temp_files = 0
+#log_temp_files = 0
 
-# Memory
-shared_buffers = 4GB
-work_mem = 32MB
+# Memory (2 + 256*16
+shared_buffers = 2GB
+temp_buffers = 32MB
+work_mem = 256MB
 maintenance_work_mem = 1GB
 effective_cache_size = 8GB
 
 # Checkpoint ( When to write to disk )
 wal_buffers = 16MB
 checkpoint_completion_target = 0.9
-checkpoint_timeout = 20min
+checkpoint_timeout = 30min
 checkpoint_segments = 32
 
 random_page_cost = 1.1
 
 # Import only!
 #autovacuum = off
-#fsync = off
-#synchronous_commit = off
-#full_page_writes = off
-#logging_collector = off
+fsync = off
+synchronous_commit = off
+full_page_writes = off

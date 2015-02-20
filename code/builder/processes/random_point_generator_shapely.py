@@ -5,10 +5,10 @@ Created on 29.09.2014
 """
 from functools import partial
 import math
+from queue import Empty
 import time
 import logging
 from multiprocessing import Process, Queue
-from multiprocessing.pool import ThreadPool
 
 from builder.enums import PointType
 from builder.commands import PointCreationCommand
@@ -59,11 +59,16 @@ class PointCreatorProcess(Process):
     def run(self):
         while True:
             generation_start = time.time()
-            cmd = self.queue.get()
-            if not cmd or self.exit_event.is_set():
-                self.queue.close()
-                self.output.close()
-                break
+            try:
+                cmd = self.queue.get(timeout=0.5)
+            except Empty:
+                continue
+            else:
+                if not cmd:
+                    break
+            finally:
+                if self.exit_event.is_set():
+                    break
             assert isinstance(cmd, PointCreationCommand)
 
             # Choose the right sql based on the point type
@@ -107,12 +112,13 @@ class PointCreatorProcess(Process):
                 cur.execute(sql)
                 areas = cur.fetchall()
 
-            pool = ThreadPool(4)
+            #pool = ThreadPool(4)
             _map_partial = partial(self._map, output_queue=self.output, rs=cmd.rs, point_type=cmd.point_type,
                                              num_points=cmd.num_points, total_area=total_area)
-            created_points = pool.map(_map_partial, areas)
-            pool.close()
-            pool.join()
+            #created_points = pool.map(_map_partial, areas)
+            #pool.close()
+            #pool.join()
+            created_points = [_map_partial(area) for area in areas]
 
             generation_time = time.time() - generation_start
             num = self.counter.increment()
@@ -122,6 +128,10 @@ class PointCreatorProcess(Process):
                               generation_time)
 
         self.logging.info('Exiting %s', self.name)
+        if self.exit_event.is_set():
+            self.logging.warn('Cleaning %d elements from Queue ... ', self.queue.qsize())
+            while not self.queue.empty():
+                self.queue.get()
 
     def _map(self, area, output_queue, rs, point_type, num_points, total_area):
         """Map function for ThreadPool
@@ -132,8 +142,8 @@ class PointCreatorProcess(Process):
         with db.get_connection() as conn:
             cur = conn.cursor()
             args = dict(rs=rs, area=area.geom_b, pt=point_type)
-            cur.execute('INSERT INTO de_sim_points_lookup (rs, geom_meter, type) '
-                        'VALUES(%(rs)s, ST_Transform(ST_Centroid(ST_GeomFromEWKB(%(area)s)), 900913), %(pt)s) RETURNING id', args)
+            cur.execute('INSERT INTO de_sim_points_lookup (rs, geom, point_type) '
+                        'VALUES(%(rs)s, ST_Centroid(ST_GeomFromEWKB(%(area)s)), %(pt)s) RETURNING id', args)
             lookup, = cur.fetchone()
             conn.commit()
         execute_statement = 'EXECUTE de_sim_points_{type!s}_plan ({rs!r}, \'\\x{point!s}\'::bytea, {lookup!s});'

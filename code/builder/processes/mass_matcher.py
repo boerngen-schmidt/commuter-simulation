@@ -68,24 +68,24 @@ class PointMassMatcherProcess(Process):
                         '''Match within'''
                         sql = 'SELECT s.id AS start, e.id AS destination ' \
                               'FROM ( ' \
-                              '  SELECT id, geom_meter, row_number() over() as i FROM ( ' \
-                              '    SELECT id, geom_meter ' \
+                              '  SELECT id, geom, row_number() over() as i FROM ( ' \
+                              '    SELECT id, geom ' \
                               '    FROM de_sim_points_{tbl_s!s} ' \
-                              '    WHERE parent_geometry {cf!s} AND NOT used' \
+                              '    WHERE rs {cf!s} AND NOT used' \
                               '    ORDER BY RANDOM() ' \
                               '    FOR UPDATE SKIP LOCKED' \
                               '  ) AS sq ' \
                               ') AS s ' \
                               'INNER JOIN ( ' \
-                              '  SELECT id, geom_meter, row_number() over() as i FROM ( ' \
-                              '    SELECT id, geom_meter ' \
+                              '  SELECT id, geom, row_number() over() as i FROM ( ' \
+                              '    SELECT id, geom ' \
                               '    FROM de_sim_points_{tbl_e!s} ' \
-                              '    WHERE parent_geometry {cf!s}  AND NOT used' \
+                              '    WHERE rs {cf!s}  AND NOT used' \
                               '    ORDER BY RANDOM() ' \
                               '    FOR UPDATE SKIP LOCKED' \
                               '  ) AS t ' \
                               ') AS e ' \
-                              'ON s.i = e.i AND NOT ST_DWithin(s.geom_meter, e.geom_meter, %(min_d)s)'
+                              'ON s.i = e.i AND NOT ST_DWithin(s.geom::geography, e.geom::geography, %(min_d)s)'
                         tbl_s = 'within_start'
                         tbl_e = 'within_end'
                         tbl_r = 'within'
@@ -94,36 +94,36 @@ class PointMassMatcherProcess(Process):
                         '''Matching outgoing'''
                         sql = 'SELECT s.id AS start, e.id AS destination ' \
                               'FROM ( ' \
-                              '  SELECT id, geom_meter, row_number() over() as i FROM ( ' \
-                              '    SELECT id, geom_meter ' \
+                              '  SELECT id, geom, row_number() over() as i FROM ( ' \
+                              '    SELECT id, geom ' \
                               '    FROM de_sim_points_{tbl_s!s} ' \
-                              '    WHERE NOT used AND parent_geometry = %(rs)s' \
+                              '    WHERE NOT used AND rs = %(rs)s' \
                               '    ORDER BY RANDOM() ' \
                               '    LIMIT %(commuters)s ' \
                               '    FOR UPDATE SKIP LOCKED' \
                               '  ) AS sq ' \
                               ') AS s ' \
                               'INNER JOIN ( ' \
-                              '  SELECT id, geom_meter, row_number() over() as i ' \
+                              '  SELECT id, geom, row_number() over() as i ' \
                               '  FROM ( ' \
-                              '    SELECT id, geom_meter ' \
+                              '    SELECT id, geom ' \
                               '    FROM de_sim_points_{tbl_e!s} ' \
-                              '    WHERE NOT used AND parent_geometry {cf!s}' \
+                              '    WHERE NOT used AND rs {cf!s}' \
                               '    ORDER BY RANDOM() ' \
                               '    LIMIT %(commuters)s ' \
                               '    FOR UPDATE SKIP LOCKED' \
                               '  ) AS t ' \
                               ') AS e ' \
                               'ON s.i = e.i ' \
-                              'WHERE NOT ST_DWithin(s.geom_meter, e.geom_meter, %(min_d)s) ' \
-                              '  AND ST_DWithin(s.geom_meter, e.geom_meter, %(max_d)s)'
+                              'WHERE NOT ST_DWithin(s.geom::geography, e.geom::geography, %(min_d)s) ' \
+                              '  AND ST_DWithin(s.geom::geography, e.geom::geography, %(max_d)s)'
                         cf = 'SELECT sk.rs FROM de_commuter_kreise ck ' \
                              'INNER JOIN de_shp_kreise sk ON sk.rs=ck.rs AND ST_DWithin(' \
-                             '  (SELECT ST_Union(geom_meter) FROM de_shp_kreise WHERE rs = %(rs)s), sk.geom_meter, %(max_d)s) ' \
+                             '  (SELECT ST_Union(geom) FROM de_shp_kreise WHERE rs = %(rs)s)::geography, sk.geom::geography, %(max_d)s) ' \
                              'UNION  ' \
                              'SELECT cg.rs FROM de_commuter_gemeinden cg  ' \
                              'INNER JOIN de_shp_gemeinden sg ON sg.rs=cg.rs AND ST_DWithin(' \
-                             '  (SELECT ST_Union(geom_meter) FROM de_shp_gemeinden WHERE rs = %(rs)s), sg.geom_meter, %(max_d)s)'
+                             '  (SELECT ST_Union(geom) FROM de_shp_gemeinden WHERE rs = %(rs)s)::geography, sg.geom::geography, %(max_d)s)'
                         tbl_s = 'start'
                         tbl_e = 'end'
                         tbl_r = 'outgoing'
@@ -133,7 +133,7 @@ class PointMassMatcherProcess(Process):
                     upsert = 'WITH points AS (' + sql + '), ' \
                              'upsert_start AS (UPDATE de_sim_points_{tbl_s!s} ps SET used = true FROM points p WHERE p.start = ps.id), ' \
                              'upsert_destination AS (UPDATE de_sim_points_{tbl_e!s} pe SET used = true FROM points p WHERE p.destination = pe.id) ' \
-                             'INSERT INTO de_sim_routes_{tbl_r!s} (start_point, end_point) SELECT start, destination FROM points'
+                             'INSERT INTO de_sim_routes_{tbl_r!s} (start_point, end_point, distance) SELECT start, destination FROM points'
                     cur.execute(upsert.format(tbl_e=tbl_e, tbl_s=tbl_s, cf=cf, tbl_r=tbl_r), params)
                     conn.commit()
 
