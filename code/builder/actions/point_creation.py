@@ -1,6 +1,6 @@
 import logging
 import multiprocessing as mp
-from multiprocessing.pool import ThreadPool
+import concurrent.futures
 import time
 import signal
 
@@ -148,22 +148,25 @@ def create_points():
     insert_process.join()
 
     logging.info('Creating Indexes for Tables...')
-    with ThreadPool(processes=8) as pool:
-        pool.map_async(_create_index_points, PointType)
-
-        sqls = ('CREATE INDEX de_sim_points_lookup_geom_meter_idx ON de_sim_points_lookup USING GIST (geom_meter); CLUSTER de_sim_points_lookup USING de_sim_points_lookup_geom_meter_idx',
-                'CREATE INDEX de_sim_points_lookup_rs_idx ON de_sim_points_lookup USING BTREE (rs)',
-                'CREATE INDEX de_sim_points_lookup_type_idx ON de_sim_points_lookup USING BTREE (type)')
-        pool.map_async(connection.run_commands, sqls)
+    args = [(_create_index_points, p.value) for p in PointType]
+    sqls = ('CREATE INDEX de_sim_points_lookup_geom_meter_idx ON de_sim_points_lookup USING GIST (geom_meter); '
+            '  CLUSTER de_sim_points_lookup USING de_sim_points_lookup_geom_meter_idx',
+            'CREATE INDEX de_sim_points_lookup_rs_idx ON de_sim_points_lookup USING BTREE (rs)',
+            'CREATE INDEX de_sim_points_lookup_type_idx ON de_sim_points_lookup USING BTREE (type)')
+    args += [(connection.run_commands, s) for s in sqls]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        result = [executor.submit(a[0], a[1]) for a in args]
+    result = concurrent.futures.wait(result)
+    if len(result.not_done) is not 0:
+        for f in result.not_done:
+            logging.error(f.exception())
     logging.info("Finished creating Indexes.")
 
     end = time.time()
     logging.info('Runtime Point Creation: %s', (end - start))
 
 
-def _create_index_points(point_type):
-    assert isinstance(point_type, PointType)
-    table = point_type.value
+def _create_index_points(table):
     logging.info('Start creating Indexes for de_sim_points_%s tables', table)
     with connection.get_connection() as conn:
         cur = conn.cursor()
