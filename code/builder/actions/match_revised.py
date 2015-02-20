@@ -32,8 +32,8 @@ def match_points():
         cur = conn.cursor(cursor_factory=NamedTupleCursor)
         cur.execute('SELECT rs, outgoing, within FROM de_commuter ORDER BY RANDOM()')
         conn.commit()
-        counter = Counter(cur.rowcount * (len(cd.commuting_distance) +1))
-        distributions = [[] for x in range(len(cd.commuting_distance))]
+        counter = Counter(cur.rowcount * (len(cd.commuting_distance) + 1))
+        distributions = [[]] * len(cd.commuting_distance)       # Empty List with lists
 
         start = time.time()
         processes = []
