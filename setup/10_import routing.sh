@@ -46,6 +46,8 @@ function f_osm2po {
 	infoMsg "Importing OSM2PO network into database"
 	time psql -U $USER -d $DATABASE -q -f "$TMPDIR/osm2po_import/de_2po_4pgr.sql"
 	time psql -U $USER -d $DATABASE -q -f "$TMPDIR/osm2po_import/de_2po_vertex.sql"
+	infoMsg "Running post import scripts ..."
+	time psql -U $USER -d $DATABASE -q -f "$BASE/config/postgresql/post-import_osm2po.sql"
 }
 
 PS3="Choose OSM File for import: "

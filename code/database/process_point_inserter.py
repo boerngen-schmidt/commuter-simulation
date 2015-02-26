@@ -1,8 +1,9 @@
 import logging
 import time
-from multiprocessing import Process, Event, Queue
+from multiprocessing import Process, Event
 from queue import Empty
 from threading import Thread
+from queue import Queue as ThreadQueue
 
 from database import connection
 
@@ -15,12 +16,20 @@ class PointInsertingProcess(Process):
     After inserting of the points is done, indexes are generated for the tables.
     """
 
-    def __init__(self, input_queue: Queue, plans, exit_event):
-        Process.__init__(self)
+    def __init__(self, input_queue, plans, exit_event):
+        """
+
+        :param input_queue:
+        :type input_queue: multiprocessing.Queue
+        :param plans:
+        :param exit_event:
+        :return:
+        """
+        super().__init__()
         self.q = input_queue
-        self.thread_queue = Queue()
+        self.thread_queue = ThreadQueue()
         self.batch_size = 5000
-        self.insert_threads = 2
+        self.insert_threads = 1
         self.exit_event = exit_event
         self.stop_request = Event()
         self.logging = logging.getLogger(self.name)
@@ -38,14 +47,18 @@ class PointInsertingProcess(Process):
     def set_insert_threads(self, value: int):
         self.insert_threads = value
 
-    def run(self):
+    def _start_threads(self, amount):
         threads = []
-        for i in range(self.insert_threads):
-            name = 'Inserting Thread %s' % i
+        for i in range(amount):
+            name = 'Inserting Thread'
             t = PointInsertingThread(self.thread_queue, self.stop_request, self.plans)
             t.setName(name)
             threads.append(t)
             t.start()
+        return threads
+
+    def run(self):
+        threads = self._start_threads(self.insert_threads)
 
         sql_commands = []
         while True:
@@ -63,10 +76,12 @@ class PointInsertingProcess(Process):
                 if self.stop_request.is_set():
                     break
 
+        threads += self._start_threads(5)
         # Flush Queue to sql commands
         while not self.q.empty():
             sql_commands.append(self.q.get())
         self.thread_queue.put(sql_commands)
+        self.thread_queue.join()
         self.stop_request.set()
         for t in threads:
             t.join()
@@ -77,7 +92,15 @@ class PointInsertingThread(Thread):
 
     Thread reads commands from queue and executes one of the pre-made execution plans.
     """
-    def __init__(self, queue: Queue, stop_request: Event, plans):
+    def __init__(self, queue, stop_request, plans):
+        """Thread initialization
+
+        :param queue: Queue with SQL commands
+        :type queue: queue.Queue
+        :param stop_request: Event to stop the thread during operation
+        :type stop_request: multiprocessing.Event
+        :param plans: The insert plans
+        """
         Thread.__init__(self)
         self.q = queue
         self.stop_request = stop_request
@@ -87,7 +110,7 @@ class PointInsertingThread(Thread):
     def run(self):
         """Inserts generated Points into the database
 
-        https://peterman.is/blog/postgresql-bulk-insertion/2013/08/
+        Inspired by https://peterman.is/blog/postgresql-bulk-insertion/2013/08/
         """
         self.log.info('Starting inserting thread %s', self.name)
         with connection.get_connection() as conn:
@@ -111,40 +134,11 @@ class PointInsertingThread(Thread):
                         break
                     continue
                 else:
+                    self.q.task_done()
                     time.sleep(0.5)
-                finally:
-                    if self.stop_request.is_set():
-                        break
+
+            # TODO remove after test?!
             self.log.warn('Cleaning %d elements from Queue ... ', self.q.qsize())
             while not self.q.empty():
                 self.q.get()
-
-
-class PointInsertIndexingThread(Thread):
-    def __init__(self, table):
-        Thread.__init__(self)
-        self.tbl = table
-        self.logging = logging.getLogger(self.name)
-
-    def run(self):
-        self.logging.info('Start creating Indexes for de_sim_points_%s tables', self.tbl)
-        with connection.get_connection() as conn:
-            cur = conn.cursor()
-            start_index = time.time()
-            sql = "ALTER TABLE de_sim_points_{tbl!s} SET (FILLFACTOR=50); " \
-                  "CREATE INDEX de_sim_points_{tbl!s}_parent_relation_idx " \
-                  "  ON de_sim_points_{tbl!s} USING btree (rs) WITH (FILLFACTOR=100); " \
-                  "CREATE INDEX de_sim_points_{tbl!s}_lookup_idx " \
-                  "  ON de_sim_points_{tbl!s} USING btree (lookup) WITH (FILLFACTOR=100); " \
-                  "CREATE INDEX de_sim_points_{tbl!s}_geom_idx " \
-                  "  ON de_sim_points_{tbl!s} USING gist (geom) WITH (FILLFACTOR=100); " \
-                  "CREATE INDEX de_sim_points_{tbl!s}_used_idx ON de_sim_points_{tbl!s} (used ASC NULLS LAST) WITH (FILLFACTOR=100);" \
-                  "CLUSTER de_sim_points_{tbl!s} USING de_sim_points_{tbl!s}_geom_idx; "
-            cur.execute(sql.format(tbl=self.tbl))
-            conn.commit()
-            conn.set_isolation_level(0)
-            cur.execute('VACUUM ANALYSE de_sim_points_{tbl!s}'.format(tbl=self.tbl))
-            conn.commit()
-            finish_index = time.time()
-            self.logging.info('Finished creating indexes on de_sim_points_%s in %s',
-                              self.tbl, (finish_index - start_index))
+                self.q.task_done()

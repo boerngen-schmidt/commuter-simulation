@@ -33,7 +33,7 @@ def match_points():
         cur.execute('SELECT rs, outgoing, within FROM de_commuter ORDER BY RANDOM()')
         conn.commit()
         counter = Counter(cur.rowcount * (len(cd.commuting_distance) + 1))
-        distributions = [[]] * len(cd.commuting_distance)       # Empty List with lists
+        distributions = [[] for i in range(len(cd.commuting_distance))]  # Empty List with lists
 
         start = time.time()
         processes = []
@@ -43,12 +43,29 @@ def match_points():
             processes[-1].start()
         signal.signal(signal.SIGINT, sig.signal_handler)
 
-        for rec in cur.fetchall():
-            within_md = MatchingDistributionRevised(rec.rs, rec.within, MatchingType.within, 2000, -1)
+        rerun_sql = 'SELECT done, total FROM de_sim_data_matching_info WHERE rs=%(rs)s AND max_d=%(max_d)s AND min_d=%(min_d)s'
+        records = cur.fetchall()
+        for rec in records:
+            args = dict(rs=rec.rs, max_d=-1, min_d=2000)
+            cur.execute(rerun_sql, args)
+            info = cur.fetchone()
+            conn.commit()
+            if info:
+                within_md = MatchingDistributionRevised(rec.rs, info.total-info.done, MatchingType.within, 2000, -1)
+            else:
+                within_md = MatchingDistributionRevised(rec.rs, rec.within, MatchingType.within, 2000, -1)
             matching_queue.put(within_md)
+
             for i, d in enumerate(cd.commuting_distance):
-                amount = int(math.floor(cd.commuter_distribution[rec.rs[:2]][i] * rec.outgoing))
-                md = MatchingDistributionRevised(rec[0], amount, MatchingType.outgoing, d['min_d'], d['max_d'])
+                args = dict(rs=rec.rs, max_d=d['max_d'], min_d=d['min_d'])
+                cur.execute(rerun_sql, args)
+                info = cur.fetchone()
+                conn.commit()
+                if info:
+                    md = MatchingDistributionRevised(rec[0], info.total-info.done, MatchingType.outgoing, d['min_d'], d['max_d'])
+                else:
+                    amount = int(math.floor(cd.commuter_distribution[rec.rs[:2]][i] * rec.outgoing))
+                    md = MatchingDistributionRevised(rec[0], amount, MatchingType.outgoing, d['min_d'], d['max_d'])
                 distributions[i].append(md)
 
         # Add distributions to queue

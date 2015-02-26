@@ -87,7 +87,9 @@ class PointCreatorProcess(Process):
                 cur = conn.cursor(cursor_factory=NamedTupleCursor)
                 sql = 'CREATE TEMPORARY TABLE areas ON COMMIT DROP AS ' \
                       'SELECT ' \
-                      ' CASE WHEN ST_Intersects(p.way , s.geom) THEN ST_Intersection(p.way ,s.geom) ELSE p.way END AS geom, ' \
+                      ' CASE WHEN ST_Intersects(p.way , s.geom) THEN ' \
+                      '     ST_Intersection(p.way ,s.geom) ' \
+                      '     ELSE p.way END AS geom, ' \
                       ' p.landuse as landuse, ' \
                       ' 0::double precision AS area ' \
                       'FROM de_osm_polygon p ' \
@@ -118,7 +120,12 @@ class PointCreatorProcess(Process):
             #created_points = pool.map(_map_partial, areas)
             #pool.close()
             #pool.join()
-            created_points = [_map_partial(area) for area in areas]
+            try:
+                created_points = [_map_partial(area) for area in areas]
+            except ValueError as err:
+                created_points = []
+                self.logging.error(err)
+                self.logging.error('rs: %s, landuse: %s, point_type: %s', cmd.rs, landuse, cmd.point_type)
 
             generation_time = time.time() - generation_start
             num = self.counter.increment()

@@ -32,74 +32,42 @@ def create_points():
                         (rs, name, geom_b, area, total_area, incomming, outgoing, within)
         """
         commuters = [rec.outgoing, rec.incoming, rec.within, rec.within]
-        try:
-            # polygon = loads(bytes(rec.geom_b)) TODO reomve?
-            polygon = None
-        except TypeError:
-            logging.error('Bad record: rs: %s, name: %s values: %s', rec.rs, rec.name, commuters)
-            return
-        [work_queue.put(PointCreationCommand(rec.rs, rec.name, polygon, amount, p_type.value))
+        [work_queue.put(PointCreationCommand(rec.rs, rec.name, amount, p_type.value))
          for amount, p_type in zip(commuters, PointType)]
 
     start = time.time()
     with connection.get_connection() as con:
         logging.info('Executing query for Gemeinden ...')
         cur = con.cursor(cursor_factory=NamedTupleCursor)
-        sql = 'SELECT ' \
-              's.rs              AS rs, ' \
-              's.gen             AS name, ' \
-              'c.incoming        AS incoming, ' \
-              'c.within          AS within, ' \
-              'c.outgoing        AS outgoing, ' \
-              'ST_AsEWKB(s.geom) AS geom_b ' \
-              'FROM de_commuter_gemeinden c  ' \
-              'LEFT JOIN (' \
-              '  SELECT rs, gen, ST_Union(geom) AS geom FROM de_shp_gemeinden ' \
-              '  WHERE rs IN (SELECT rs FROM de_commuter_gemeinden) GROUP BY rs, gen) s USING (rs) '
+        sql = 'SELECT c.rs AS rs, s.gen AS name, c.incoming AS incoming, c.within AS within, c.outgoing AS outgoing ' \
+              'FROM de_commuter_gemeinden c ' \
+              'LEFT JOIN LATERAL (SELECT gen FROM de_shp_gemeinden WHERE rs = c.rs LIMIT 1) s ON TRUE'
         cur.execute(sql)
         con.commit()
         [add_command(rec) for rec in cur.fetchall()]
 
         logging.info('Executing query for Kreise ...')
-        sql = 'SELECT  ' \
-              'k.rs                                       AS rs, ' \
-              'k.gen                                      AS name, ' \
-              '(ck.incoming-COALESCE(sums.incoming, 0))   AS incoming,  ' \
-              '(ck.outgoing-COALESCE(sums.outgoing, 0))   AS outgoing,  ' \
-              '(ck.within-COALESCE(sums.within, 0))       AS within, ' \
-              'ST_AsEWKB(ST_Difference(k.geom, geo.geom)) AS geom_b  ' \
-              'FROM de_commuter_kreise ck   ' \
-              'INNER JOIN (  ' \
-              '  SELECT rs,gen,ST_Union(geom) AS geom FROM de_shp_kreise WHERE rs IN (SELECT rs FROM de_shp_kreise GROUP BY rs HAVING COUNT(rs) > 1) GROUP BY rs,gen  ' \
-              '  UNION  ' \
-              '  SELECT rs,gen,geom FROM de_shp_kreise WHERE rs NOT IN (SELECT rs FROM de_shp_kreise GROUP BY rs HAVING COUNT(rs) > 1)  ' \
-              ') k ON (ck.rs=k.rs)  ' \
-              'LEFT JOIN (  ' \
-              '  SELECT DISTINCT  ' \
-              '  k.rs     AS rs,  ' \
-              '  CASE WHEN geo.geom IS NULL  ' \
-              '    THEN ST_GeomFromText(\'POLYGON EMPTY\', 4326) ' \
-              '    ELSE geo.geom ' \
-              '  END AS geom ' \
-              '  FROM de_shp_kreise AS k  ' \
-              '  LEFT JOIN (  ' \
-              '    SELECT  ' \
-              '    ST_Union(g.geom) AS geom, SUBSTRING(g.rs FOR 5) AS rs  ' \
-              '    FROM de_shp_gemeinden AS g  ' \
-              '    INNER JOIN de_commuter_gemeinden c ON c.rs = g.rs  ' \
-              '    GROUP BY SUBSTRING(g.rs FOR 5)  ' \
-              '  ) geo ON (k.rs=geo.rs)  ' \
-              ') geo ON (geo.rs=ck.rs)  ' \
-              'LEFT OUTER JOIN (  ' \
-              '  SELECT  ' \
-              '  SUBSTRING(rs FOR 5) AS rs,  ' \
-              '  SUM(incoming)       AS incoming,  ' \
-              '  SUM(within)         AS within,  ' \
-              '  SUM(outgoing)       AS outgoing  ' \
-              '  FROM de_commuter_gemeinden  ' \
-              '  GROUP BY SUBSTRING(rs FOR 5)  ' \
-              ') sums ON (sums.rs = ck.rs) ' \
-              'WHERE NOT ST_IsEmpty(ST_Difference(k.geom, geo.geom))'
+        sql = 'SELECT ck.rs AS rs, k.gen AS name, ' \
+              '(ck.incoming-COALESCE(sums.incoming, 0)) AS incoming, ' \
+              '(ck.outgoing-COALESCE(sums.outgoing, 0)) AS outgoing, ' \
+              '(ck.within-COALESCE(sums.within, 0))     AS within ' \
+              'FROM de_commuter_kreise ck ' \
+              'LEFT JOIN LATERAL (' \
+              '  SELECT gen FROM de_shp_kreise WHERE rs = ck.rs LIMIT 1' \
+              ') k ON TRUE ' \
+              'LEFT JOIN LATERAL (' \
+              '  SELECT ' \
+              '    SUBSTRING(rs FOR 5) AS rs, ' \
+              '    SUM(incoming) AS incoming, ' \
+              '    SUM(within)   AS within, ' \
+              '    SUM(outgoing) AS outgoing ' \
+              '  FROM de_commuter_gemeinden ' \
+              '  WHERE SUBSTRING(rs FOR 5) = ck.rs ' \
+              '  GROUP BY SUBSTRING(rs FOR 5)' \
+              ') sums ON TRUE ' \
+              'WHERE (ck.incoming-COALESCE(sums.incoming, 0)) > 0 ' \
+              '  AND (ck.outgoing-COALESCE(sums.outgoing, 0)) > 0 ' \
+              '  AND (ck.within-COALESCE(sums.within, 0)) > 0'
 
         cur.execute(sql)
         con.commit()
@@ -118,23 +86,22 @@ def create_points():
     # SQL inserting process
     plans = ['PREPARE de_sim_points_start_plan (varchar, geometry, integer) AS '
              'INSERT INTO de_sim_points_start (rs, geom, lookup) '
-             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), $3)',
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 25832)), $3)',
 
              'PREPARE de_sim_points_within_start_plan (varchar, geometry, integer) AS '
              'INSERT INTO de_sim_points_within_start (rs, geom, lookup) '
-             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), $3)',
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 25832)), $3)',
 
              'PREPARE de_sim_points_end_plan (varchar, geometry, integer) AS '
              'INSERT INTO de_sim_points_end (rs, geom, lookup) '
-             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), $3)',
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 25832)), $3)',
 
              'PREPARE de_sim_points_within_end_plan (varchar, geometry, integer) AS '
              'INSERT INTO de_sim_points_within_end (rs, geom, lookup) '
-             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 4326)), $3)']
+             'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 25832)), $3)']
     insert_process = PointInsertingProcess(insert_queue, plans, sig.exit_event)
     insert_process.set_batch_size(5000)
-    insert_process.set_insert_threads(4)
-    insert_process.daemon = True
+    insert_process.set_insert_threads(1)
     insert_process.start()
 
     start = time.time()
@@ -145,6 +112,7 @@ def create_points():
     for p in processes:
         p.join()
     sig.exit_event.set()
+    insert_process.join()
     logging.info('JOINT!')
 
     logging.info('Creating Indexes for Tables...')
@@ -171,15 +139,14 @@ def _create_index_points(table):
     with connection.get_connection() as conn:
         cur = conn.cursor()
         start_index = time.time()
-        sql = "ALTER TABLE de_sim_points_{tbl!s} SET (FILLFACTOR=50); " \
-              "CREATE INDEX de_sim_points_{tbl!s}_rs_idx " \
-              "  ON de_sim_points_{tbl!s} USING BTREE (rs) WITH (FILLFACTOR=100); " \
-              "CREATE INDEX de_sim_points_{tbl!s}_lookup_idx " \
-              "  ON de_sim_points_{tbl!s} USING BTREE (lookup) WITH (FILLFACTOR=100); " \
-              "CREATE INDEX de_sim_points_{tbl!s}_geom_idx " \
-              "  ON de_sim_points_{tbl!s} USING GIST (geom) WITH (FILLFACTOR=100); " \
-              "CREATE INDEX de_sim_points_{tbl!s}_used_idx ON de_sim_points_{tbl!s} (used ASC NULLS LAST) WITH (FILLFACTOR=100);" \
-              "CLUSTER de_sim_points_{tbl!s} USING de_sim_points_{tbl!s}_geom_idx; "
+        sql = 'ALTER TABLE de_sim_points_{tbl!s} SET (FILLFACTOR=80); '
+        if table in ('end', 'within_end'):
+            sql += 'CREATE INDEX de_sim_points_{tbl!s}_rs_geom_idx ON de_sim_points_{tbl!s} ' \
+                   '  USING gist (rs COLLATE pg_catalog."default", geom) WHERE NOT used;'
+        else:
+            sql = 'CREATE INDEX de_sim_points_{tbl!s}_geom_idx ON de_sim_points_{tbl!s} USING GIST(geom);' \
+                  'CREATE INDEX de_sim_points_{tbl!s}_rs_used_idx ON de_sim_points_{tbl!s} ' \
+                  '  USING BTREE (rs COLLATE pg_catalog."default", used DESC);'
         cur.execute(sql.format(tbl=table))
         conn.commit()
         conn.set_isolation_level(0)

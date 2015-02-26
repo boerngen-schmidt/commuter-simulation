@@ -1,6 +1,6 @@
 # Connection
 listen_addresses = '*'
-max_connections = 16
+max_connections = 48
 
 # Logging
 log_destination = 'csvlog'
@@ -16,7 +16,7 @@ log_min_duration_statement = 500ms
 log_lock_waits = on
 #log_temp_files = 0
 
-# Memory (2 + 256*16
+# Memory
 shared_buffers = 2GB
 temp_buffers = 32MB
 work_mem = 256MB

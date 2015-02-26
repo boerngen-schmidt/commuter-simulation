@@ -3,10 +3,10 @@ __author__ = 'Benjamin'
 
 
 class PointCreationCommand(object):
-    __slots__ = ['_rs', '_polygon', '_num_points', '_name', '_type_points']
-    def __init__(self, rs: str, name: str, polygon, points: int, point_type: str):
+    __slots__ = ['_rs', '_num_points', '_name', '_type_points']
+
+    def __init__(self, rs: str, name: str, points: int, point_type: str):
         self._rs = rs
-        self._polygon = polygon
         self._num_points = points
         self._name = name
         self._type_points = point_type
@@ -18,14 +18,6 @@ class PointCreationCommand(object):
     @rs.setter
     def rs(self, value):
         self._rs = value
-
-    @property
-    def polygon(self):
-        return self._polygon
-
-    @polygon.setter
-    def polygon(self, value):
-        self._polygon = value
 
     @property
     def num_points(self):

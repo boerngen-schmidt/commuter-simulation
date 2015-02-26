@@ -1,32 +1,32 @@
 import logging
-import threading as t
+import concurrent.futures
 
 from database import connection as db
 
 
-__author__ = 'benjamin'
-
-sql_cmd = ['TRUNCATE de_sim_routes RESTART IDENTITY CASCADE',
-           'UPDATE de_sim_points_start SET used = false WHERE used',
-           'UPDATE de_sim_points_within_start SET used = false WHERE used',
-           'UPDATE de_sim_points_end SET used = false WHERE used',
-           'UPDATE de_sim_points_within_end SET used = false WHERE used']
+sql_cmds = ['TRUNCATE de_sim_routes RESTART IDENTITY CASCADE',
+            'TRUNCATE de_sim_data_match_info RESTART IDENTITY CASCADE',
+            'UPDATE de_sim_points_start SET used = FALSE WHERE used',
+            'UPDATE de_sim_points_within_start SET used = FALSE WHERE used',
+            'UPDATE de_sim_points_end SET used = FALSE WHERE used',
+            'UPDATE de_sim_points_within_end SET used = FALSE WHERE used']
 
 
 def _execute_sql(sql):
-    with db.get_connection() as conn:
-        cur = conn.cursor()
-        cur.execute(sql)
-        conn.commit()
+    import time
+
+    logging.info('Starting SQL command: "%s"', sql)
+    start = time.time()
+    db.run_commands(sql)
+    logging.info('Finished SQL command: "%s" in %.2f', sql, time.time() - start)
 
 
 def run():
     logging.info('Start resetting points and cleaning matches.')
-    threads = []
-    for sql in sql_cmd:
-        threads.append(t.Thread(target=_execute_sql, args=(sql, )))
-        threads[-1].start()
-
-    for thread in threads:
-        thread.join()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        result = [executor.submit(_execute_sql, sql) for sql in sql_cmds]
+    result = concurrent.futures.wait(result)
+    if len(result.not_done) is not 0:
+        for f in result.not_done:
+            logging.error(f.exception())
     logging.info('Finished resetting points and cleaning matches.')

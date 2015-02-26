@@ -5,7 +5,7 @@ BEGIN;
       id serial NOT NULL,
       rs character varying(12),
       point_type character varying(15),
-      geom geometry(Point,4326),
+      geom geometry(Point,25832),
       CONSTRAINT de_sim_points_lookup_pkey PRIMARY KEY (id)
     );
 
@@ -16,7 +16,7 @@ BEGIN;
       rs character varying(12),
       used boolean DEFAULT false,
       lookup integer,
-      geom geometry(Point,4326),
+      geom geometry(Point,25832),
       CONSTRAINT de_sim_points_pkey PRIMARY KEY (id)
     );
 

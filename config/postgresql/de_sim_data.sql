@@ -23,8 +23,6 @@ BEGIN;
     );
     CREATE INDEX de_sim_data_refill_c_id_idx ON de_sim_data_refill (c_id);
 
-    -- Table: public.de_sim_data_routes
-
     DROP TABLE IF EXISTS de_sim_data_routes;
     CREATE TABLE de_sim_data_routes
     (
@@ -36,5 +34,16 @@ BEGIN;
       kmh integer,
       work boolean NOT NULL,
       CONSTRAINT de_sim_data_routes_pkey PRIMARY KEY (c_id, seq, work)
+    );
+
+    DROP TABLE IF EXISTS de_sim_data_matching_info;
+    CREATE TABLE public.de_sim_data_matching_info
+    (
+      rs character varying(12) NOT NULL,
+      max_d integer NOT NULL,
+      min_d integer NOT NULL,
+      done integer,
+      total integer,
+      CONSTRAINT de_sim_matching_info_pkey PRIMARY KEY (rs, max_d, min_d)
     );
 COMMIT;

@@ -17,53 +17,27 @@ BEGIN;
       length numeric,
       shape_leng numeric,
       shape_area numeric,
-      geom geometry(MultiPolygon,4326),
+      geom geometry(MultiPolygon,25832),
       CONSTRAINT de_shp_pkey PRIMARY KEY (gid)
     );
 
     DROP TABLE IF EXISTS de_shp_bundeslaender;
-    CREATE TABLE de_shp_bundeslaender
-    (
-      CONSTRAINT de_shp_bundeslaender_pkey PRIMARY KEY (gid)
-    )
-    INHERITS (de_shp);
-
-    -- Index: de_shp_rs_index
-    DROP INDEX IF EXISTS de_shp_bundeslaender_rs_index;
-    CREATE INDEX de_shp_bundeslaender_rs_index ON de_shp_bundeslaender USING btree (rs COLLATE pg_catalog."default");
+    CREATE TABLE de_shp_bundeslaender (
+        CONSTRAINT de_shp_bundeslaender_pkey PRIMARY KEY (gid)
+    ) INHERITS (de_shp);
 
     DROP TABLE IF EXISTS de_shp_kreise;
-    CREATE TABLE de_shp_kreise
-    (
-      CONSTRAINT de_shp_kreise_pkey PRIMARY KEY (gid)
-    )
-    INHERITS (de_shp);
+    CREATE TABLE de_shp_kreise (
+        CONSTRAINT de_shp_kreise_pkey PRIMARY KEY (gid)
+    ) INHERITS (de_shp);
 
-    -- Index: de_shp_kreise_rs_index
-    DROP INDEX IF EXISTS de_shp_kreise_rs_index;
-    CREATE INDEX de_shp_kreise_rs_index ON de_shp_kreise USING btree (rs COLLATE pg_catalog."default");
-
-    /*
-    ﻿ * Table: de_shp_gemeinden
-     */
     DROP TABLE IF EXISTS de_shp_gemeinden;
-    CREATE TABLE de_shp_gemeinden
-    (
-      CONSTRAINT de_shp_gemeinden_pkey PRIMARY KEY (gid)
-    )
-    INHERITS (de_shp);
-
-    -- Index: de_shp_gemeinden_rs_index
-    DROP INDEX IF EXISTS de_shp_gemeinden_rs_index;
-    CREATE INDEX de_shp_gemeinden_rs_index ON de_shp_gemeinden USING btree (rs COLLATE pg_catalog."default");
+    CREATE TABLE de_shp_gemeinden (
+        CONSTRAINT de_shp_gemeinden_pkey PRIMARY KEY (gid)
+    ) INHERITS (de_shp);
 
     DROP TABLE IF EXISTS de_shp_verwaltungsgemeinschaften;
-    CREATE TABLE de_shp_verwaltungsgemeinschaften
-    (
-      CONSTRAINT de_shp_verwaltungsgemeinschaften_pkey PRIMARY KEY (gid)
-    )
-    INHERITS (de_shp);
-
-    DROP INDEX IF EXISTS de_shp_verwaltungsgemeinschaften_rs_index;
-    CREATE INDEX de_shp_verwaltungsgemeinschaften_rs_index ON de_shp_verwaltungsgemeinschaften USING btree (rs COLLATE pg_catalog."default");
+    CREATE TABLE de_shp_verwaltungsgemeinschaften (
+        CONSTRAINT de_shp_verwaltungsgemeinschaften_pkey PRIMARY KEY (gid)
+    ) INHERITS (de_shp);
 COMMIT;

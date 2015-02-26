@@ -26,5 +26,4 @@ py-mysql2pgsql -f $BASE/config/py-mysql2pgsql.yml -v
 deactivate
 
 infoMsg "Running post-import scripts"
-psql -q -f $BASE/config/postgresql/post-import_stations.sql -d $DATABASE -U $USER
-psql -q -f $BASE/config/postgresql/post-import_priceinfo.sql -d $DATABASE -U $USER
+psql -q -f $BASE/config/postgresql/post-import_fuelprices.sql -d $DATABASE -U $USER

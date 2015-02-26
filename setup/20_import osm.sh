@@ -16,7 +16,7 @@ fi
 
 echo "Preparing Database for OpenStreetMap Data ..."
 psql -q -c "CREATE EXTENSION postgis" -d $DATABASE -U $USER
-psql -q -c "CREATE EXTENSION hstore" -d $DATABASE -U $USER
+psql -q -c "CREATE EXTENSION btree_gist" -d $DATABASE -U $USER
 
 PS3="Choose OSM File for import: "
 osmfile_choices=( $(find $BASE/data/osm -type f -iname "*.osm*") )
@@ -58,16 +58,9 @@ do
 	REPLY=
 done
 
-OSM2PGSQL_OPTIONS="--number-processes 8 -c -d $DATABASE -U $USER -p de_osm -C 12000 \
-					-S $STYLEFILE -l \
-					$OSM_OPTS"
-if [ $(ynQuestion "Do you want to build osm2pgsql from sources?") ]; then
-	# remove old stuff
-	rm -rf $TMPDIR/osm2pgsql
-	buildOSM2PGSQL
+OSM2PGSQL_OPTIONS="-c -s -d $DATABASE -U $USER -p de_osm -C 8192 --drop --unlogged --number-processes 8 -S $STYLEFILE -l -E 25832 $OSM_OPTS"
 
-fi
-if [ -e $BASE/bin/osm2pgsql ]; then
+if [ -e $BASE/bin/osm2pgsql && $(ynQuestion "Do you want to run local version of osm2pgsql?") ]; then
 	infoMsg "Runnung local version of osm2pgsql"
 	time $BASE/bin/osm2pgsql $OSM2PGSQL_OPTIONS $OSMFILE
 else
@@ -76,5 +69,4 @@ else
 fi
 
 infoMsg "Running post-import SQL scripts"
-psql -q -f $BASE/config/postgresql/post-import_de_osm_polygon.sql -d $DATABASE -U $USER
-psql -q -f $BASE/config/postgresql/post-import_de_osm_roads.sql -d $DATABASE -U $USER
+time psql -q -f $BASE/config/postgresql/post-import_osm2pgsql.sql -d $DATABASE -U $USER
