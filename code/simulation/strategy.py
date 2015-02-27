@@ -20,23 +20,36 @@ class BaseRefillStrategy(metaclass=ABCMeta):
         """
         Searches for filling stations alongside the route
         """
-        '''Performance wise the cast from geometry(point,4326) to geography does not make any performance difference'''
         sql = 'CREATE TEMP TABLE filling (destination integer, station_id character varying(64)) ON COMMIT DROP;' \
               'INSERT INTO filling (station_id) SELECT id FROM de_tt_stations AS s ' \
-              '  WHERE ST_DWithin(s.geom::geography, ST_GEomFromEWKB(%(route)s)::geography, %(distance)s);' \
+              '  WHERE ST_DWithin(s.geom, ST_GEomFromEWKB(%(route)s), %(distance)s);' \
               'UPDATE filling SET destination = (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> ' \
               '  (SELECT geom FROM de_tt_stations WHERE id = filling.station_id) LIMIT 1);' \
               'SELECT * FROM filling;'
+        args = dict(distance=distance_meter, route=self.env.route.geom_line)
         self._refillstations = []
         with db.get_connection() as conn:
             cur = conn.cursor()
-            cur.execute(sql, dict(distance=distance_meter, route=self.env.route.geom_line))
+            cur.execute(sql, args)
             for station in cur.fetchall():
                 self._refillstations.append(station)
             conn.commit()
 
         if len(self._refillstations) is 0:
-            raise FillingStationError()
+            '''Alternatve find the closest fillingstation to route instead of radius around the route'''
+            sql = 'SELECT id::integer as destination, s.id as station_id ' \
+                  'FROM de_2po_vertex v, ' \
+                  '  (SELECT id, geom FROM de_tt_stations ORDER BY geom <-> ST_GEomFromEWKB(%(route)s) LIMIT 1) as s ' \
+                  'ORDER BY v.geom_vertex <-> s.geom ' \
+                  'LIMIT 1'
+            with db.get_connection() as conn:
+                cur = conn.cursor()
+                cur.execute(sql, args)
+                rec = cur.fetchone()
+                if rec:
+                    self._refillstations.append(rec)
+                else:
+                    raise FillingStationError('No filling station was found for commuter %s' % (self.env.commuter.id))
 
     @property
     def refillstation_points(self):
