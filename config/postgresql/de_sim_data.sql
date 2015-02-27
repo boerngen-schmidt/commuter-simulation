@@ -27,13 +27,11 @@ BEGIN;
     CREATE TABLE de_sim_data_routes
     (
       c_id integer NOT NULL,
-      seq integer NOT NULL,
-      source integer,
-      destination integer,
       clazz integer,
-      kmh integer,
-      work boolean NOT NULL,
-      CONSTRAINT de_sim_data_routes_pkey PRIMARY KEY (c_id, seq, work)
+      km double precision,
+      avg_kmh integer,
+      work_route boolean NOT NULL,
+      CONSTRAINT de_sim_data_routes_pkey PRIMARY KEY (c_id, work)
     );
 
     DROP TABLE IF EXISTS de_sim_data_matching_info;

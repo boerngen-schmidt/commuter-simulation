@@ -1,3 +1,4 @@
+from _collections_abc import dict_keys
 import logging
 
 from psycopg2.extras import DictCursor
@@ -93,13 +94,28 @@ def calculate_route(start, destination, action):
         conn.commit()
     return Route(start, destination, fragments, action, line, distance)
 
+
 def _save_route_info(commuter_id, route):
     with db.get_connection() as conn:
         cur = conn.cursor()
         work = (route.action is CommuterAction.ArrivedAtWork)
+        km = dict()
+        kmh = dict()
         for s in route:
             assert isinstance(s, RouteFragment)
-            sql = 'INSERT INTO de_sim_data_routes (c_id, seq, source, destination, clazz, kmh, work) VALUES (%s, %s, %s, %s, %s, %s, %s)'
-            cur.execute(sql, (commuter_id, s.seq, s.source, s.target, s.road_type.value, s.speed_limit, work))
+            if s.road_type in km:
+                km[s.road_type].append(s.length)
+            else:
+                km[s.road_type] = [s.length]
+
+            if s.road_type in kmh:
+                km[s.road_type].append(s.speed_limit)
+            else:
+                km[s.road_type] = [s.speed_limit]
+
+        for key in km.keys():
+            sql = 'INSERT INTO de_sim_data_routes (c_id, clazz, avg_kmh, km, work_route) VALUES (%s, %s, %s, %s, %s)'
+            cur.execute(sql, (commuter_id, key, sum(kmh[key])/len(kmh[key]), sum(km[key]), work))
+            conn.commit()
 
 
