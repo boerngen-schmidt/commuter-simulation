@@ -9,6 +9,7 @@ from queue import Empty
 import time
 import logging
 from multiprocessing import Process, Queue
+from shapely import speedups
 
 from builder.enums import PointType
 from builder.commands import PointCreationCommand
@@ -44,6 +45,9 @@ class PointCreatorProcess(Process):
         self.logging = logging.getLogger(self.name)
         self.total = info_queue.qsize()
         self.t = 2
+
+        if speedups.available:
+            speedups.enable()
 
     def set_t(self, t):
         """Tuning Parameter
