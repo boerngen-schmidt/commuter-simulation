@@ -3,9 +3,11 @@ BEGIN;
     CREATE TABLE de_sim_data_commuter
     (
         c_id INT NOT NULL,
-        leaving_time TIME NOT NULL,
+        leaving_time INTERVAL NOT NULL,
         route_home_distance DOUBLE PRECISION NOT NULL,
         route_work_distance DOUBLE PRECISION NOT NULL,
+        fuel_type VARCHAR(6),
+        tank_filling DOUBLE PRECISION,
         error VARCHAR(32)
     );
     CREATE INDEX de_sim_data_commuter_c_id_idx ON de_sim_data_commuter (c_id);
@@ -15,13 +17,14 @@ BEGIN;
     (
         id SERIAL PRIMARY KEY NOT NULL,
         c_id INT,
+        rerun BOOL,
         amount DOUBLE PRECISION,
         price DOUBLE PRECISION,
         refueling_time TIMESTAMP,
         station VARCHAR(38),
-        fuel_type VARCHAR(10)
+        fuel_type VARCHAR(6)
     );
-    CREATE INDEX de_sim_data_refill_c_id_idx ON de_sim_data_refill (c_id);
+    CREATE INDEX de_sim_data_refill_c_id_rerun_idx ON de_sim_data_refill (c_id, rerun);
 
     DROP TABLE IF EXISTS de_sim_data_routes;
     CREATE TABLE de_sim_data_routes

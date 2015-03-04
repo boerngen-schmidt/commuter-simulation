@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 import logging
 
-from psycopg2.extras import NamedTupleCursor
+from psycopg2.extras import NamedTupleCursor, RealDictCursor
 from database import connection as db
 
 
@@ -13,7 +13,7 @@ class BaseRefillStrategy(metaclass=ABCMeta):
         """
         env.refilling_strategy = self
         self.env = env
-        self._refillstations = None
+        self._refillstations = []
         self._target_station = None
 
     def _lookup_filling_stations(self, distance_meter, sql=None):
@@ -27,7 +27,6 @@ class BaseRefillStrategy(metaclass=ABCMeta):
                   'UPDATE filling SET destination = (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> ' \
                   '  (SELECT geom FROM de_tt_stations WHERE id = filling.station_id) LIMIT 1);' \
                   'SELECT destination, station_id FROM filling;'
-        self._refillstations = []
         with db.get_connection() as conn:
             cur = conn.cursor()
             cur.execute(sql, dict(distance=distance_meter, route=self.env.route.geom_line))
@@ -37,6 +36,46 @@ class BaseRefillStrategy(metaclass=ABCMeta):
 
         if len(self._refillstations) is 0:
             raise FillingStationError()
+        
+    def calculate_proxy_price(self, fuel_type):
+        '''
+        Calculates a proxy price if the station selected has no price yet
+        :param fuel_type: The type of fuel (e5, e10, diesel) to calculate the proxy value for
+        :type fuel_type: str
+        :returns: Proxy value for given fuel type
+        :rtype: float
+        :raises: NoPriceError
+        '''
+        if not self._target_station:
+            raise FillingStationError('No target filling station set. Can not calculate proxy price')
+
+        sql = 'SELECT AVG(e5) AS e5, AVG(e10) AS e10, AVG(diesel) as diesel FROM ( ' \
+              '  SELECT id ' \
+              '  FROM de_tt_stations ' \
+              '  ORDER BY geom <-> (SELECT geom ' \
+              '                     FROM de_tt_stations ' \
+              '                     WHERE id = %(station_id)s) ' \
+              '  LIMIT 5 ' \
+              '  ) s(station_id)     ' \
+              'LEFT JOIN LATERAL ( ' \
+              '    SELECT e5, e10, diesel, received ' \
+              '    FROM   de_tt_priceinfo ' \
+              '    WHERE  station_id = s.station_id ' \
+              '    AND    received <= %(received)s ' \
+              '    ORDER  BY received DESC ' \
+              '    LIMIT  1 ' \
+              '   )  p ON TRUE;'
+        with db.get_connection() as conn:
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+            args = dict(received=self.env.now, station_id=self._target_station)
+            cur.execute(sql, args)
+            result = cur.fetchone()
+            conn.commit()
+        if result[fuel_type]:
+            return result[fuel_type]
+        else:
+            raise NoPriceError('No proxy value found')
+        
 
     @property
     def refillstation_points(self):
@@ -66,7 +105,7 @@ class BaseRefillStrategy(metaclass=ABCMeta):
             raise FillingStationError('No filling station_id was set')
 
         with db.get_connection() as conn:
-            cur = conn.cursor()
+            cur = conn.cursor(cursor_factory=RealDictCursor)
             sql = 'SELECT * FROM (VALUES ({value!r}) s(station_id) LEFT JOIN LATERAL (' \
                   '  SELECT diesel, e5, e10 FROM de_tt_priceinfo ' \
                   '  WHERE station_id = s.station_id AND received <= %(now)s LIMIT 1' \
@@ -74,15 +113,16 @@ class BaseRefillStrategy(metaclass=ABCMeta):
             args = dict(now=self.env.now)
             cur.execute(sql, args)
             result = cur.fetchone()
-            if result:
-                diesel, e5, e10, = result
+
+            if result[self.env.car.fuel_type]:
+                price = result[self.env.car.fuel_type]
             else:
-                raise NoPriceError('No Prices where found for Query: "%s"' % cur.mogrify(sql, args))
+                price = self.calculate_proxy_price(self.env.car.fuel_type)
 
             refill_amount = self.env.car.tank_size - self.env.car.current_filling
-            cur.execute('INSERT INTO de_sim_data_refill (c_id, amount, price, refueling_time, station, fuel_type) '
-                        'VALUES (%s, %s, %s, %s, %s, %s)',
-                (self.env.commuter.id, refill_amount, e5, self.env.now, self._target_station, 'e5'))
+            cur.execute('INSERT INTO de_sim_data_refill (c_id, rerun, amount, price, refueling_time, station, fuel_type) '
+                        'VALUES (%s, %s, %s, %s, %s, %s, %s)',
+                (self.env.commuter.id, self.env.rerun, refill_amount, price, self.env.now, self._target_station, self.env.car.fuel_type))
             conn.commit()
         self.env.car.refilled()         # Car has been refilled.
         self._target_station = None     # Since the station has been used reset it.
@@ -190,8 +230,12 @@ class CheapestRefillStrategy(BaseRefillStrategy):
             else:
                 conn.commit()
             result = cur.fetchone()
-            self._target_station = result.station_id
-            return result.target
+            if result:
+                self._target_station = result.station_id
+                return result.target
+            else:
+                raise FillingStationError('No filling station found for commuter: %s, having %s stations' %
+                                          (self.env.commuter.id, len(self._refillstations)))
 
 
 class FillingStationError(Exception):
