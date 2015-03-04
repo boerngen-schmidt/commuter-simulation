@@ -16,17 +16,17 @@ class BaseRefillStrategy(metaclass=ABCMeta):
         self._refillstations = None
         self._target_station = None
 
-    def _lookup_filling_stations(self, distance_meter):
+    def _lookup_filling_stations(self, distance_meter, sql=None):
         """
         Searches for filling stations alongside the route
         """
-        '''Performance wise the cast from geometry(point,4326) to geography does not make any performance difference'''
-        sql = 'CREATE TEMP TABLE filling (destination integer, station_id character varying(64)) ON COMMIT DROP;' \
-              'INSERT INTO filling (station_id) SELECT id FROM de_tt_stations AS s ' \
-              '  WHERE ST_DWithin(s.geom::geography, ST_GEomFromEWKB(%(route)s)::geography, %(distance)s);' \
-              'UPDATE filling SET destination = (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> ' \
-              '  (SELECT geom FROM de_tt_stations WHERE id = filling.station_id) LIMIT 1);' \
-              'SELECT * FROM filling;'
+        if not sql:
+            sql = 'CREATE TEMP TABLE filling (destination integer, station_id character varying(38)) ON COMMIT DROP;' \
+                  'INSERT INTO filling (station_id) SELECT id FROM de_tt_stations AS s ' \
+                  '  WHERE ST_DWithin(s.geom, ST_GEomFromEWKB(%(route)s, %(distance)s);' \
+                  'UPDATE filling SET destination = (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> ' \
+                  '  (SELECT geom FROM de_tt_stations WHERE id = filling.station_id) LIMIT 1);' \
+                  'SELECT destination, station_id FROM filling;'
         self._refillstations = []
         with db.get_connection() as conn:
             cur = conn.cursor()
@@ -95,7 +95,19 @@ class SimpleRefillStrategy(BaseRefillStrategy):
     """
     def __init__(self, env):
         super().__init__(env)
-        self._lookup_filling_stations(1000)
+        try:
+            self._lookup_filling_stations(1000)
+        except FillingStationError:
+            self.find_closest_station_to_route()
+
+    def find_closest_station_to_route(self):
+        sql = 'CREATE TEMP TABLE filling (destination integer, station_id character varying(38)) ON COMMIT DROP; ' \
+              'INSERT INTO filling (station_id) ' \
+              '  SELECT id FROM de_tt_stations ORDER BY geom <-> ST_GEomFromEWKB(%(route)s LIMIT 1; ' \
+              'UPDATE filling SET destination = (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <->  ' \
+              '  (SELECT geom FROM de_tt_stations WHERE id = filling.station_id) LIMIT 1); ' \
+              'SELECT station_id, destination as target FROM filling;'
+        self._lookup_filling_stations(0, sql)
 
     def find_filling_station(self) -> int:
         """Finds the closest refill station to the current position.
