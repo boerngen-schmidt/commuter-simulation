@@ -30,7 +30,16 @@ def match_points():
 
     with connection.get_connection() as conn:
         cur = conn.cursor(cursor_factory=NamedTupleCursor)
-        cur.execute('SELECT rs, outgoing, within FROM de_commuter ORDER BY RANDOM()')
+        cur.execute('SELECT * FROM ('
+                    'SELECT rs, outgoing, within FROM de_commuter_gemeinden  '
+                    'UNION '
+                    'SELECT rs, outgoing, within FROM de_commuter_kreise '
+                    '  WHERE rs NOT IN ('
+                    '   SELECT SUBSTRING(rs FOR 5) '
+                    '   FROM de_commuter_gemeinden '
+                    '   WHERE SUBSTRING(rs FROM 6) = \'0000000\')'
+                    ') matchpoints '
+                    'ORDER BY RANDOM()')
         conn.commit()
         counter = Counter(cur.rowcount * (len(cd.commuting_distance) + 1))
         distributions = [[] for i in range(len(cd.commuting_distance))]  # Empty List with lists
