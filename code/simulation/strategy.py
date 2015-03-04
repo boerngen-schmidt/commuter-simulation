@@ -139,7 +139,22 @@ class SimpleRefillStrategy(BaseRefillStrategy):
 class CheapestRefillStrategy(BaseRefillStrategy):
     def __init__(self, env):
         super().__init__(env)
-        self._lookup_filling_stations(1000)
+        try:
+            self._lookup_filling_stations(1000)
+        except FillingStationError:
+            self.find_closest_stations_to_route()
+
+    def find_closest_stations_to_route(self):
+        '''
+        First find the closest filling station to the route, then look for filling stations within 2km radius to cover
+        a city with multiple filling stations
+        '''
+        sql = 'CREATE TEMP TABLE filling (destination integer, station_id character varying(38)) ON COMMIT DROP;' \
+              'INSERT INTO filling (station_id) SELECT id FROM de_tt_stations ORDER BY geom <-> (SELECT ST_LineMerge(ST_union(geom_way)) FROM route) LIMIT 1;' \
+              'INSERT INTO filling (station_id) SELECT id FROM de_tt_stations WHERE ST_DWithin(geom, (SELECT geom FROM de_tt_stations WHERE id = (SELECT station_id FROM filling)), %(distance)s);' \
+              'UPDATE filling SET destination = (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> (SELECT geom FROM de_tt_stations WHERE id = filling.station_id) LIMIT 1);' \
+              'SELECT station_id, destination as target FROM filling;'
+        self._lookup_filling_stations(2000, sql)
 
     def find_filling_station(self):
         """
