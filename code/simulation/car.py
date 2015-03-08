@@ -151,7 +151,10 @@ class PetrolCar(SimpleCar):
 
     @property
     def consumption_per_km(self):
-        """Consumes standard of 10l per 100km"""
+        """
+        Consumes standard of 10l per 100km
+        With a range of 500km max per filling
+        """
         return float(50 / 500)
 
 
@@ -162,5 +165,8 @@ class DieselCar(SimpleCar):
 
     @property
     def consumption_per_km(self):
-        """Consumes standard of 8 litre per 100km"""
-        return float(8)
+        """
+        Consumes standard of 8 litre per 100km
+
+        """
+        return float(8)/625
