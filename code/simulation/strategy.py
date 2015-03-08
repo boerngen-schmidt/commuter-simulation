@@ -21,22 +21,25 @@ class BaseRefillStrategy(metaclass=ABCMeta):
         Searches for filling stations alongside the route
         """
         if not sql:
-            sql = 'CREATE TEMP TABLE filling (destination integer, station_id character varying(38)) ON COMMIT DROP;' \
+            sql = 'CREATE TEMP TABLE filling (target integer, station_id character varying(38)) ON COMMIT DROP; ' \
                   'INSERT INTO filling (station_id) SELECT id FROM de_tt_stations AS s ' \
-                  '  WHERE ST_DWithin(s.geom, ST_GEomFromEWKB(%(route)s, %(distance)s);' \
-                  'UPDATE filling SET destination = (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> ' \
-                  '  (SELECT geom FROM de_tt_stations WHERE id = filling.station_id) LIMIT 1);' \
-                  'SELECT destination, station_id FROM filling;'
+                  '  WHERE ST_DWithin(s.geom, ST_GEomFromEWKB(%(route)s), %(distance)s); ' \
+                  'UPDATE filling SET target = (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> ' \
+                  '  (SELECT geom FROM de_tt_stations WHERE id = filling.station_id) LIMIT 1); ' \
+                  'SELECT target, station_id FROM filling;'
         with db.get_connection() as conn:
-            cur = conn.cursor()
+            cur = conn.cursor(cursor_factory=NamedTupleCursor)
             cur.execute(sql, dict(distance=distance_meter, route=self.env.route.geom_line))
-            for station in cur.fetchall():
-                self._refillstations.append(station)
-            conn.commit()
+            stations = cur.fetchall()
+            if not stations:
+                conn.rollback()
+                raise FillingStationError('No filling station was found for commuter %s' % self.env.commuter.id)
+            else:
+                conn.commit()
 
-        if len(self._refillstations) is 0:
-            raise FillingStationError()
-        
+        for station in stations:
+            self._refillstations.append((station.target, station.station_id))
+
     def calculate_proxy_price(self, fuel_type):
         '''
         Calculates a proxy price if the station selected has no price yet
@@ -78,7 +81,7 @@ class BaseRefillStrategy(metaclass=ABCMeta):
         
 
     @property
-    def refillstation_points(self):
+    def refillstation_destination(self):
         return [s[0] for s in self._refillstations]
 
     @property
@@ -106,7 +109,7 @@ class BaseRefillStrategy(metaclass=ABCMeta):
 
         with db.get_connection() as conn:
             cur = conn.cursor(cursor_factory=RealDictCursor)
-            sql = 'SELECT * FROM (VALUES ({value!r}) s(station_id) LEFT JOIN LATERAL (' \
+            sql = 'SELECT * FROM (VALUES ({value!r})) s(station_id) LEFT JOIN LATERAL (' \
                   '  SELECT diesel, e5, e10 FROM de_tt_priceinfo ' \
                   '  WHERE station_id = s.station_id AND received <= %(now)s LIMIT 1' \
                   ') p ON TRUE'.format(value=self._target_station)
@@ -141,12 +144,12 @@ class SimpleRefillStrategy(BaseRefillStrategy):
             self.find_closest_station_to_route()
 
     def find_closest_station_to_route(self):
-        sql = 'CREATE TEMP TABLE filling (destination integer, station_id character varying(38)) ON COMMIT DROP; ' \
+        sql = 'CREATE TEMP TABLE filling (target integer, station_id character varying(38)) ON COMMIT DROP; ' \
               'INSERT INTO filling (station_id) ' \
-              '  SELECT id FROM de_tt_stations ORDER BY geom <-> ST_GEomFromEWKB(%(route)s LIMIT 1; ' \
-              'UPDATE filling SET destination = (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <->  ' \
+              '  SELECT id FROM de_tt_stations ORDER BY geom <-> ST_GEomFromEWKB(%(route)s) LIMIT 1; ' \
+              'UPDATE filling SET target = (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <->  ' \
               '  (SELECT geom FROM de_tt_stations WHERE id = filling.station_id) LIMIT 1); ' \
-              'SELECT station_id, destination as target FROM filling;'
+              'SELECT station_id, target FROM filling;'
         self._lookup_filling_stations(0, sql)
 
     def find_filling_station(self) -> int:
@@ -155,12 +158,12 @@ class SimpleRefillStrategy(BaseRefillStrategy):
         :return: The closest point in the routing network to the filling station
         """
         sql = 'SELECT seq, id1 as start, id2 as destination, cost as distance FROM pgr_kdijkstraCost(' \
-              '\'SELECT id, source, target, km as cost FROM de_2po_4pgr, (SELECT ST_Expand(ST_Extent(geom_vertex),0.1) as box FROM de_2po_vertex WHERE id = %(r_start)s OR id = %(r_dest)s) as box WHERE geom_way && box.box\', ' \
+              '\'SELECT id, source, target, km as cost FROM de_2po_4pgr, (SELECT ST_Expand(ST_Extent(geom_vertex),10000) as box FROM de_2po_vertex WHERE id = %(r_start)s OR id = %(r_dest)s) as box WHERE geom_way && box.box\', ' \
               '%(start)s, %(destinations)s, false, false) AS result ORDER BY cost LIMIT 1'
 
         with db.get_connection() as conn:
             cur = conn.cursor(cursor_factory=NamedTupleCursor)
-            args = dict(start=self.env.car.current_position, destinations=self.refillstation_points, r_start=self.env.route.start, r_dest=self.env.route.destination)
+            args = dict(start=self.env.car.current_position, destinations=self.refillstation_destination, r_start=self.env.route.start, r_dest=self.env.route.destination)
             try:
                 cur.execute(sql, args)
                 station = cur.fetchone()
@@ -169,7 +172,7 @@ class SimpleRefillStrategy(BaseRefillStrategy):
                 log.critical(e)
                 log.critical(cur.mogrify(sql, args))
                 conn.rollback()
-                raise FillingStationError
+                raise FillingStationError(e)
             else:
                 conn.commit()
             self._target_station = self.station_id(station.seq)
@@ -185,16 +188,21 @@ class CheapestRefillStrategy(BaseRefillStrategy):
             self.find_closest_stations_to_route()
 
     def find_closest_stations_to_route(self):
-        '''
+        """
         First find the closest filling station to the route, then look for filling stations within 2km radius to cover
         a city with multiple filling stations
-        '''
-        sql = 'CREATE TEMP TABLE filling (destination integer, station_id character varying(38)) ON COMMIT DROP;' \
-              'INSERT INTO filling (station_id) SELECT id FROM de_tt_stations ORDER BY geom <-> (SELECT ST_LineMerge(ST_union(geom_way)) FROM route) LIMIT 1;' \
+
+        :raises FillingStationError: If no filling station was found
+        """
+        sql = 'CREATE TEMP TABLE filling (target integer, station_id character varying(38)) ON COMMIT DROP;' \
+              'INSERT INTO filling (station_id) SELECT id FROM de_tt_stations ORDER BY geom <-> ST_GEomFromEWKB(%(route)s) LIMIT 1;' \
               'INSERT INTO filling (station_id) SELECT id FROM de_tt_stations WHERE ST_DWithin(geom, (SELECT geom FROM de_tt_stations WHERE id = (SELECT station_id FROM filling)), %(distance)s);' \
-              'UPDATE filling SET destination = (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> (SELECT geom FROM de_tt_stations WHERE id = filling.station_id) LIMIT 1);' \
-              'SELECT station_id, destination as target FROM filling;'
-        self._lookup_filling_stations(2000, sql)
+              'UPDATE filling SET target = (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> (SELECT geom FROM de_tt_stations WHERE id = filling.station_id) LIMIT 1);' \
+              'SELECT station_id, target FROM filling;'
+        try:
+            self._lookup_filling_stations(2000, sql)
+        except FillingStationError as e:
+            raise
 
     def find_filling_station(self):
         """
@@ -216,7 +224,7 @@ class CheapestRefillStrategy(BaseRefillStrategy):
             args = dict(received=self.env.now,
                         reachable=self.env.car.km_left,
                         start=self.env.car.current_position,
-                        destinations=self.refillstation_points,
+                        destinations=self.refillstation_destination,
                         r_start=self.env.route.start,
                         r_dest=self.env.route.destination)
             try:

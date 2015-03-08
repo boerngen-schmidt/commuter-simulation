@@ -29,7 +29,7 @@ def main():
     # fetch all commuters
     logging.info('Filling simulation queue')
     commuter_sim_queue = mp.Queue(maxsize=2000)
-    sql = 'SELECT id FROM de_sim_routes WHERE id > (SELECT MAX(c_id) FROM de_sim_data_commuter) ORDER BY id'
+    sql = 'SELECT id FROM de_sim_routes WHERE id > (SELECT CASE WHEN MAX(c_id) IS NULL THEN 0 ELSE MAX(c_id) END FROM de_sim_data_commuter) ORDER BY id'
     threading.Thread(target=_queue_feeder, args=(sql, commuter_sim_queue, sig.exit_event, 500, number_of_processes)).start()
 
     logging.info('Starting Simulation')

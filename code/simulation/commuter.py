@@ -52,7 +52,7 @@ class Commuter(object):
             cur.execute(
                 'INSERT INTO de_sim_data_commuter(c_id, leaving_time, route_home_distance, route_work_distance, fuel_type, tank_filling) '
                 'VALUES (%s, %s, %s, %s, %s, %s)',
-                self._id, self._leave, self._home_route.distance, self._work_route.distance, self.env.car.fuel_type, self.env.car.current_filling)
+                (self._id, self._leave, self._home_route.distance, self._work_route.distance, self.env.car.fuel_type, self.env.car.current_filling))
             conn.commit()
 
     def _setup_routes(self, route_id):

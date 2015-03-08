@@ -81,6 +81,7 @@ class CommuterSimulationProcess(mp.Process):
                     action = sm.state.run()
                     sm.state = sm.state.next(action)
             except FillingStationError as e:
+                logging.error(e)
                 logging.error('No Fillingstation found for commuter %s', c_id)
                 self.counter.increment()
                 self._insert_error(c_id, e)
