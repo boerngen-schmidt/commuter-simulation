@@ -29,6 +29,7 @@ def match_points():
     logging.info('Start filling work queue.')
 
     with connection.get_connection() as conn:
+        '''Collecting distributions'''
         cur = conn.cursor(cursor_factory=NamedTupleCursor)
         cur.execute('SELECT * FROM ('
                     'SELECT rs, outgoing, within FROM de_commuter_gemeinden  '
@@ -44,6 +45,7 @@ def match_points():
         counter = Counter(cur.rowcount * (len(cd.commuting_distance) + 1))
         distributions = [[] for i in range(len(cd.commuting_distance))]  # Empty List with lists
 
+        '''Perform matching'''
         start = time.time()
         processes = []
         signal.signal(signal.SIGINT, signal.SIG_IGN)

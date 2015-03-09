@@ -15,7 +15,7 @@ import multiprocessing as mp
 
 class PointMatcherRevised(mp.Process):
     def __init__(self, matching_queue: mp.Queue, counter: Counter, exit_event: mp.Event):
-        super().__init__()
+        super().__init__(name='PMR')
         self.q = matching_queue
         self.counter = counter
         self.exit_event = exit_event
@@ -63,7 +63,7 @@ class PointMatcherRevised(mp.Process):
                 points = 'SELECT ' \
                          '  s.id AS start, ' \
                          '  e.id AS destination, ' \
-                         '  ST_Distance(s.geom, e.geom) as distance ' \
+                         '  ST_Distance(s.geom, e.geom) as distance_meter ' \
                          'FROM ( ' \
                          '  SELECT id, geom, row_number() OVER () AS i  ' \
                          '  FROM ( ' \
@@ -107,7 +107,7 @@ class PointMatcherRevised(mp.Process):
                 points = 'SELECT ' \
                          '  s.id AS start, ' \
                          '  e.id AS destination, ' \
-                         '  ST_Distance(s.geom, e.geom) as distance ' \
+                         '  ST_Distance(s.geom, e.geom) as distance_meter ' \
                          'FROM ( ' \
                          '  SELECT id, geom, row_number() OVER () AS i  ' \
                          '  FROM ( ' \
