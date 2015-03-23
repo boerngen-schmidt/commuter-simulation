@@ -57,7 +57,9 @@ class CommuterSimulationZeroMQThread(threading.Thread):
 
             if socks.get(self.reciever) == zmq.POLLIN:
                 message = self.reciever.recv_json()
+                start = time.time()
                 self.simulate(message['c_id'], message['rerun'])
+                self.log.info('Simulated commuter %d in %.2f', message['c_id'], start-time.time())
 
             if socks.get(self.controller) == zmq.POLLIN:
                 break
@@ -69,7 +71,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
         tz = datetime.timezone(datetime.timedelta(hours=1))
         start_time = datetime.datetime(2014, 6, 1, 0, 0, 0, 0, tz)
         end_time = datetime.datetime(2014, 10, 31, 23, 59, 59, 0, tz)
-        env = SimulationEnvironment(start_time, self.rerun)
+        env = SimulationEnvironment(start_time, rerun)
 
         # Set the environment for every state
         initialize_states(env)
