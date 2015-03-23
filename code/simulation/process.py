@@ -18,13 +18,13 @@ import zmq
 class CommuterSimulationZeroMQ(mp.Process):
     def __init__(self, exit_event):
         super().__init__()
-        self.log = logging.getLogger(self.__class__.__name__)
+        self.log = logging.getLogger()
         self._ee = exit_event
 
     def run(self):
         self.log.info('Starting Threads ...')
         threads = []
-        for i in range(1):
+        for i in range(3):
             threads.append(CommuterSimulationZeroMQThread(self._ee))
             threads[-1].start()
 
@@ -37,7 +37,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
     def __init__(self, exit_event):
         super().__init__()
         self.exit_event = exit_event
-        self.log = logging.getLogger(self.__class__.__name__)
+        self.log = logging.getLogger()
         self.context = zmq.Context()
 
         # Socket to receive commuter to simulate
