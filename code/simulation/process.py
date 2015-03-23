@@ -93,7 +93,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
             logging.error(e)
             self._insert_error(c_id, e)
         else:
-            self.log.info('Finished (%d) commuter in %s', c_id, start)
+            self.log.info('Finished (%d) commuter in %.2f', c_id, start)
 
     def setup_environment(self, c_id, env, rerun):
         if rerun:
