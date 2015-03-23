@@ -56,7 +56,7 @@ def worker():
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     processes = []
     for i in range(number_of_processes):
-        processes.append(CommuterSimulationZeroMQ())
+        processes.append(CommuterSimulationZeroMQ(sig.exit_event))
         processes[-1].start()
 
     signal.signal(signal.SIGINT, sig.signal_handler)
