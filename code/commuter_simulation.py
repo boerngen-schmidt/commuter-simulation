@@ -34,20 +34,27 @@ def _zeromq_feeder(sql, socket, exit_event, size=500, rerun=False):
         cur.execute(sql)
         i = 0
         k = 0
+        n = 100000
         while True:
             results = cur.fetchmany(size)
             for rec in results:
                 socket.send_json(dict(c_id=rec[0], rerun=rerun))
                 i += 1
-            if i >= 100000:
+
+            if i >= n:
                 k += 1
-                logging.info('Send commuter: %dk', k*100)
-                i -= 100000
-            if not results or exit_event.is_set():
-                logging.info('Send %d')
+                logging.info('Send commuter: %d', k*n)
+                i -= n
+
+            if not results:
                 break
+
+            if exit_event.is_set():
+                break
+        logging.info('Total send commuter: %d', k*n+i)
         cur.close()
         conn.commit()
+    socket.setsockopt(zmq.LINGER, 0)
 
 
 def worker():
@@ -71,7 +78,6 @@ def server():
     context = zmq.Context()
     msg_send_socket = context.socket(zmq.PUSH)
     msg_send_socket.set_hwm = 500
-    msg_send_socket.setsockopt(zmq.LINGER, 0)
     msg_send_socket.bind('tcp://*:2510')
 
     signal.signal(signal.SIGINT, sig.signal_handler)
@@ -88,7 +94,7 @@ def server():
     start = time.time()
     logging.info('Starting first simulation run')
     zmq_feeder.join()
-    logging.info('Finished first run in %.2f seconds', start-time.time())
+    logging.info('Finished first run in %.2f seconds', time.time()-start)
 
     sql = 'SELECT id FROM de_sim_routes ' \
           'WHERE id > (SELECT CASE WHEN MAX(c_id) IS NULL THEN 0 ELSE MAX(c_id) END ' \
@@ -99,7 +105,7 @@ def server():
     start = time.time()
     logging.info('Starting second simulation run')
     zmq_feeder.join()
-    logging.info('Finished first run in %.2f seconds', start-time.time())
+    logging.info('Finished first run in %.2f seconds', time.time()-start)
 
 
 if __name__ == '__main__':

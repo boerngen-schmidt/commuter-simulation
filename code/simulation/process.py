@@ -42,7 +42,8 @@ class CommuterSimulationZeroMQThread(threading.Thread):
 
         # Socket to receive commuter to simulate
         self.reciever = self.context.socket(zmq.PULL)
-        self.reciever.set_hwm = 10
+        self.reciever.setsockopt(zmq.RCVBUF, 256)
+        self.reciever.setsockopt(zmq.HWM, 1)
         self.reciever.setsockopt(zmq.LINGER, 0)
         self.reciever.connect('tcp://bentoo.fritz.box:2510')
 
@@ -99,6 +100,8 @@ class CommuterSimulationZeroMQThread(threading.Thread):
             self._insert_error(c_id, e)
         else:
             self.log.info('Finished (%d) commuter in %.2f', c_id, time.time()-start)
+
+        del(env, sm)
 
     def setup_environment(self, c_id, env, rerun):
         if rerun:
