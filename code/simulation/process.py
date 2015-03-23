@@ -76,12 +76,12 @@ class CommuterSimulationZeroMQThread(threading.Thread):
         end_time = datetime.datetime(2014, 10, 31, 23, 59, 59, 0, tz)
         env = SimulationEnvironment(start_time, rerun)
 
-        # Set the environment for every state
-        initialize_states(env)
-
         try:
             # Setup Environment (done by __init__ functions of objects)
             self.setup_environment(c_id, env, rerun)
+
+            # Set the environment for every state
+            initialize_states(env)
 
             sm = StateMachine(CommuterState.Start)
             while env.now < end_time:
