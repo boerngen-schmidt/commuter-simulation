@@ -23,7 +23,7 @@ class CommuterSimulationZeroMQ(mp.Process):
     def run(self):
         self.log.info('Starting Threads ...')
         threads = []
-        for i in range(10):
+        for i in range(5):
             threads.append(CommuterSimulationZeroMQThread())
             threads[-1].start()
 
@@ -93,7 +93,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
             logging.error(e)
             self._insert_error(c_id, e)
         else:
-            self.log.info('Finished (%d) commuter in %.2f', c_id, start)
+            self.log.info('Finished (%d) commuter in %.2f', c_id, time.time()-start)
 
     def setup_environment(self, c_id, env, rerun):
         if rerun:
@@ -111,7 +111,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
                     car = DieselCar(c_id, env)
                 car._tankFilling = result.tank_filling
                 commuter = Commuter(c_id, env)
-                commuter._leave = result.leave_time
+                commuter.override_parameters(result.leave_time)
                 CheapestRefillStrategy(env)
         else:
             if random.random() > 0.5:

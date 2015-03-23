@@ -66,6 +66,9 @@ class Commuter(object):
         else:
             self.env.route = self._work_route
 
+    def override_parameters(self, leave_time):
+        self._leave = leave_time
+
     @property
     def id(self):
         return self._id
