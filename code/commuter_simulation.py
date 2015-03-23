@@ -34,7 +34,7 @@ def _zeromq_feeder(sql, socket, exit_event, size=500, rerun=False):
         cur.execute(sql)
         i = 0
         k = 0
-        n = 100000
+        n = 10000
         while True:
             results = cur.fetchmany(size)
             for rec in results:
@@ -77,7 +77,8 @@ def server():
     """
     context = zmq.Context()
     msg_send_socket = context.socket(zmq.PUSH)
-    msg_send_socket.set_hwm = 500
+    msg_send_socket.setsockopt(zmq.SNDBUF, 65536)
+    msg_send_socket.set_hwm(500)
     msg_send_socket.bind('tcp://*:2510')
 
     signal.signal(signal.SIGINT, sig.signal_handler)

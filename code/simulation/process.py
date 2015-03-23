@@ -30,6 +30,7 @@ class CommuterSimulationZeroMQ(mp.Process):
 
         for t in threads:
             t.join()
+            del t
         self.log.info('Threads finished working.')
 
 
@@ -42,8 +43,8 @@ class CommuterSimulationZeroMQThread(threading.Thread):
 
         # Socket to receive commuter to simulate
         self.reciever = self.context.socket(zmq.PULL)
-        self.reciever.setsockopt(zmq.RCVBUF, 256)
-        self.reciever.setsockopt(zmq.HWM, 1)
+        self.reciever.setsockopt(zmq.RCVBUF, 512)
+        self.reciever.set_hwm(1)
         self.reciever.setsockopt(zmq.LINGER, 0)
         self.reciever.connect('tcp://bentoo.fritz.box:2510')
 
