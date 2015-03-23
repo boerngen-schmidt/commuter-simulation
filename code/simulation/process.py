@@ -59,7 +59,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
                 message = self.reciever.recv_json()
                 start = time.time()
                 self.simulate(message['c_id'], message['rerun'])
-                self.log.info('Simulated commuter %d in %.2f', message['c_id'], start-time.time())
+                self.log.info('Simulated commuter %d in %.2f', message['c_id'], time.time()-start)
 
             if socks.get(self.controller) == zmq.POLLIN:
                 break
