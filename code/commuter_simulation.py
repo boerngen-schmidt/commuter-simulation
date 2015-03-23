@@ -32,11 +32,19 @@ def _zeromq_feeder(sql, socket, exit_event, size=500, rerun=False):
     with db.get_connection() as conn:
         cur = conn.cursor('feeder')
         cur.execute(sql)
+        i = 0
+        k = 0
         while True:
             results = cur.fetchmany(size)
             for rec in results:
                 socket.send_json(dict(c_id=rec[0], rerun=rerun))
+                i += 1
+            if i >= 100000:
+                k += 1
+                logging.info('Send commuter: %dk', k*100)
+                i -= 100000
             if not results or exit_event.is_set():
+                logging.info('Send %d')
                 break
         cur.close()
         conn.commit()

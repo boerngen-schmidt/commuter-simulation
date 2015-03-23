@@ -40,6 +40,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
 
         # Socket to receive commuter to simulate
         self.reciever = self.context.socket(zmq.PULL)
+        self.reciever.set_hwm = 10
         self.reciever.connect('tcp://bentoo.fritz.box:2510')
 
         # Socket for control input
