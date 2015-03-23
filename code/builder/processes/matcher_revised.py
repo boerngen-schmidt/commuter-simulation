@@ -144,6 +144,8 @@ class PointMatcherRevised(mp.Process):
                 args['done'] = updated
                 cur.execute(upsert_match_info, args)
                 conn.commit()
+                rows = cur.rowcount
+            time.sleep(0.0001 * rows)
 
             count = self.counter.increment()
             self.log.info('(%5d/%d) Finished matching %8s (min: %6d, max: %6d) %6d/%6d points for %12s in %.2f',
