@@ -24,7 +24,7 @@ class CommuterSimulationZeroMQ(mp.Process):
     def run(self):
         self.log.info('Starting Threads ...')
         threads = []
-        for i in range(5):
+        for i in range(1):
             threads.append(CommuterSimulationZeroMQThread(self._ee))
             threads[-1].start()
 

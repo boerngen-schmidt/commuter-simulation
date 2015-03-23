@@ -74,6 +74,8 @@ def server():
     msg_send_socket.setsockopt(zmq.LINGER, 0)
     msg_send_socket.bind('tcp://*:2510')
 
+    signal.signal(signal.SIGINT, sig.signal_handler)
+
     # fetch all commuters
     logging.info('Filling simulation queue')
 
