@@ -89,6 +89,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
             while env.now < end_time:
                 action = sm.state.run()
                 sm.state = sm.state.next(action)
+            del sm
         except FillingStationError as e:
             logging.error(e)
             logging.error('No Fillingstation found for commuter %s', c_id)
@@ -102,7 +103,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
         else:
             self.log.info('Finished (%d) commuter in %.2f', c_id, time.time()-start)
         finally:
-            del env, sm
+            del env
 
     def setup_environment(self, c_id, env, rerun):
         if rerun:
