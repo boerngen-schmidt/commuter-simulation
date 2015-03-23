@@ -23,7 +23,7 @@ class CommuterSimulationZeroMQ(mp.Process):
     def run(self):
         self.log.info('Starting Threads ...')
         threads = []
-        for i in range(2):
+        for i in range(10):
             threads.append(CommuterSimulationZeroMQThread())
             threads[-1].start()
 
@@ -57,9 +57,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
 
             if socks.get(self.reciever) == zmq.POLLIN:
                 message = self.reciever.recv_json()
-                start = time.time()
                 self.simulate(message['c_id'], message['rerun'])
-                self.log.info('Simulated commuter %d in %.2f', message['c_id'], time.time()-start)
 
             if socks.get(self.controller) == zmq.POLLIN:
                 break
