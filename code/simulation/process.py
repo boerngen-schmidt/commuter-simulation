@@ -16,15 +16,16 @@ import zmq
 
 
 class CommuterSimulationZeroMQ(mp.Process):
-    def __init__(self):
+    def __init__(self, exit_event):
         super().__init__()
         self.log = logging.getLogger(self.__class__.__name__)
+        self._ee = exit_event
 
     def run(self):
         self.log.info('Starting Threads ...')
         threads = []
         for i in range(5):
-            threads.append(CommuterSimulationZeroMQThread())
+            threads.append(CommuterSimulationZeroMQThread(self._ee))
             threads[-1].start()
 
         for t in threads:
@@ -33,18 +34,21 @@ class CommuterSimulationZeroMQ(mp.Process):
 
 
 class CommuterSimulationZeroMQThread(threading.Thread):
-    def __init__(self):
+    def __init__(self, exit_event):
         super().__init__()
+        self.exit_event = exit_event
         self.log = logging.getLogger(self.__class__.__name__)
         self.context = zmq.Context()
 
         # Socket to receive commuter to simulate
         self.reciever = self.context.socket(zmq.PULL)
         self.reciever.set_hwm = 10
+        self.reciever.setsockopt(zmq.LINGER, 0)
         self.reciever.connect('tcp://bentoo.fritz.box:2510')
 
         # Socket for control input
         self.controller = self.context.socket(zmq.SUB)
+        self.controller.setsockopt(zmq.LINGER, 0)
         self.controller.connect("tcp://bentoo.fritz.box:2512")
 
         # Process messages from both sockets
@@ -60,7 +64,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
                 message = self.reciever.recv_json()
                 self.simulate(message['c_id'], message['rerun'])
 
-            if socks.get(self.controller) == zmq.POLLIN:
+            if self.exit_event.is_set() or socks.get(self.controller) == zmq.POLLIN:
                 break
         self.log.info('Exiting %s', self.name)
 

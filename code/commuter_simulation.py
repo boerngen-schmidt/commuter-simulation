@@ -71,6 +71,7 @@ def server():
     context = zmq.Context()
     msg_send_socket = context.socket(zmq.PUSH)
     msg_send_socket.set_hwm = 500
+    msg_send_socket.setsockopt(zmq.LINGER, 0)
     msg_send_socket.bind('tcp://*:2510')
 
     # fetch all commuters
