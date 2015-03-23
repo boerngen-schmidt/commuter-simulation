@@ -61,12 +61,17 @@ def worker():
     number_of_processes = mp.cpu_count()
 
     signal.signal(signal.SIGINT, signal.SIG_IGN)
+    logging.info('Starting %d worker processes.', number_of_processes)
     processes = []
     for i in range(number_of_processes):
         processes.append(CommuterSimulationZeroMQ(sig.exit_event))
         processes[-1].start()
 
     signal.signal(signal.SIGINT, sig.signal_handler)
+
+    for p in processes:
+        p.join()
+    logging.info('Worker stopped.')
 
 
 def server():

@@ -30,7 +30,6 @@ class CommuterSimulationZeroMQ(mp.Process):
 
         for t in threads:
             t.join()
-            del t
         self.log.info('Threads finished working.')
 
 
@@ -68,6 +67,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
 
             if self.exit_event.is_set() or socks.get(self.controller) == zmq.POLLIN:
                 break
+        self.context.destroy(linger=0)
         self.log.info('Exiting %s', self.name)
 
     def simulate(self, c_id, rerun):
