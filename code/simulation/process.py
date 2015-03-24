@@ -63,7 +63,10 @@ class CommuterSimulationZeroMQThread(threading.Thread):
 
             if socks.get(self.reciever) == zmq.POLLIN:
                 message = self.reciever.recv_json()
-                self.simulate(message['c_id'], message['rerun'])
+                try:
+                    self.simulate(message['c_id'], message['rerun'])
+                except Exception:
+                    pass
 
             if self.exit_event.is_set() or socks.get(self.controller) == zmq.POLLIN:
                 break
@@ -92,7 +95,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
             del sm
         except FillingStationError as e:
             logging.error(e)
-            logging.error('No Fillingstation found for commuter %s', c_id)
+            logging.error('No filling station found for commuter %s', c_id)
             self._insert_error(c_id, e)
         except CommuterRouteError as e:
             logging.error(e)
