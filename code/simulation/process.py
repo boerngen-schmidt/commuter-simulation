@@ -65,8 +65,9 @@ class CommuterSimulationZeroMQThread(threading.Thread):
                 message = self.reciever.recv_json()
                 try:
                     self.simulate(message['c_id'], message['rerun'])
-                except Exception:
-                    pass
+                except Exception as e:
+                    log = logging.getLogger('exception')
+                    log.exception('Simulation of commuter %d failed.', message['c_id'])
 
             if self.exit_event.is_set() or socks.get(self.controller) == zmq.POLLIN:
                 break
