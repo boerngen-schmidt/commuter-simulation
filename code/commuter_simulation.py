@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """
 The Simulation purpose is the comparison between using and not using a fuel price application.
 
