@@ -78,7 +78,9 @@ def calculate_route(start, destination, action):
             conn.rollback()
             raise
 
-        cur.execute('SELECT seq, source, target, km, kmh, clazz FROM route WHERE seq < (SELECT COUNT(seq)-1 FROM route) ORDER BY seq')
+        cur.execute('SELECT seq, source, target, km, kmh, clazz '
+                    'FROM route '
+                    'WHERE source IS NOT NULL ORDER BY seq')
         fragments = []
         for rec in cur.fetchall():
             fragments.append(
