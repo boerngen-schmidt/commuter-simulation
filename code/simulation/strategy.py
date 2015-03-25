@@ -41,14 +41,14 @@ class BaseRefillStrategy(metaclass=ABCMeta):
             self._refillstations.append((station.target, station.station_id))
 
     def calculate_proxy_price(self, fuel_type):
-        '''
+        """
         Calculates a proxy price if the station selected has no price yet
         :param fuel_type: The type of fuel (e5, e10, diesel) to calculate the proxy value for
         :type fuel_type: str
         :returns: Proxy value for given fuel type
         :rtype: float
         :raises: NoPriceError
-        '''
+        """
         if not self._target_station:
             raise FillingStationError('No target filling station set. Can not calculate proxy price')
 
@@ -79,13 +79,12 @@ class BaseRefillStrategy(metaclass=ABCMeta):
         else:
             raise NoPriceError('No proxy value found')
         
-
     @property
-    def refillstation_destination(self):
+    def stations_destinations(self):
         return [s[0] for s in self._refillstations]
 
     @property
-    def refillstation_ids(self):
+    def stations_ids(self):
         return [s[1] for s in self._refillstations]
 
     def station_id(self, index):
@@ -123,7 +122,8 @@ class BaseRefillStrategy(metaclass=ABCMeta):
                 price = self.calculate_proxy_price(self.env.car.fuel_type)
 
             refill_amount = self.env.car.tank_size - self.env.car.current_filling
-            cur.execute('INSERT INTO de_sim_data_refill (c_id, rerun, amount, price, refueling_time, station, fuel_type) '
+            cur.execute('INSERT INTO de_sim_data_refill '
+                        '(c_id, rerun, amount, price, refueling_time, station, fuel_type) '
                         'VALUES (%s, %s, %s, %s, %s, %s, %s)',
                 (self.env.commuter.id, self.env.rerun, refill_amount, price, self.env.now, self._target_station, self.env.car.fuel_type))
             conn.commit()
@@ -133,7 +133,7 @@ class BaseRefillStrategy(metaclass=ABCMeta):
 
 class SimpleRefillStrategy(BaseRefillStrategy):
     """
-    This refillingstrategy searches for the closest refilling station, based on the cars current position. It does
+    This refilling strategy searches for the closest refilling station, based on the cars current position. It does
     not take into account anything else than the distance to the filling station.
     """
     def __init__(self, env):
@@ -145,10 +145,8 @@ class SimpleRefillStrategy(BaseRefillStrategy):
 
     def find_closest_station_to_route(self):
         sql = 'CREATE TEMP TABLE filling (target integer, station_id character varying(38)) ON COMMIT DROP; ' \
-              'INSERT INTO filling (station_id) ' \
-              '  SELECT id FROM de_tt_stations ORDER BY geom <-> ST_GEomFromEWKB(%(route)s) LIMIT 1; ' \
-              'UPDATE filling SET target = (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <->  ' \
-              '  (SELECT geom FROM de_tt_stations WHERE id = filling.station_id) LIMIT 1); ' \
+              'INSERT INTO filling (station_id) SELECT id FROM de_tt_stations ORDER BY geom <-> ST_GEomFromEWKB(%(route)s) LIMIT 1; ' \
+              'UPDATE filling SET target = (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> (SELECT geom FROM de_tt_stations WHERE id = filling.station_id) LIMIT 1); ' \
               'SELECT station_id, target FROM filling;'
         self._lookup_filling_stations(0, sql)
 
@@ -158,12 +156,15 @@ class SimpleRefillStrategy(BaseRefillStrategy):
         :return: The closest point in the routing network to the filling station
         """
         sql = 'SELECT seq, id1 as start, id2 as destination, cost as distance FROM pgr_kdijkstraCost(' \
-              '\'SELECT id, source, target, km as cost FROM de_2po_4pgr, (SELECT ST_Expand(ST_Extent(geom_vertex),10000) as box FROM de_2po_vertex WHERE id = %(r_start)s OR id = %(r_dest)s) as box WHERE geom_way && box.box\', ' \
+              '\'SELECT id, source, target, km as cost FROM de_2po_4pgr, (SELECT ST_Expand(ST_Extent(geom_vertex),10000) as box FROM de_2po_vertex WHERE id = ANY(%(box)s)) as box WHERE geom_way && box.box\', ' \
               '%(start)s, %(destinations)s, false, false) AS result ORDER BY cost LIMIT 1'
 
         with db.get_connection() as conn:
             cur = conn.cursor(cursor_factory=NamedTupleCursor)
-            args = dict(start=self.env.car.current_position, destinations=self.refillstation_destination, r_start=self.env.route.start, r_dest=self.env.route.destination)
+            args = dict(
+                start=self.env.car.current_position,
+                destinations=self.stations_destinations,
+                box=self.stations_destinations.append(self.env.car.current_position))
             try:
                 cur.execute(sql, args)
                 station = cur.fetchone()
@@ -201,7 +202,7 @@ class CheapestRefillStrategy(BaseRefillStrategy):
               'SELECT station_id, target FROM filling;'
         try:
             self._lookup_filling_stations(2000, sql)
-        except FillingStationError as e:
+        except FillingStationError:
             raise
 
     def find_filling_station(self):
@@ -217,16 +218,15 @@ class CheapestRefillStrategy(BaseRefillStrategy):
                   '  ORDER  BY received DESC LIMIT 1' \
                   ') p ON TRUE ' \
                   'LEFT JOIN (SELECT seq, id1 as start, id2 as target, cost as distance FROM ' \
-                  '  pgr_kdijkstraCost(\'SELECT id, source, target, km as cost FROM de_2po_4pgr, (SELECT ST_Expand(ST_Extent(geom_vertex),0.1) as box FROM de_2po_vertex WHERE id = %(r_start)s OR id = %(r_destination)s LIMIT 1) as box WHERE geom_way && box.box\', ' \
+                  '  pgr_kdijkstraCost(\'SELECT id, source, target, km as cost FROM de_2po_4pgr, (SELECT ST_Expand(ST_Extent(geom_vertex),0.1) as box FROM de_2po_vertex WHERE id = ANY(%(box)s) LIMIT 1) as box WHERE geom_way && box.box\', ' \
                   '  %(start)s, %(destinations)s, false, false) AS result) as p1 USING(target)' \
                   'WHERE distance <= %(reachable)s ORDER BY e5, distance LIMIT 1'
             values = ', '.join(str(x) for x in self._refillstations)
             args = dict(received=self.env.now,
                         reachable=self.env.car.km_left,
                         start=self.env.car.current_position,
-                        destinations=self.refillstation_destination,
-                        r_start=self.env.route.start,
-                        r_dest=self.env.route.destination)
+                        destinations=self.stations_destinations,
+                        box=self.stations_destinations.append(self.env.car.current_position))
             try:
                 cur.execute(sql.format(values=values), args)
             except Exception as e:
