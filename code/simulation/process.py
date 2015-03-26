@@ -45,12 +45,12 @@ class CommuterSimulationZeroMQThread(threading.Thread):
         self.reciever.setsockopt(zmq.RCVBUF, 512)
         self.reciever.set_hwm(1)
         self.reciever.setsockopt(zmq.LINGER, 0)
-        self.reciever.connect('tcp://bentoo.fritz.box:2510')
+        self.reciever.connect('tcp://130.83.11.128:2510')
 
         # Socket for control input
         self.controller = self.context.socket(zmq.SUB)
         self.controller.setsockopt(zmq.LINGER, 0)
-        self.controller.connect("tcp://bentoo.fritz.box:2512")
+        self.controller.connect("tcp://130.83.11.128:2512")
 
         # Process messages from both sockets
         self.poller = zmq.Poller()
