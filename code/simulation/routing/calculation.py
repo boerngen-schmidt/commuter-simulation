@@ -111,9 +111,9 @@ def _save_route_info(commuter_id, route):
                 km[s.road_type] = [s.length]
 
             if s.road_type in kmh:
-                km[s.road_type].append(s.speed_limit)
+                kmh[s.road_type].append(s.speed_limit)
             else:
-                km[s.road_type] = [s.speed_limit]
+                kmh[s.road_type] = [s.speed_limit]
 
         for key in km.keys():
             sql = 'INSERT INTO de_sim_data_routes (c_id, clazz, avg_kmh, km, work_route) VALUES (%s, %s, %s, %s, %s)'
