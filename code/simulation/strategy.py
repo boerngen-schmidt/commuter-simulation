@@ -161,16 +161,19 @@ class SimpleRefillStrategy(BaseRefillStrategy):
 
         with db.get_connection() as conn:
             cur = conn.cursor(cursor_factory=NamedTupleCursor)
+            box = []
+            box += self.stations_destinations
+            box.append(self.env.car.current_position)
             args = dict(
                 start=self.env.car.current_position,
                 destinations=self.stations_destinations,
-                box=self.stations_destinations.append(self.env.car.current_position))
+                box=box)
             try:
                 cur.execute(sql, args)
                 station = cur.fetchone()
             except Exception as e:
                 log = logging.getLogger('sql_error')
-                log.critical(e)
+                log.critical(str(e))
                 log.critical(cur.mogrify(sql, args))
                 conn.rollback()
                 raise FillingStationError(e)
@@ -218,15 +221,18 @@ class CheapestRefillStrategy(BaseRefillStrategy):
                   '  ORDER  BY received DESC LIMIT 1' \
                   ') p ON TRUE ' \
                   'LEFT JOIN (SELECT seq, id1 as start, id2 as target, cost as distance FROM ' \
-                  '  pgr_kdijkstraCost(\'SELECT id, source, target, km as cost FROM de_2po_4pgr, (SELECT ST_Expand(ST_Extent(geom_vertex),0.1) as box FROM de_2po_vertex WHERE id = ANY(%(box)s) LIMIT 1) as box WHERE geom_way && box.box\', ' \
+                  '  pgr_kdijkstraCost(\'SELECT id, source, target, km as cost FROM de_2po_4pgr, (SELECT ST_Expand(ST_Extent(geom_vertex),10000) as box FROM de_2po_vertex WHERE id = ANY(%(box)s) LIMIT 1) as box WHERE geom_way && box.box\', ' \
                   '  %(start)s, %(destinations)s, false, false) AS result) as p1 USING(target)' \
                   'WHERE distance <= %(reachable)s ORDER BY e5, distance LIMIT 1'
             values = ', '.join(str(x) for x in self._refillstations)
+            box = []
+            box += self.stations_destinations
+            box.append(self.env.car.current_position)
             args = dict(received=self.env.now,
                         reachable=self.env.car.km_left,
                         start=self.env.car.current_position,
                         destinations=self.stations_destinations,
-                        box=self.stations_destinations.append(self.env.car.current_position))
+                        box=box)
             try:
                 cur.execute(sql.format(values=values), args)
             except Exception as e:
