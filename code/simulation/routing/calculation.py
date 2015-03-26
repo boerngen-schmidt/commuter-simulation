@@ -7,7 +7,7 @@ from simulation import CommuterAction, RouteFragment, Route
 
 
 dijkstra_sql = 'SELECT id, source, target, cost FROM de_2po_4pgr, ' \
-               '  (SELECT ST_Expand(ST_Extent(geom_vertex),0.1) as box FROM de_2po_vertex ' \
+               '  (SELECT ST_Expand(ST_Extent(geom_vertex),10000) as box FROM de_2po_vertex ' \
                '    WHERE id = %(start)s OR id = %(dest)s ' \
                '  ) as box WHERE geom_way && box.box'
 
@@ -17,10 +17,10 @@ def route_to_work(route_id):
     with db.get_connection() as conn:
         sql = 'WITH info AS (SELECT end_point AS start, start_point AS dest FROM de_sim_routes WHERE id = %(id)s) ' \
               'SELECT d.id, s.id FROM ' \
-              ' (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> ST_Transform(' \
-              '   (SELECT geom FROM de_sim_points WHERE id = (SELECT start FROM info)), 4326) LIMIT 1) AS s, ' \
-              ' (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> ST_Transform(' \
-              '   (SELECT geom FROM de_sim_points WHERE id = (SELECT dest FROM info)), 4326) LIMIT 1) AS d '
+              ' (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> ' \
+              '   (SELECT geom FROM de_sim_points WHERE id = (SELECT start FROM info)) LIMIT 1) AS s, ' \
+              ' (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> ' \
+              '   (SELECT geom FROM de_sim_points WHERE id = (SELECT dest FROM info)) LIMIT 1) AS d '
         cur = conn.cursor()
         try:
             cur.execute(sql, dict(id=route_id))
@@ -38,10 +38,10 @@ def route_home(route_id):
     with db.get_connection() as conn:
         sql = 'WITH info AS (SELECT end_point AS start, start_point AS dest FROM de_sim_routes WHERE id = %(id)s) ' \
               'SELECT s.id, d.id FROM ' \
-              ' (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> ST_Transform(' \
-              '   (SELECT geom FROM de_sim_points WHERE id = (SELECT start FROM info)), 4326) LIMIT 1) AS s, ' \
-              ' (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> ST_Transform(' \
-              '   (SELECT geom FROM de_sim_points WHERE id = (SELECT dest FROM info)), 4326) LIMIT 1) AS d '
+              ' (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> ' \
+              '   (SELECT geom FROM de_sim_points WHERE id = (SELECT start FROM info)) LIMIT 1) AS s, ' \
+              ' (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> ' \
+              '   (SELECT geom FROM de_sim_points WHERE id = (SELECT dest FROM info)) LIMIT 1) AS d '
         cur = conn.cursor()
         try:
             cur.execute(sql, dict(id=route_id))
@@ -79,7 +79,9 @@ def calculate_route(start, destination, action):
             conn.rollback()
             raise
 
-        cur.execute('SELECT seq, source, target, km, kmh, clazz FROM route WHERE seq < (SELECT COUNT(seq)-1 FROM route) ORDER BY seq')
+        cur.execute('SELECT seq, source, target, km, kmh, clazz '
+                    'FROM route '
+                    'WHERE source IS NOT NULL ORDER BY seq')
         fragments = []
         for rec in cur.fetchall():
             fragments.append(

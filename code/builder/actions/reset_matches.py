@@ -5,7 +5,7 @@ from database import connection as db
 
 
 sql_cmds = ['TRUNCATE de_sim_routes RESTART IDENTITY CASCADE',
-            'TRUNCATE de_sim_data_match_info RESTART IDENTITY CASCADE',
+            'TRUNCATE de_sim_data_matching_info RESTART IDENTITY CASCADE',
             'UPDATE de_sim_points_start SET used = FALSE WHERE used',
             'UPDATE de_sim_points_within_start SET used = FALSE WHERE used',
             'UPDATE de_sim_points_end SET used = FALSE WHERE used',

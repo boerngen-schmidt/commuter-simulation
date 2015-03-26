@@ -25,6 +25,7 @@ class BaseCar(metaclass=ABCMeta):
         self._tankSize = float(tank_size)
         self._tankFilling = BaseCar._random_tank_filling(self._tankSize)
         self._current_position = None
+        self._fuel_type = 'e5'
         # self.log = logging.getLogger('spritsim.Car' + commuter_id)
 
     @staticmethod
@@ -45,6 +46,10 @@ class BaseCar(metaclass=ABCMeta):
         :rtype: int
         """
         return self._current_position
+
+    @property
+    def fuel_type(self):
+        return self._fuel_type
 
     @property
     def tank_size(self):
@@ -119,13 +124,13 @@ class SimpleCar(BaseCar):
     def __init__(self, commuter_id, env):
         super().__init__(commuter_id, env, 50)
 
-    @property
-    def consumption_per_km(self):
-        """Consumes standard of 10l per 100km"""
-        return float(50 / 500)
-
     def consume_fuel(self, speed, distance, road_type):
         self._tankFilling -= self.consumption_per_km * distance
+
+    @property
+    @abstractmethod
+    def consumption_per_km(self):
+        pass
 
     def drive(self):
         from simulation import CommuterAction
@@ -137,3 +142,31 @@ class SimpleCar(BaseCar):
             if self._tankFilling <= 5.0 and self.env.route.action is not CommuterAction.ArrivedAtFillingStation:
                 return CommuterAction.SearchFillingStation
         return self.env.route.action
+
+
+class PetrolCar(SimpleCar):
+    def __init__(self, commuter_id, env):
+        super().__init__(commuter_id, env)
+        self._fuel_type = 'e5'
+
+    @property
+    def consumption_per_km(self):
+        """
+        Consumes standard of 10l per 100km
+        With a range of 500km max per filling
+        """
+        return float(50 / 500)
+
+
+class DieselCar(SimpleCar):
+    def __init__(self, commuter_id, env):
+        super().__init__(commuter_id, env)
+        self._fuel_type = 'diesel'
+
+    @property
+    def consumption_per_km(self):
+        """
+        Consumes standard of 8 litre per 100km
+
+        """
+        return float(8)/625

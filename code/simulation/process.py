@@ -1,80 +1,139 @@
 import datetime
 import logging
 import multiprocessing as mp
+import random
+import threading
 import time
 
-from simulation.car import SimpleCar
+from simulation.car import PetrolCar, DieselCar
 from simulation.commuter import Commuter, CommuterRouteError
 from simulation.state import CommuterState, initialize_states
 from simulation.environment import SimulationEnvironment
 from simulation.state_machine import StateMachine
-from simulation.strategy import SimpleRefillStrategy, FillingStationError, NoPriceError
+from simulation.strategy import SimpleRefillStrategy, CheapestRefillStrategy, FillingStationError, NoPriceError
 from database import connection as db
+import zmq
 
 
-class CommuterSimulationProcess(mp.Process):
-    def __init__(self, commuter_queue: mp.Queue, exit_event: mp.Event, counter):
+class CommuterSimulationZeroMQ(mp.Process):
+    def __init__(self, exit_event):
         super().__init__()
-        self._q = commuter_queue
-        self.exit_event = exit_event
-        self.counter = counter
-        self.log = logging.getLogger(self.__class__.__name__)
-
-    def __del__(self):
-        if self.exit_event.is_set():
-            self.log.warn('Cleaning %d elements from Queue ... ', self._q.qsize())
-            while not self._q.empty():
-                self._q.get()
+        self.log = logging.getLogger()
+        self._ee = exit_event
 
     def run(self):
-        i = 0
-        start = time.time()
-        self.log.info('Starting process %s', self.name)
-        while True:
-            c_id = self._q.get()
-            if not c_id or self.exit_event.is_set():
-                break
+        self.log.info('Starting Threads ...')
+        threads = []
+        for i in range(3):
+            threads.append(CommuterSimulationZeroMQThread(self._ee))
+            threads[-1].start()
 
-            # Generate Commuter
-            tz = datetime.timezone(datetime.timedelta(hours=1))
-            start_time = datetime.datetime(2014, 6, 1, 0, 0, 0, 0, tz)
-            end_time = datetime.datetime(2014, 10, 31, 23, 59, 59, 0, tz)
-            env = SimulationEnvironment(start_time)
+        for t in threads:
+            t.join()
+        self.log.info('Threads finished working.')
+
+
+class CommuterSimulationZeroMQThread(threading.Thread):
+    def __init__(self, exit_event):
+        super().__init__()
+        self.exit_event = exit_event
+        self.log = logging.getLogger()
+        self.context = zmq.Context()
+
+        # Socket to receive commuter to simulate
+        self.reciever = self.context.socket(zmq.PULL)
+        self.reciever.setsockopt(zmq.RCVBUF, 512)
+        self.reciever.set_hwm(1)
+        self.reciever.setsockopt(zmq.LINGER, 0)
+        self.reciever.connect('tcp://bentoo.fritz.box:2510')
+
+        # Socket for control input
+        self.controller = self.context.socket(zmq.SUB)
+        self.controller.setsockopt(zmq.LINGER, 0)
+        self.controller.connect("tcp://bentoo.fritz.box:2512")
+
+        # Process messages from both sockets
+        self.poller = zmq.Poller()
+        self.poller.register(self.reciever, zmq.POLLIN)
+        self.poller.register(self.controller, zmq.POLLIN)
+
+    def run(self):
+        while True:
+            socks = dict(self.poller.poll())
+
+            if socks.get(self.reciever) == zmq.POLLIN:
+                message = self.reciever.recv_json()
+                try:
+                    self.simulate(message['c_id'], message['rerun'])
+                except Exception as e:
+                    log = logging.getLogger('exception')
+                    log.exception('Simulation of commuter %d failed.', message['c_id'])
+
+            if self.exit_event.is_set() or socks.get(self.controller) == zmq.POLLIN:
+                break
+        self.context.destroy(linger=0)
+        self.log.info('Exiting %s', self.name)
+
+    def simulate(self, c_id, rerun):
+        start = time.time()
+        # Generate Commuter
+        tz = datetime.timezone(datetime.timedelta(hours=1))
+        start_time = datetime.datetime(2014, 6, 1, 0, 0, 0, 0, tz)
+        end_time = datetime.datetime(2014, 10, 31, 23, 59, 59, 0, tz)
+        env = SimulationEnvironment(start_time, rerun)
+
+        try:
+            # Setup Environment (done by __init__ functions of objects)
+            self.setup_environment(c_id, env, rerun)
 
             # Set the environment for every state
             initialize_states(env)
 
-            try:
-                # Setup Environment (done by __init__ functions of objects)
-                SimpleCar(c_id, env)
-                Commuter(c_id, env)
-                SimpleRefillStrategy(env)
-                sm = StateMachine(CommuterState.Start)
-                while env.now < end_time:
-                    action = sm.state.run()
-                    sm.state = sm.state.next(action)
-            except FillingStationError as e:
-                logging.error('No Fillingstation found for commuter %s', c_id)
-                self.counter.increment()
-                self._insert_error(c_id, e)
-            except CommuterRouteError as e:
-                logging.error(e)
-                self.counter.increment()
-                self._insert_error(c_id, e)
-            except NoPriceError as e:
-                logging.error(e)
-                self.counter.increment()
-                self._insert_error(c_id, e)
-            else:
-                if i >= 10:
-                    count = self.counter.increment(10)
-                    self.log.info('Finished (%s/%s) commuter in %s', count, self.counter.maximum, time.time()-start)
-                    start = time.time()
-                    i = 0
-                    time.sleep(0.5)
+            sm = StateMachine(CommuterState.Start)
+            while env.now < end_time:
+                action = sm.state.run()
+                sm.state = sm.state.next(action)
+            del sm
+        except FillingStationError as e:
+            logging.error(e)
+            logging.error('No filling station found for commuter %s', c_id)
+            self._insert_error(c_id, e)
+        except CommuterRouteError as e:
+            logging.error(e)
+            self._insert_error(c_id, e)
+        except NoPriceError as e:
+            logging.error(e)
+            self._insert_error(c_id, e)
+        else:
+            self.log.info('Finished (%d) commuter in %.2f', c_id, time.time()-start)
+        finally:
+            del env
+
+    def setup_environment(self, c_id, env, rerun):
+        if rerun:
+            from psycopg2.extras import NamedTupleCursor
+            with db.get_connection() as conn:
+                cur = conn.cursor(cursor_factory=NamedTupleCursor)
+                args = dict(c_id=c_id)
+                cur.execute('SELECT * FROM de_sim_data_commuter WHERE c_id = %(c_id)s', args)
+                result = cur.fetchone()
+                conn.commit()
+            if result:
+                if result.fuel_type is 'petrol':
+                    car = PetrolCar(c_id, env)
                 else:
-                    i += 1
-        self.log.info('Exiting %s', self.name)
+                    car = DieselCar(c_id, env)
+                car._tankFilling = result.tank_filling
+                commuter = Commuter(c_id, env)
+                commuter.override_parameters(result.leave_time)
+                CheapestRefillStrategy(env)
+        else:
+            if random.random() > 0.5:
+                PetrolCar(c_id, env)
+            else:
+                DieselCar(c_id, env)
+            Commuter(c_id, env)
+            SimpleRefillStrategy(env)
 
     def _insert_error(self, commuter_id, error):
         with db.get_connection() as conn:

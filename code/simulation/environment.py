@@ -3,7 +3,7 @@ import datetime as dt
 
 class SimulationEnvironment():
     """Simulation environment is also the context of the StateMachine"""
-    def __init__(self, initial_time):
+    def __init__(self, initial_time, rerun):
         """
 
         :param initial_time: Start time of the SimulationEnvironment
@@ -17,6 +17,11 @@ class SimulationEnvironment():
         self._time = initial_time
         ''':type : datetime.datetime'''
         self._to_work = True
+        self._rerun = rerun
+
+    @property
+    def rerun(self):
+        return self._rerun
 
     @property
     def now(self):

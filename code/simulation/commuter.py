@@ -41,13 +41,18 @@ class Commuter(object):
         # Generate a random leaving time between 6 and 9 o'clock with a 5min interval
         self._leave = dt.timedelta(seconds=random.randrange(6 * 60 * 60, 9 * 60 * 60, 5 * 60))
 
+        if not env.rerun:
+            self._safe_commuter_info()
+
+    def _safe_commuter_info(self):
         # Save Information into DB
         with db.get_connection() as conn:
             cur = conn.cursor()
-            leave = dt.datetime.combine(dt.date.today(), dt.time(tzinfo=tz)) + self._leave
+            #leave = dt.datetime.combine(dt.date.today(), dt.time(tzinfo=tz)) + self._leave
             cur.execute(
-                'INSERT INTO de_sim_data_commuter VALUES (%s, %s, %s, %s)',
-                (commuter_id, leave.time(), self._home_route.distance, self._work_route.distance))
+                'INSERT INTO de_sim_data_commuter(c_id, leaving_time, route_home_distance, route_work_distance, fuel_type, tank_filling) '
+                'VALUES (%s, %s, %s, %s, %s, %s)',
+                (self._id, self._leave, self._home_route.distance, self._work_route.distance, self.env.car.fuel_type, self.env.car.current_filling))
             conn.commit()
 
     def _setup_routes(self, route_id):
@@ -60,6 +65,9 @@ class Commuter(object):
             raise CommuterRouteError('No Route found for commuter %s' % self._id)
         else:
             self.env.route = self._work_route
+
+    def override_parameters(self, leave_time):
+        self._leave = leave_time
 
     @property
     def id(self):

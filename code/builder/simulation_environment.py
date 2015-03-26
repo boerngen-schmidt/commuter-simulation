@@ -1,8 +1,10 @@
-'''
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
 Generates Simulation Environment
 
 @author: Benjamin
-'''
+"""
 import argparse
 
 from builder.actions import clean_points, reset_matches
@@ -46,9 +48,9 @@ if __name__ == "__main__":
                                action='store_true')
     actions_group.add_argument('--generate-routes', help='generates routs from previously matched points',
                                action='store_true')
-    args = parser.parse_args()
-    if not any([args.create_points, args.generate_routes, args.match_points]):
+    arguments = parser.parse_args()
+    if not any([arguments.create_points, arguments.generate_routes, arguments.match_points]):
         parser.print_help()
         quit()
 
-    main(args)
+    main(arguments)
