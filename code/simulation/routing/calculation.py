@@ -117,7 +117,7 @@ def _save_route_info(commuter_id, route):
 
         for key in km.keys():
             sql = 'INSERT INTO de_sim_data_routes (c_id, clazz, avg_kmh, km, work_route) VALUES (%s, %s, %s, %s, %s)'
-            cur.execute(sql, (commuter_id, key, sum(kmh[key])/len(kmh[key]), sum(km[key]), work))
+            cur.execute(sql, (commuter_id, key.value, sum(kmh[key])/len(kmh[key]), sum(km[key]), work))
             conn.commit()
 
 
