@@ -40,17 +40,36 @@ class CommuterSimulationZeroMQThread(threading.Thread):
         self.log = logging.getLogger()
         self.context = zmq.Context()
 
+        # Configuration
+        import configparser
+        from helper.file_finder import find
+
+        config = configparser.ConfigParser()
+        config.read(find('messaging.conf'))
+        section = 'client'
+        conn_str = 'tcp://{host!s}:{port!s}'
+        if not config.has_section(section):
+            raise configparser.NoSectionError('Missing section %s' % section)
+
         # Socket to receive commuter to simulate
         self.reciever = self.context.socket(zmq.PULL)
-        self.reciever.setsockopt(zmq.RCVBUF, 512)
-        self.reciever.set_hwm(1)
+        self.reciever.setsockopt(zmq.RCVBUF, config.getint(section, 'pull_rcvbuf'))
+        self.reciever.set_hwm(config.getint(section, 'pull_hwm'))
         self.reciever.setsockopt(zmq.LINGER, 0)
-        self.reciever.connect('tcp://130.83.11.128:2510')
+        args = dict(
+            host=config.get(section, 'pull_host'),
+            port=config.getint(section, 'pull_port')
+        )
+        self.reciever.connect(conn_str.format(**args))
 
         # Socket for control input
         self.controller = self.context.socket(zmq.SUB)
         self.controller.setsockopt(zmq.LINGER, 0)
-        self.controller.connect("tcp://130.83.11.128:2512")
+        args = dict(
+            host=config.get(section, 'control_host'),
+            port=config.getint(section, 'control_port')
+        )
+        self.controller.connect(conn_str.format(**args))
 
         # Process messages from both sockets
         self.poller = zmq.Poller()
@@ -119,7 +138,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
                 result = cur.fetchone()
                 conn.commit()
             if result:
-                if result.fuel_type is 'petrol':
+                if result.fuel_type == 'petrol':
                     car = PetrolCar(c_id, env)
                 else:
                     car = DieselCar(c_id, env)

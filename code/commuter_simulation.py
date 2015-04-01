@@ -82,11 +82,26 @@ def server():
     a ZeroMQ Push socket. The Clients can connect to the server's socket an pull the commuter.
     :return:
     """
+    # Configuration
+    import configparser
+    from helper.file_finder import find
+
+    config = configparser.ConfigParser()
+    config.read(find('messaging.conf'))
+    section = 'server'
+    conn_str = 'tcp://{host!s}:{port!s}'
+    if not config.has_section(section):
+        raise configparser.NoSectionError('Missing section %s' % section)
+
     context = zmq.Context()
     msg_send_socket = context.socket(zmq.PUSH)
-    msg_send_socket.setsockopt(zmq.SNDBUF, 65536)
-    msg_send_socket.set_hwm(500)
-    msg_send_socket.bind('tcp://*:2510')
+    msg_send_socket.setsockopt(zmq.SNDBUF, config.getint(section, 'push_sndbuf'))
+    msg_send_socket.set_hwm(config.getint(section, 'push_hwm'))
+    args_conn_str = dict(
+        host=config.get(section, 'push_host'),
+        port=config.getint(section, 'push_port')
+    )
+    msg_send_socket.bind(conn_str.format(**args_conn_str))
 
     signal.signal(signal.SIGINT, sig.signal_handler)
 

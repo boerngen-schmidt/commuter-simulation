@@ -5,5 +5,5 @@ maxconn:
 host: 
 port:
 dbname:
-username: 
+user:
 password:
