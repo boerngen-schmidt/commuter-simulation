@@ -13,14 +13,14 @@ import zmq
 
 
 def first_simulation():
-    '''
+    """
 
     :return:
-    '''
-    sql = 'SELECT id FROM de_sim_routes ' \
-          'WHERE id > (SELECT CASE WHEN MAX(c_id) IS NULL THEN 0 ELSE MAX(c_id) END ' \
-          '            FROM de_sim_data_commuter) ' \
-          'ORDER BY id'
+    """
+    sql = 'SELECT id FROM de_sim_routes r WHERE NOT EXISTS ' \
+          '(SELECT 1 FROM de_sim_data_commuter c WHERE c.c_id = r.id AND NOT rerun) ' \
+          'ORDER BY id LIMIT 100'
+
     zmq_feeder = threading.Thread(target=_zeromq_feeder, args=(sql, msg_send_socket, sig.exit_event, 500))
     zmq_feeder.start()
     start = time.time()

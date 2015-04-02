@@ -14,7 +14,7 @@ dijkstra_sql = 'SELECT id, source, target, cost FROM de_2po_4pgr, ' \
                '  ) as box WHERE geom_way && box.box'
 
 
-def route_to_work(route_id):
+def route_to_work(route_id, rerun):
     """Alias for calculate_route with pre set start and destination points"""
     with db.get_connection() as conn:
         sql = '  WITH info AS (SELECT end_point AS start, start_point AS dest FROM de_sim_routes WHERE id = %(id)s) ' \
@@ -32,11 +32,11 @@ def route_to_work(route_id):
             raise NoRoutingPointsError
         start, destination = cur.fetchone()
     route = calculate_route(start, destination, CommuterAction.ArrivedAtWork)
-    _save_route_info(route_id, route)
+    _save_route_info(route_id, rerun, route)
     return route
 
 
-def route_home(route_id):
+def route_home(route_id, rerun):
     """Alias for calculate_route with pre set start and destination points"""
     with db.get_connection() as conn:
         sql = 'WITH info AS (SELECT end_point AS start, start_point AS dest FROM de_sim_routes WHERE id = %(id)s) ' \
@@ -54,7 +54,7 @@ def route_home(route_id):
             raise NoRoutingPointsError
         start, destination = cur.fetchone()
     route = calculate_route(start, destination, CommuterAction.ArrivedAtHome)
-    _save_route_info(route_id, route)
+    _save_route_info(route_id, rerun, route)
     return route
 
 
@@ -102,7 +102,7 @@ def calculate_route(start, destination, action):
     return Route(start, destination, fragments, action, line, distance)
 
 
-def _save_route_info(commuter_id, route):
+def _save_route_info(commuter_id, rerun, route):
     with db.get_connection() as conn:
         cur = conn.cursor()
         work = (route.action is CommuterAction.ArrivedAtWork)
@@ -121,6 +121,6 @@ def _save_route_info(commuter_id, route):
                 kmh[s.road_type] = [s.speed_limit]
 
         for key in km.keys():
-            sql = 'INSERT INTO de_sim_data_routes (c_id, clazz, avg_kmh, km, work_route) VALUES (%s, %s, %s, %s, %s)'
-            cur.execute(sql, (commuter_id, key.value, sum(kmh[key])/len(kmh[key]), sum(km[key]), work))
+            sql = 'INSERT INTO de_sim_data_routes (c_id, rerun, clazz, avg_kmh, km, work_route) VALUES (%s, %s, %s, %s, %s, %s)'
+            cur.execute(sql, (commuter_id, rerun, key.value, sum(kmh[key])/len(kmh[key]), sum(km[key]), work))
             conn.commit()

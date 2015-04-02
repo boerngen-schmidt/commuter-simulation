@@ -41,8 +41,7 @@ class Commuter(object):
         # Generate a random leaving time between 6 and 9 o'clock with a 5min interval
         self._leave = dt.timedelta(seconds=random.randrange(6 * 60 * 60, 9 * 60 * 60, 5 * 60))
 
-        if not env.rerun:
-            self._safe_commuter_info()
+        self._safe_commuter_info()
 
     def _safe_commuter_info(self):
         # Save Information into DB
@@ -68,8 +67,8 @@ class Commuter(object):
         """Initializes the two main routes the commuter drives."""
         from simulation import rc
         try:
-            self._home_route = rc.route_home(route_id)
-            self._work_route = rc.route_to_work(route_id)
+            self._home_route = rc.route_home(route_id, self.env.rerun)
+            self._work_route = rc.route_to_work(route_id, self.env.rerun)
         except:
             raise
         else:

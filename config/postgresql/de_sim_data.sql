@@ -1,5 +1,5 @@
 BEGIN;
-    DROP TABLE IF EXISTS de_sim_data_commuter;
+    DROP TABLE IF EXISTS de_sim_data_commuter CASCADE;
     CREATE TABLE de_sim_data_commuter
     (
         c_id INT NOT NULL,
@@ -19,14 +19,14 @@ BEGIN;
     (
         id SERIAL PRIMARY KEY NOT NULL,
         c_id INT,
-        rerun BOOL,
+        rerun boolean NOT NULL,
         amount DOUBLE PRECISION,
         price DOUBLE PRECISION,
         refueling_time TIMESTAMP,
         station VARCHAR(38),
         fuel_type VARCHAR(6),
-        CONSTRAINT de_sim_data_refill_fkey FOREIGN KEY (c_id)
-          REFERENCES de_sim_data_commuter (c_id) MATCH SIMPLE
+        CONSTRAINT de_sim_data_refill_fkey FOREIGN KEY (c_id, rerun)
+          REFERENCES de_sim_data_commuter (c_id, rerun) MATCH SIMPLE
           ON UPDATE NO ACTION ON DELETE CASCADE
     );
     CREATE INDEX de_sim_data_refill_c_id_rerun_idx ON de_sim_data_refill (c_id, rerun);
@@ -35,13 +35,14 @@ BEGIN;
     CREATE TABLE de_sim_data_routes
     (
       c_id integer NOT NULL,
+      rerun boolean NOT NULL,
       clazz integer,
       km double precision,
       avg_kmh integer,
       work_route boolean NOT NULL,
-      CONSTRAINT de_sim_data_routes_pkey PRIMARY KEY (c_id, work),
-      CONSTRAINT de_sim_data_routes_fkey FOREIGN KEY (c_id)
-          REFERENCES de_sim_data_commuter (c_id) MATCH SIMPLE
+      CONSTRAINT de_sim_data_routes_pkey PRIMARY KEY (c_id, rerun, work_route),
+      CONSTRAINT de_sim_data_routes_fkey FOREIGN KEY (c_id, rerun)
+          REFERENCES de_sim_data_commuter (c_id, rerun) MATCH SIMPLE
           ON UPDATE NO ACTION ON DELETE CASCADE
     );
 
