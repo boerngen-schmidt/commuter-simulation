@@ -18,10 +18,8 @@ def first_simulation():
     :return:
     """
     sql = 'SELECT id FROM de_sim_routes r WHERE NOT EXISTS ' \
-          '(SELECT 1 FROM de_sim_data_commuter c WHERE c.c_id = r.id AND NOT rerun) ' \
-          'ORDER BY id LIMIT 100'
-
-    zmq_feeder = threading.Thread(target=_zeromq_feeder, args=(sql, msg_send_socket, sig.exit_event, 500))
+          '(SELECT 1 FROM de_sim_data_commuter c WHERE c.c_id = r.id AND NOT rerun)'
+    zmq_feeder = threading.Thread(target=_zeromq_feeder, args=(sql, msg_send_socket, sig.exit_event, 500, False))
     zmq_feeder.start()
     start = time.time()
     logging.info('Starting first simulation run')
@@ -34,11 +32,10 @@ def rerun_simulation():
     Runs the simulation again, but this time with a different refilling strategy
     :return:
     '''
-    sql = 'SELECT id FROM de_sim_routes ' \
-          'WHERE id > (SELECT CASE WHEN MAX(c_id) IS NULL THEN 0 ELSE MAX(c_id) END ' \
-          '            FROM de_sim_data_commuter) ' \
-          'ORDER BY id'
-    zmq_feeder = threading.Thread(target=_zeromq_feeder, args=(sql, msg_send_socket, sig.exit_event, 500))
+    sql = 'SELECT id FROM de_sim_routes r WHERE EXISTS ' \
+          '(SELECT 1 FROM de_sim_data_commuter c WHERE c.c_id = r.id AND NOT rerun) ' \
+          'AND NOT EXISTS (SELECT 1 FROM de_sim_data_commuter c WHERE c.c_id = r.id AND rerun)'
+    zmq_feeder = threading.Thread(target=_zeromq_feeder, args=(sql, msg_send_socket, sig.exit_event, 500, True))
     zmq_feeder.start()
     start = time.time()
     logging.info('Starting second simulation run')

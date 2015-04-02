@@ -229,7 +229,7 @@ class CheapestRefillStrategy(BaseRefillStrategy):
                   '  pgr_kdijkstraCost(\'SELECT id, source, target, km as cost FROM de_2po_4pgr, (SELECT ST_Expand(ST_Extent(geom_vertex),10000) as box FROM de_2po_vertex WHERE id = ANY(%(box)s) LIMIT 1) as box WHERE geom_way && box.box\', ' \
                   '  %(start)s, %(destinations)s, false, false) AS result) as p1 USING(target)' \
                   'WHERE distance <= %(reachable)s ORDER BY e5, distance LIMIT 1'
-            values = ', '.join(str(x) for x in self.stations_ids)
+            values = ', '.join(str(x) for x in zip(self.stations_ids, self.stations_destinations))
             box = []
             box += self.stations_destinations
             box.append(self.env.car.current_position)
@@ -248,7 +248,7 @@ class CheapestRefillStrategy(BaseRefillStrategy):
             else:
                 conn.commit()
             result = cur.fetchone()
-            if not result:
+            if result:
                 self._target_station = result.station_id
                 return result.target
             else:

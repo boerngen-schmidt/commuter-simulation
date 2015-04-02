@@ -106,6 +106,15 @@ def _save_route_info(commuter_id, rerun, route):
     with db.get_connection() as conn:
         cur = conn.cursor()
         work = (route.action is CommuterAction.ArrivedAtWork)
+        # Update the commuter with the route distance
+        if work:
+            sql = 'UPDATE de_sim_data_commuter SET route_work_distance = %s WHERE c_id = %s AND rerun = %s'
+        else:
+            sql = 'UPDATE de_sim_data_commuter SET route_home_distance = %s WHERE c_id = %s AND rerun = %s'
+        cur.execute(sql, (route.distance, commuter_id, rerun))
+        conn.commit()
+
+        # Safe the route info
         km = dict()
         kmh = dict()
         for s in route:
@@ -121,6 +130,7 @@ def _save_route_info(commuter_id, rerun, route):
                 kmh[s.road_type] = [s.speed_limit]
 
         for key in km.keys():
-            sql = 'INSERT INTO de_sim_data_routes (c_id, rerun, clazz, avg_kmh, km, work_route) VALUES (%s, %s, %s, %s, %s, %s)'
+            sql = 'INSERT INTO de_sim_data_routes (c_id, rerun, clazz, avg_kmh, km, work_route) ' \
+                  'VALUES (%s, %s, %s, %s, %s, %s)'
             cur.execute(sql, (commuter_id, rerun, key.value, sum(kmh[key])/len(kmh[key]), sum(km[key]), work))
-            conn.commit()
+        conn.commit()

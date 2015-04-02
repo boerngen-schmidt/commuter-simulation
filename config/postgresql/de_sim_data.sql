@@ -5,8 +5,8 @@ BEGIN;
         c_id INT NOT NULL,
         rerun boolean NOT NULL DEFAULT false,
         leaving_time INTERVAL NOT NULL,
-        route_home_distance DOUBLE PRECISION NOT NULL,
-        route_work_distance DOUBLE PRECISION NOT NULL,
+        route_home_distance DOUBLE PRECISION,
+        route_work_distance DOUBLE PRECISION,
         fuel_type VARCHAR(6),
         tank_filling DOUBLE PRECISION,
         error VARCHAR(128),
@@ -40,7 +40,7 @@ BEGIN;
       km double precision,
       avg_kmh integer,
       work_route boolean NOT NULL,
-      CONSTRAINT de_sim_data_routes_pkey PRIMARY KEY (c_id, rerun, work_route),
+      CONSTRAINT de_sim_data_routes_pkey PRIMARY KEY (c_id, rerun, clazz, work_route),
       CONSTRAINT de_sim_data_routes_fkey FOREIGN KEY (c_id, rerun)
           REFERENCES de_sim_data_commuter (c_id, rerun) MATCH SIMPLE
           ON UPDATE NO ACTION ON DELETE CASCADE

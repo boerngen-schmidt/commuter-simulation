@@ -26,7 +26,7 @@ class CommuterSimulationZeroMQ(mp.Process):
     def run(self):
         self.log.info('Starting Threads ...')
         threads = []
-        for i in range(3):
+        for i in range(2):
             threads.append(CommuterSimulationZeroMQThread(self._ee))
             threads[-1].name = self.name + 'T%d' % i
             threads[-1].start()
@@ -40,7 +40,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
     def __init__(self, exit_event):
         super().__init__()
         self.exit_event = exit_event
-        self.log = logging.getLogger()
+        self.log = None
         self.context = zmq.Context()
 
         # Configuration
@@ -85,6 +85,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
         self.end_time = datetime.datetime(2014, 10, 31, 23, 59, 59, 0, tz)
 
     def run(self):
+        self.log = logging.getLogger(self.name)
         while True:
             socks = dict(self.poller.poll(1000))
 
@@ -130,18 +131,23 @@ class CommuterSimulationZeroMQThread(threading.Thread):
             with db.get_connection() as conn:
                 cur = conn.cursor(cursor_factory=NamedTupleCursor)
                 args = dict(c_id=c_id)
-                cur.execute('SELECT * FROM de_sim_data_commuter WHERE c_id = %(c_id)s', args)
+                cur.execute('SELECT * FROM de_sim_data_commuter WHERE c_id = %(c_id)s AND NOT rerun', args)
                 result = cur.fetchone()
                 conn.commit()
-            if result:
-                if result.fuel_type == 'petrol':
-                    car = PetrolCar(c_id, env)
-                else:
-                    car = DieselCar(c_id, env)
-                car._tankFilling = result.tank_filling
-                commuter = Commuter(c_id, env)
-                commuter.override_parameters(result.leave_time)
-                CheapestRefillStrategy(env)
+                if result:
+                    if result.fuel_type == 'e5':
+                        car = PetrolCar(c_id, env)
+                    else:
+                        car = DieselCar(c_id, env)
+                    car._tankFilling = result.tank_filling
+                    commuter = Commuter(c_id, env)
+                    commuter.override_parameters(result.leaving_time)
+                    CheapestRefillStrategy(env)
+
+                # Fix commuter
+                cur.execute('UPDATE de_sim_data_commuter SET leaving_time = %s WHERE c_id = %s AND rerun',
+                            (result.leaving_time, c_id))
+                conn.commit()
         else:
             if random.random() > 0.5:
                 PetrolCar(c_id, env)
