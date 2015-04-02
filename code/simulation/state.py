@@ -1,10 +1,15 @@
 from abc import ABCMeta, abstractmethod
+import threading
+
 from enum import Enum
 
 
 class State(metaclass=ABCMeta):
-    def __init__(self, env):
+    def __init__(self):
         self.transitions = None
+        self._env = None
+
+    def set_environment(self, env):
         self._env = env
 
     @property
@@ -29,7 +34,7 @@ class State(metaclass=ABCMeta):
         Chooses the next state.
         :param token: Used as input to decide which State to transit to.
         :type token: simulation.state.CommuterAction
-        :return: The State to transist to
+        :return: The State to change to
         :rtype: simulation.state.CommuterState
         """
         if token in self.transitions:
@@ -43,9 +48,6 @@ class StateError(Exception):
 
 
 class Home(State):
-    def __init__(self, env):
-        super().__init__(env)
-
     def run(self):
         c = self.env.commuter
         hour, minute = int(c.leave_time.total_seconds() // 3600), int(c.leave_time.total_seconds() // 60 % 60)
@@ -66,9 +68,6 @@ class Home(State):
 
 
 class Work(State):
-    def __init__(self, env):
-        super().__init__(env)
-
     def next(self, token):
         if not self.transitions:
             self.transitions = {
@@ -84,9 +83,6 @@ class Work(State):
 
 
 class Driving(State):
-    def __init__(self, env):
-        super().__init__(env)
-
     def next(self, token):
         if not self.transitions:
             self.transitions = {
@@ -162,22 +158,22 @@ class CommuterAction(Enum):
     FinishedSimulation = 9999
 
 
-class CommuterState(object):
-    Start = None
-    Finish = None
-    Drive = None
-    Home = None
-    Work = None
-    Refill = None
-    Search = None
+CommuterState = threading.local()
 
 
 def initialize_states(env):
-    CommuterState.Start = Initialize(env) 
-    CommuterState.Finish = End(env) 
-    CommuterState.Drive = Driving(env) 
-    CommuterState.Home = Home(env) 
-    CommuterState.Work = Work(env) 
-    CommuterState.Refill = Refill(env) 
-    CommuterState.Search = SearchingFillingStation(env) 
+    CommuterState.Start = Initialize()
+    CommuterState.Finish = End()
+    CommuterState.Drive = Driving()
+    CommuterState.Home = Home()
+    CommuterState.Work = Work()
+    CommuterState.Refill = Refill()
+    CommuterState.Search = SearchingFillingStation()
+    CommuterState.Start.set_environment(env)
+    CommuterState.Finish.set_environment(env)
+    CommuterState.Drive.set_environment(env)
+    CommuterState.Home.set_environment(env)
+    CommuterState.Work.set_environment(env)
+    CommuterState.Refill.set_environment(env)
+    CommuterState.Search.set_environment(env)
 

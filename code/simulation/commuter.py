@@ -46,23 +46,32 @@ class Commuter(object):
 
     def _safe_commuter_info(self):
         # Save Information into DB
+        args = dict(
+            id=self._id,
+            rerun=self.env.rerun,
+            leave_time=self._leave,
+            home=(0 if not self._home_route.distance else self._home_route.distance),
+            work=(0 if not self._work_route.distance else self._work_route.distance),
+            fuel_type=self.env.car.fuel_type,
+            filling=self.env.car.current_filling
+        )
+
         with db.get_connection() as conn:
             cur = conn.cursor()
-            #leave = dt.datetime.combine(dt.date.today(), dt.time(tzinfo=tz)) + self._leave
             cur.execute(
-                'INSERT INTO de_sim_data_commuter(c_id, leaving_time, route_home_distance, route_work_distance, fuel_type, tank_filling) '
-                'VALUES (%s, %s, %s, %s, %s, %s)',
-                (self._id, self._leave, self._home_route.distance, self._work_route.distance, self.env.car.fuel_type, self.env.car.current_filling))
+                'INSERT INTO de_sim_data_commuter(c_id, rerun, leaving_time, route_home_distance, route_work_distance, fuel_type, tank_filling) '
+                'VALUES (%(id)s, %(rerun)s, %(leave_time)s, %(home)s, %(work)s, %(fuel_type)s, %(filling)s)',
+                args)
             conn.commit()
 
     def _setup_routes(self, route_id):
         """Initializes the two main routes the commuter drives."""
         from simulation import rc
-        self._home_route = rc.route_home(route_id)
-        self._work_route = rc.route_to_work(route_id)
-
-        if not self._home_route.distance or not self._work_route.distance:
-            raise CommuterRouteError('No Route found for commuter %s' % self._id)
+        try:
+            self._home_route = rc.route_home(route_id)
+            self._work_route = rc.route_to_work(route_id)
+        except:
+            raise
         else:
             self.env.route = self._work_route
 

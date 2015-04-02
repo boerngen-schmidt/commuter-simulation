@@ -3,12 +3,14 @@ BEGIN;
     CREATE TABLE de_sim_data_commuter
     (
         c_id INT NOT NULL,
+        rerun boolean NOT NULL DEFAULT false,
         leaving_time INTERVAL NOT NULL,
         route_home_distance DOUBLE PRECISION NOT NULL,
         route_work_distance DOUBLE PRECISION NOT NULL,
         fuel_type VARCHAR(6),
         tank_filling DOUBLE PRECISION,
-        error VARCHAR(32)
+        error VARCHAR(128),
+        CONSTRAINT de_sim_data_commuter_pkey PRIMARY KEY (c_id, rerun)
     );
     CREATE INDEX de_sim_data_commuter_c_id_idx ON de_sim_data_commuter (c_id);
 
@@ -22,7 +24,10 @@ BEGIN;
         price DOUBLE PRECISION,
         refueling_time TIMESTAMP,
         station VARCHAR(38),
-        fuel_type VARCHAR(6)
+        fuel_type VARCHAR(6),
+        CONSTRAINT de_sim_data_refill_fkey FOREIGN KEY (c_id)
+          REFERENCES de_sim_data_commuter (c_id) MATCH SIMPLE
+          ON UPDATE NO ACTION ON DELETE CASCADE
     );
     CREATE INDEX de_sim_data_refill_c_id_rerun_idx ON de_sim_data_refill (c_id, rerun);
 
@@ -34,7 +39,10 @@ BEGIN;
       km double precision,
       avg_kmh integer,
       work_route boolean NOT NULL,
-      CONSTRAINT de_sim_data_routes_pkey PRIMARY KEY (c_id, work)
+      CONSTRAINT de_sim_data_routes_pkey PRIMARY KEY (c_id, work),
+      CONSTRAINT de_sim_data_routes_fkey FOREIGN KEY (c_id)
+          REFERENCES de_sim_data_commuter (c_id) MATCH SIMPLE
+          ON UPDATE NO ACTION ON DELETE CASCADE
     );
 
     DROP TABLE IF EXISTS de_sim_data_matching_info;

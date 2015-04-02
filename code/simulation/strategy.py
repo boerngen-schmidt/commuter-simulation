@@ -1,8 +1,12 @@
 from abc import ABCMeta, abstractmethod
 import logging
+from collections import namedtuple
 
 from psycopg2.extras import NamedTupleCursor, RealDictCursor
 from database import connection as db
+
+
+FillingStation = namedtuple('FillingStation', ['id', 'target'])
 
 
 class BaseRefillStrategy(metaclass=ABCMeta):
@@ -23,22 +27,23 @@ class BaseRefillStrategy(metaclass=ABCMeta):
         if not sql:
             sql = 'CREATE TEMP TABLE filling (target integer, station_id character varying(38)) ON COMMIT DROP; ' \
                   'INSERT INTO filling (station_id) SELECT id FROM de_tt_stations AS s ' \
-                  '  WHERE ST_DWithin(s.geom, ST_GEomFromEWKB(%(route)s), %(distance)s); ' \
+                  '  WHERE ST_DWithin(s.geom, ST_GeomFromEWKB(%(route)s), %(distance)s); ' \
                   'UPDATE filling SET target = (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> ' \
                   '  (SELECT geom FROM de_tt_stations WHERE id = filling.station_id) LIMIT 1); ' \
                   'SELECT target, station_id FROM filling;'
+
         with db.get_connection() as conn:
             cur = conn.cursor(cursor_factory=NamedTupleCursor)
             cur.execute(sql, dict(distance=distance_meter, route=self.env.route.geom_line))
             stations = cur.fetchall()
-            if not stations:
+            if cur.rowcount == 0:
                 conn.rollback()
-                raise FillingStationError('No filling station was found for commuter %s' % self.env.commuter.id)
+                raise NoFillingStationError('No filling station was found for commuter %s' % self.env.commuter.id)
             else:
                 conn.commit()
 
         for station in stations:
-            self._refillstations.append((station.target, station.station_id))
+            self._refillstations.append(FillingStation(target=station.target, id=station.station_id))
 
     def calculate_proxy_price(self, fuel_type):
         """
@@ -50,7 +55,7 @@ class BaseRefillStrategy(metaclass=ABCMeta):
         :raises: NoPriceError
         """
         if not self._target_station:
-            raise FillingStationError('No target filling station set. Can not calculate proxy price')
+            raise NoFillingStationError('No target filling station set. Can not calculate proxy price. Commuter %s' % self.env.commuter.id)
 
         sql = 'SELECT AVG(e5) AS e5, AVG(e10) AS e10, AVG(diesel) as diesel FROM ( ' \
               '  SELECT id ' \
@@ -81,17 +86,17 @@ class BaseRefillStrategy(metaclass=ABCMeta):
         
     @property
     def stations_destinations(self):
-        return [s[0] for s in self._refillstations]
+        return [s.target for s in self._refillstations]
 
     @property
     def stations_ids(self):
-        return [s[1] for s in self._refillstations]
+        return [s.id for s in self._refillstations]
 
     def station_id(self, index):
-        return self._refillstations[index][1]
+        return self._refillstations[index].id
 
     def station_point(self, index):
-        return self._refillstations[index][0]
+        return self._refillstations[index].target
 
     @abstractmethod
     def find_filling_station(self):
@@ -104,7 +109,7 @@ class BaseRefillStrategy(metaclass=ABCMeta):
         :raises: FillingStationError If no target filling station was set before
         """
         if not self._target_station:
-            raise FillingStationError('No filling station_id was set')
+            raise NoFillingStationError('No filling station_id was set. Can not refill. Commuter %s' % self.env.commuter.id)
 
         with db.get_connection() as conn:
             cur = conn.cursor(cursor_factory=RealDictCursor)
@@ -140,7 +145,7 @@ class SimpleRefillStrategy(BaseRefillStrategy):
         super().__init__(env)
         try:
             self._lookup_filling_stations(1000)
-        except FillingStationError:
+        except NoFillingStationError:
             self.find_closest_station_to_route()
 
     def find_closest_station_to_route(self):
@@ -173,13 +178,12 @@ class SimpleRefillStrategy(BaseRefillStrategy):
                 station = cur.fetchone()
             except Exception as e:
                 log = logging.getLogger('sql_error')
-                log.critical(str(e))
-                log.critical(cur.mogrify(sql, args))
+                log.critical(cur.query)
                 conn.rollback()
-                raise FillingStationError(e)
+                raise NoFillingStationError(e)
             else:
                 conn.commit()
-            self._target_station = self.station_id(station.seq)
+            self._target_station = self.station_id(self.stations_destinations.index(station.destination))
             return station.destination
 
 
@@ -188,7 +192,7 @@ class CheapestRefillStrategy(BaseRefillStrategy):
         super().__init__(env)
         try:
             self._lookup_filling_stations(1000)
-        except FillingStationError:
+        except NoFillingStationError:
             self.find_closest_stations_to_route()
 
     def find_closest_stations_to_route(self):
@@ -202,11 +206,12 @@ class CheapestRefillStrategy(BaseRefillStrategy):
               'INSERT INTO filling (station_id) SELECT id FROM de_tt_stations ORDER BY geom <-> ST_GEomFromEWKB(%(route)s) LIMIT 1;' \
               'INSERT INTO filling (station_id) SELECT id FROM de_tt_stations WHERE ST_DWithin(geom, (SELECT geom FROM de_tt_stations WHERE id = (SELECT station_id FROM filling)), %(distance)s);' \
               'UPDATE filling SET target = (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> (SELECT geom FROM de_tt_stations WHERE id = filling.station_id) LIMIT 1);' \
-              'SELECT station_id, target FROM filling;'
+              'SELECT DISTINCT station_id, target FROM filling;'
         try:
             self._lookup_filling_stations(2000, sql)
-        except FillingStationError:
-            raise
+        except NoFillingStationError:
+            raise NoFillingStationError('Extended search for filling stations did not yield any results for commuter: %s'
+                                        % self.env.commuter.id)
 
     def find_filling_station(self):
         """
@@ -224,7 +229,7 @@ class CheapestRefillStrategy(BaseRefillStrategy):
                   '  pgr_kdijkstraCost(\'SELECT id, source, target, km as cost FROM de_2po_4pgr, (SELECT ST_Expand(ST_Extent(geom_vertex),10000) as box FROM de_2po_vertex WHERE id = ANY(%(box)s) LIMIT 1) as box WHERE geom_way && box.box\', ' \
                   '  %(start)s, %(destinations)s, false, false) AS result) as p1 USING(target)' \
                   'WHERE distance <= %(reachable)s ORDER BY e5, distance LIMIT 1'
-            values = ', '.join(str(x) for x in self._refillstations)
+            values = ', '.join(str(x) for x in self.stations_ids)
             box = []
             box += self.stations_destinations
             box.append(self.env.car.current_position)
@@ -235,24 +240,31 @@ class CheapestRefillStrategy(BaseRefillStrategy):
                         box=box)
             try:
                 cur.execute(sql.format(values=values), args)
-            except Exception as e:
+            except Exception:
                 log = logging.getLogger('sql_error')
-                log.critical(e)
-                log.critical(cur.mogrify(sql, args))
+                log.error(cur.query)
                 conn.rollback()
-                raise FillingStationError
+                raise FillingStationNotReachableError('Could not reach filling station for commuter %s.' % self.env.commuter.id)
             else:
                 conn.commit()
             result = cur.fetchone()
-            if result:
+            if not result:
                 self._target_station = result.station_id
                 return result.target
             else:
-                raise FillingStationError('No filling station found for commuter: %s, having %s stations' %
-                                          (self.env.commuter.id, len(self._refillstations)))
+                raise NoFillingStationError('No filling station found for commuter: %s, having %s stations' %
+                                            (self.env.commuter.id, len(self.stations_ids)))
 
 
-class FillingStationError(Exception):
+class FillingStationNotReachableError(Exception):
+    pass
+
+
+class SelectFillingStationError(Exception):
+    pass
+
+
+class NoFillingStationError(Exception):
     pass
 
 

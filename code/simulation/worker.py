@@ -6,11 +6,13 @@ import threading
 import time
 
 from simulation.car import PetrolCar, DieselCar
-from simulation.commuter import Commuter, CommuterRouteError
+from simulation.commuter import Commuter
+from simulation.routing.route import NoRouteError, NoRoutingPointsError
 from simulation.state import CommuterState, initialize_states
 from simulation.environment import SimulationEnvironment
 from simulation.state_machine import StateMachine
-from simulation.strategy import SimpleRefillStrategy, CheapestRefillStrategy, FillingStationError, NoPriceError
+from simulation.strategy import SimpleRefillStrategy, CheapestRefillStrategy, NoFillingStationError, NoPriceError, \
+    FillingStationNotReachableError
 from database import connection as db
 import zmq
 
@@ -26,11 +28,12 @@ class CommuterSimulationZeroMQ(mp.Process):
         threads = []
         for i in range(3):
             threads.append(CommuterSimulationZeroMQThread(self._ee))
+            threads[-1].name = self.name + 'T%d' % i
             threads[-1].start()
 
         for t in threads:
             t.join()
-        self.log.info('Threads finished working.')
+        self.log.info('Threads for %s finished working.' % self.name)
 
 
 class CommuterSimulationZeroMQThread(threading.Thread):
@@ -76,9 +79,14 @@ class CommuterSimulationZeroMQThread(threading.Thread):
         self.poller.register(self.reciever, zmq.POLLIN)
         self.poller.register(self.controller, zmq.POLLIN)
 
+        # Simulation parameters
+        tz = datetime.timezone(datetime.timedelta(hours=1))
+        self.start_time = datetime.datetime(2014, 6, 1, 0, 0, 0, 0, tz)
+        self.end_time = datetime.datetime(2014, 10, 31, 23, 59, 59, 0, tz)
+
     def run(self):
         while True:
-            socks = dict(self.poller.poll())
+            socks = dict(self.poller.poll(1000))
 
             if socks.get(self.reciever) == zmq.POLLIN:
                 message = self.reciever.recv_json()
@@ -95,11 +103,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
 
     def simulate(self, c_id, rerun):
         start = time.time()
-        # Generate Commuter
-        tz = datetime.timezone(datetime.timedelta(hours=1))
-        start_time = datetime.datetime(2014, 6, 1, 0, 0, 0, 0, tz)
-        end_time = datetime.datetime(2014, 10, 31, 23, 59, 59, 0, tz)
-        env = SimulationEnvironment(start_time, rerun)
+        env = SimulationEnvironment(self.start_time, rerun)
 
         try:
             # Setup Environment (done by __init__ functions of objects)
@@ -109,18 +113,10 @@ class CommuterSimulationZeroMQThread(threading.Thread):
             initialize_states(env)
 
             sm = StateMachine(CommuterState.Start)
-            while env.now < end_time:
+            while env.now < self.end_time:
                 action = sm.state.run()
                 sm.state = sm.state.next(action)
-            del sm
-        except FillingStationError as e:
-            logging.error(e)
-            logging.error('No filling station found for commuter %s', c_id)
-            self._insert_error(c_id, e)
-        except CommuterRouteError as e:
-            logging.error(e)
-            self._insert_error(c_id, e)
-        except NoPriceError as e:
+        except (FillingStationNotReachableError, NoFillingStationError, NoRouteError, NoRoutingPointsError, NoPriceError) as e:
             logging.error(e)
             self._insert_error(c_id, e)
         else:

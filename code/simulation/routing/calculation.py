@@ -1,10 +1,12 @@
-from _collections_abc import dict_keys
 import logging
 
 from psycopg2.extras import DictCursor
 from database import connection as db
 from simulation import CommuterAction, RouteFragment, Route
+from simulation.routing.route import NoRouteError, NoRoutingPointsError
 
+log = logging.getLogger('routing')
+sql_log = logging.getLogger('sql_error')
 
 dijkstra_sql = 'SELECT id, source, target, cost FROM de_2po_4pgr, ' \
                '  (SELECT ST_Expand(ST_Extent(geom_vertex),10000) as box FROM de_2po_vertex ' \
@@ -15,7 +17,7 @@ dijkstra_sql = 'SELECT id, source, target, cost FROM de_2po_4pgr, ' \
 def route_to_work(route_id):
     """Alias for calculate_route with pre set start and destination points"""
     with db.get_connection() as conn:
-        sql = 'WITH info AS (SELECT end_point AS start, start_point AS dest FROM de_sim_routes WHERE id = %(id)s) ' \
+        sql = '  WITH info AS (SELECT end_point AS start, start_point AS dest FROM de_sim_routes WHERE id = %(id)s) ' \
               'SELECT d.id, s.id FROM ' \
               ' (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> ' \
               '   (SELECT geom FROM de_sim_points WHERE id = (SELECT start FROM info)) LIMIT 1) AS s, ' \
@@ -25,8 +27,9 @@ def route_to_work(route_id):
         try:
             cur.execute(sql, dict(id=route_id))
         except Exception:
-            logging.error(cur.query)
-            raise
+            sql_log.exception(cur.query)
+            conn.rollback()
+            raise NoRoutingPointsError
         start, destination = cur.fetchone()
     route = calculate_route(start, destination, CommuterAction.ArrivedAtWork)
     _save_route_info(route_id, route)
@@ -46,8 +49,9 @@ def route_home(route_id):
         try:
             cur.execute(sql, dict(id=route_id))
         except Exception:
-            logging.error(cur.query)
-            raise
+            sql_log.exception(cur.query)
+            conn.rollback()
+            raise NoRoutingPointsError
         start, destination = cur.fetchone()
     route = calculate_route(start, destination, CommuterAction.ArrivedAtHome)
     _save_route_info(route_id, route)
@@ -76,8 +80,9 @@ def calculate_route(start, destination, action):
             args = dict(start=start, dest=destination)
             cur.execute(sql_route.format(dijkstra_sql=dijkstra_sql), args)
         except Exception:
+            sql_log.exception(cur.query)
             conn.rollback()
-            raise
+            raise NoRouteError
 
         cur.execute('SELECT seq, source, target, km, kmh, clazz '
                     'FROM route '
@@ -119,5 +124,3 @@ def _save_route_info(commuter_id, route):
             sql = 'INSERT INTO de_sim_data_routes (c_id, clazz, avg_kmh, km, work_route) VALUES (%s, %s, %s, %s, %s)'
             cur.execute(sql, (commuter_id, key.value, sum(kmh[key])/len(kmh[key]), sum(km[key]), work))
             conn.commit()
-
-

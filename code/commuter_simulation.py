@@ -13,53 +13,14 @@ strategy of the commuter, which can be either to use a fuel price application or
 import argparse
 import logging
 import multiprocessing as mp
-import threading
 import signal
-import time
 
-import zmq
-from database import connection as db
 from helper import logger
 from helper import signal as sig
-from simulation.process import CommuterSimulationZeroMQ
+from simulation.worker import CommuterSimulationZeroMQ
 
 
-def _zeromq_feeder(sql, socket, exit_event, size=500, rerun=False):
-    """Feeder thread for queues
-
-    As the route is the main attribute that describes a commuter the thread will feed the routes to the queue
-    one by one to be simulated by the commuter simulation object
-    :return:
-    """
-    with db.get_connection() as conn:
-        cur = conn.cursor('feeder')
-        cur.execute(sql)
-        i = 0
-        k = 0
-        n = 10000
-        while True:
-            results = cur.fetchmany(size)
-            for rec in results:
-                socket.send_json(dict(c_id=rec[0], rerun=rerun))
-                i += 1
-
-            if i >= n:
-                k += 1
-                logging.info('Send commuter: %d', k*n)
-                i -= n
-
-            if not results:
-                break
-
-            if exit_event.is_set():
-                break
-        logging.info('Total send commuter: %d', k*n+i)
-        cur.close()
-        conn.commit()
-    socket.setsockopt(zmq.LINGER, 0)
-
-
-def worker():
+def worker(worker_args):
     number_of_processes = mp.cpu_count()
 
     signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -67,6 +28,7 @@ def worker():
     processes = []
     for i in range(number_of_processes):
         processes.append(CommuterSimulationZeroMQ(sig.exit_event))
+        processes[-1].name = 'P%d' % i
         processes[-1].start()
 
     signal.signal(signal.SIGINT, sig.signal_handler)
@@ -76,69 +38,30 @@ def worker():
     logging.info('Worker stopped.')
 
 
-def server():
+def server(server_args):
     """
     The Server generates the commuters that should be simulated and makes them available to the workers over
     a ZeroMQ Push socket. The Clients can connect to the server's socket an pull the commuter.
     :return:
     """
-    # Configuration
-    import configparser
-    from helper.file_finder import find
-
-    config = configparser.ConfigParser()
-    config.read(find('messaging.conf'))
-    section = 'server'
-    conn_str = 'tcp://{host!s}:{port!s}'
-    if not config.has_section(section):
-        raise configparser.NoSectionError('Missing section %s' % section)
-
-    context = zmq.Context()
-    msg_send_socket = context.socket(zmq.PUSH)
-    msg_send_socket.setsockopt(zmq.SNDBUF, config.getint(section, 'push_sndbuf'))
-    msg_send_socket.set_hwm(config.getint(section, 'push_hwm'))
-    args_conn_str = dict(
-        host=config.get(section, 'push_host'),
-        port=config.getint(section, 'push_port')
-    )
-    msg_send_socket.bind(conn_str.format(**args_conn_str))
-
-    signal.signal(signal.SIGINT, sig.signal_handler)
-
-    # fetch all commuters
-    logging.info('Filling simulation queue')
-
-    sql = 'SELECT id FROM de_sim_routes ' \
-          'WHERE id > (SELECT CASE WHEN MAX(c_id) IS NULL THEN 0 ELSE MAX(c_id) END ' \
-          '            FROM de_sim_data_commuter) ' \
-          'ORDER BY id'
-    zmq_feeder = threading.Thread(target=_zeromq_feeder, args=(sql, msg_send_socket, sig.exit_event, 500))
-    zmq_feeder.start()
-    start = time.time()
-    logging.info('Starting first simulation run')
-    zmq_feeder.join()
-    logging.info('Finished first run in %.2f seconds', time.time()-start)
-
-    sql = 'SELECT id FROM de_sim_routes ' \
-          'WHERE id > (SELECT CASE WHEN MAX(c_id) IS NULL THEN 0 ELSE MAX(c_id) END ' \
-          '            FROM de_sim_data_commuter) ' \
-          'ORDER BY id'
-    zmq_feeder = threading.Thread(target=_zeromq_feeder, args=(sql, msg_send_socket, sig.exit_event, 500))
-    zmq_feeder.start()
-    start = time.time()
-    logging.info('Starting second simulation run')
-    zmq_feeder.join()
-    logging.info('Finished first run in %.2f seconds', time.time()-start)
+    import simulation.server as srv
+    if server_args.mode == 'first':
+        srv.first_simulation()
+    elif server_args.mode == 'rerun':
+        srv.rerun_simulation()
+    else:
+        srv.first_simulation()
+        srv.rerun_simulation()
 
 
 if __name__ == '__main__':
     logger.setup()
     parser = argparse.ArgumentParser(description='Options for running the simulation.')
-    parser.add_argument('--mode', '-m', type=str, choices=['server', 'worker'], required=True)
+    subparsers = parser.add_subparsers(help='Choose mode of the simulation.')
+    parser_client = subparsers.add_parser('worker', help='Creates a worker instance for the simulation.')
+    parser_client.set_defaults(func=worker)
+    parser_server = subparsers.add_parser('server', help='Creates a server instance for worker to pull data.')
+    parser_server.add_argument('--mode', choices=['first', 'rerun', 'both'], help='Mode of the server.', required=True)
+    parser_server.set_defaults(func=server)
     args = parser.parse_args()
-    if args.mode == 'worker':
-        worker()
-    elif args.mode == 'server':
-        server()
-    else:
-        raise Exception('No mode given. Exiting.')
+    args.func(args)

@@ -27,7 +27,7 @@ class Route(object):
 
     def __next__(self):
         if self._index >= len(self._fragments):
-            self._index = 0     # reset the index, so the route could be automatically reused
+            self.reset()     # reset the index, so the route could be automatically reused
             raise StopIteration
         else:
             self._index += 1
@@ -128,3 +128,11 @@ class RouteClazz(Enum):
     unclassified =   43
     service =        51
     living_street =  63
+
+
+class NoRouteError(Exception):
+    pass
+
+
+class NoRoutingPointsError(Exception):
+    pass
