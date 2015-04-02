@@ -54,10 +54,17 @@ def signal_handler_server(signum, frame):
     )
     receiver.connect(conn_str.format(**args))
     logging.info('Receiving messages from PUSH socket')
+    count = 0
     while True:
         try:
             receiver.recv_json(zmq.NOBLOCK)
         except zmq.ZMQError:
-            break
+            if count > 2:
+                break
+            else:
+                import time
+                time.sleep(2)
+                count += 1
     receiver.close()
     logging.info('Done Receiving messages from PUSH socket')
+    signal.signal(signal.SIGINT, default_handler)
