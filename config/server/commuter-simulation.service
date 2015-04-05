@@ -11,9 +11,9 @@ Environment=VIRTUAL_ENV=/home/benjamin/workspace/commuter-simulation/python3-ven
 Environment=PATH=/home/benjamin/workspace/commuter-simulation/python3-venv/bin
 Environment=PYTHONPATH=/home/benjamin/workspace/commuter-simulation/code
 ExecStart=/usr/bin/env /home/benjamin/workspace/commuter-simulation/code/commuter_simulation.py server --mode first
-ExecStop=/bin/kill -SIGINT $MAINPID
 StandardOutput=tty
 TTYPath=/dev/tty7
+KillSignal=SIGINT
 
 [Install]
 WantedBy=multi-user.target
