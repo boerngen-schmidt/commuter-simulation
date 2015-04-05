@@ -1,0 +1,19 @@
+[Unit]
+Description=Commuter Simulation
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=benjamin
+WorkingDirectory=/home/benjamin/commuter-simulation/code
+Environment=VIRTUAL_ENV=/home/benjamin/commuter-simulation/python3-venv
+Environment=PATH=/home/benjamin/commuter-simulation/python3-venv/bin
+Environment=PYTHONPATH=/home/benjamim/commuter-simulation/code
+ExecStart=/usr/bin/env /home/benjamin/commuter-simulation/code/commuter_simulation.py worker
+ExecStop=/bin/kill -SIGINT $MAINPID
+StandardOutput=tty
+TTYPath=/dev/tty7
+
+[Install]
+WantedBy=multi-user.target
