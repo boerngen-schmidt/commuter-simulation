@@ -31,6 +31,7 @@ def route_to_work(route_id, rerun):
             conn.rollback()
             raise NoRoutingPointsError
         start, destination = cur.fetchone()
+    # TODO replace with ResultCollector
     route = calculate_route(start, destination, CommuterAction.ArrivedAtWork)
     _save_route_info(route_id, rerun, route)
     return route
@@ -54,6 +55,7 @@ def route_home(route_id, rerun):
             raise NoRoutingPointsError
         start, destination = cur.fetchone()
     route = calculate_route(start, destination, CommuterAction.ArrivedAtHome)
+    # TODO replace with ResultCollector
     _save_route_info(route_id, rerun, route)
     return route
 
@@ -130,6 +132,7 @@ def _save_route_info(commuter_id, rerun, route):
                 kmh[s.road_type] = [s.speed_limit]
 
         for key in km.keys():
+            # TODO replace with ResultCollector
             sql = 'INSERT INTO de_sim_data_routes (c_id, rerun, clazz, avg_kmh, km, work_route) ' \
                   'VALUES (%s, %s, %s, %s, %s, %s)'
             cur.execute(sql, (commuter_id, rerun, key.value, sum(kmh[key])/len(kmh[key]), sum(km[key]), work))

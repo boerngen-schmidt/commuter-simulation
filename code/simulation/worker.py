@@ -55,15 +55,15 @@ class CommuterSimulationZeroMQThread(threading.Thread):
             raise configparser.NoSectionError('Missing section %s' % section)
 
         # Socket to receive commuter to simulate
-        self.reciever = self.context.socket(zmq.PULL)
-        self.reciever.setsockopt(zmq.RCVBUF, config.getint(section, 'pull_rcvbuf'))
-        self.reciever.set_hwm(config.getint(section, 'pull_hwm'))
-        self.reciever.setsockopt(zmq.LINGER, 0)
+        self.receiver = self.context.socket(zmq.PULL)
+        self.receiver.setsockopt(zmq.RCVBUF, config.getint(section, 'pull_rcvbuf'))
+        self.receiver.set_hwm(config.getint(section, 'pull_hwm'))
+        self.receiver.setsockopt(zmq.LINGER, 0)
         args = dict(
             host=config.get(section, 'pull_host'),
             port=config.getint(section, 'pull_port')
         )
-        self.reciever.connect(conn_str.format(**args))
+        self.receiver.connect(conn_str.format(**args))
 
         # Socket for control input
         self.controller = self.context.socket(zmq.SUB)
@@ -74,9 +74,17 @@ class CommuterSimulationZeroMQThread(threading.Thread):
         )
         self.controller.connect(conn_str.format(**args))
 
+        # Connect to sink
+        self.sink = self.context.socket(zmq.PUSG)
+        args = dict(
+            host=config.get(section, 'sink_host'),
+            port=config.getint(section, 'sink_port')
+        )
+        self.sink.connect(conn_str.format(**args))
+
         # Process messages from both sockets
         self.poller = zmq.Poller()
-        self.poller.register(self.reciever, zmq.POLLIN)
+        self.poller.register(self.receiver, zmq.POLLIN)
         self.poller.register(self.controller, zmq.POLLIN)
 
         # Simulation parameters
@@ -89,8 +97,8 @@ class CommuterSimulationZeroMQThread(threading.Thread):
         while True:
             socks = dict(self.poller.poll(1000))
 
-            if socks.get(self.reciever) == zmq.POLLIN:
-                message = self.reciever.recv_json()
+            if socks.get(self.receiver) == zmq.POLLIN:
+                message = self.receiver.recv_json()
                 try:
                     self.simulate(message['c_id'], message['rerun'])
                 except Exception as e:

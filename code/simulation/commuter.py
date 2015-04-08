@@ -34,6 +34,7 @@ class Commuter(object):
 
         # Generate a random leaving time between 6 and 9 o'clock with a 5min interval
         self._leave = dt.timedelta(seconds=random.randrange(6 * 60 * 60, 9 * 60 * 60, 5 * 60))
+        # TODO replace with ResultCollector
         self._safe_commuter_info()
 
         self._work_route = None

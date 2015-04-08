@@ -18,6 +18,11 @@ class SimulationEnvironment():
         ''':type : datetime.datetime'''
         self._to_work = True
         self._rerun = rerun
+        self._result = ResultCollector()
+
+    @property
+    def result(self):
+        return self._result
 
     @property
     def rerun(self):
@@ -129,3 +134,50 @@ class SimulationEnvironment():
     @refilling_strategy.setter
     def refilling_strategy(self, refilling_strategy):
         self._refill_strategy = refilling_strategy
+
+
+class ResultCollector(object):
+    def __init__(self):
+        self.commuter = {
+            'c_id': None,
+            'rerun': False,
+            'leaving_time': None,
+            'route_home_distance': None,
+            'route_work_distance': None,
+            'fuel_type': None,
+            'tank_filling': None,
+            'error': ''
+        }
+        self.refill = []
+        self.route = []
+
+    def add_refill(self):
+        pass
+
+    def add_route(self):
+        pass
+
+    def set_commuter(self, c_id, rerun, leaving_time, route_home, route_work, fuel_type, tank_filling, error):
+        self.commuter = {
+            'c_id': c_id,
+            'rerun': rerun,
+            'leaving_time': str(leaving_time),
+            'route_home_distance': route_home,
+            'route_work_distance': route_work,
+            'fuel_type': fuel_type,
+            'tank_filling': tank_filling,
+            'error': error
+        }
+
+    def set_commuter_route_home_distance(self, distance):
+        self.commuter['route_home_distance'] = distance
+
+    def set_commuter_route_work_distance(self, distance):
+        self.commuter['route_work_distance'] = distance
+
+    def set_commuter_error(self, error):
+        self.commuter['error'] = error
+
+    def dump(self):
+        import json
+        return json.dumps({'commuter': self.commuter, 'route': self.route, 'refill': self.refill})

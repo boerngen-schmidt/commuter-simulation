@@ -9,12 +9,10 @@ from configparser import ConfigParser, NoSectionError
 from threading import RLock
 import os
 
-from psycopg2._psycopg import connection
-
-import atexit
 import psycopg2.extensions
 from psycopg2.pool import ThreadedConnectionPool
 from helper.file_finder import find
+
 
 
 
@@ -115,7 +113,7 @@ class _Psycopg2ConnectionPoolConfig(object):
             self.pool.closeall()
 
 
-def loadConfig(file_name=DEFAULT_DATABASE_CONFIGURATION_FILE_NAME):
+def load_config(file_name=DEFAULT_DATABASE_CONFIGURATION_FILE_NAME):
     """
     Configure database pools from the given configuration file. 
     Database configuration section names should start with prefix 'database_' 
@@ -154,22 +152,22 @@ def loadConfig(file_name=DEFAULT_DATABASE_CONFIGURATION_FILE_NAME):
 def get_connection_pool():
     """Returns the connection pool.
 
-    If no database is configured, :py:fc:loadConfig will be called to setup the database connection pool.
+    If no database is configured, :py:fc:load_config will be called to setup the database connection pool.
     :return: The connection pool
     :rtype: ThreadedConnectionPool
     """
     if databaseConfig is None:
-        loadConfig()
+        load_config()
     return databaseConfig.get_pool()
 
 
 @contextmanager
-def get_connection(key=None) -> connection:
+def get_connection(key=None):
     """Returns a connection from the connection pool to be used within a context
 
     :param key: Key for the connection
     :return: A connection cursor
-    :rtype connection:
+    :rtype: psycopg2.extensions.connection
     """
     pool = get_connection_pool()
     conn = pool.getconn(key)

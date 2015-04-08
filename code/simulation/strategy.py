@@ -127,6 +127,7 @@ class BaseRefillStrategy(metaclass=ABCMeta):
                 price = self.calculate_proxy_price(self.env.car.fuel_type)
 
             refill_amount = self.env.car.tank_size - self.env.car.current_filling
+            # TODO replace with ResultCollector
             cur.execute('INSERT INTO de_sim_data_refill '
                         '(c_id, rerun, amount, price, refueling_time, station, fuel_type) '
                         'VALUES (%s, %s, %s, %s, %s, %s, %s)',
