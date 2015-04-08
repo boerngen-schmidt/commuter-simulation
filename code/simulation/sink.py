@@ -1,8 +1,10 @@
 import configparser
 import datetime as dt
+import logging
 
 import zmq
 from helper.file_finder import find
+from helper.signal import exit_event
 import database.connection as db
 
 
@@ -22,6 +24,8 @@ def sink():
     if not config.has_section(section):
         raise configparser.NoSectionError('Missing section %s' % section)
 
+    log = logging.getLogger('SINK')
+
     context = zmq.Context()
 
     sink = context.socket(zmq.PULL)
@@ -34,17 +38,26 @@ def sink():
     poller = zmq.Poller()
     poller.register(sink, zmq.POLLIN)
 
+    n = 100
+    k = 0
     i = 0
     data = []
     while True:
         # fetch data from socket
-        socks = poller.poll()
+        socks = dict(poller.poll(1000))
         if socks.get(sink) == zmq.POLLIN:
             data.append(sink.recv_json())  # possible memory killer if inserting into db does not work
             i += 1
-            if i >= 100:
+            if i >= n:
+                k += 1
                 insert_data(data)
+                log.info('Inserted commuters: %d' % k*n)
                 i = 0
+
+        if exit_event.is_set():
+            break
+    insert_data(data)
+    log.info('Inserted commuters: %d' % k*n+i)
 
 
 def insert_data(data):

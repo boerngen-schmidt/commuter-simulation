@@ -75,7 +75,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
         self.controller.connect(conn_str.format(**args))
 
         # Connect to sink
-        self.sink = self.context.socket(zmq.PUSG)
+        self.sink = self.context.socket(zmq.PUSH)
         args = dict(
             host=config.get(section, 'sink_host'),
             port=config.getint(section, 'sink_port')

@@ -12,15 +12,30 @@ strategy of the commuter, which can be either to use a fuel price application or
 """
 import argparse
 import logging
-import multiprocessing as mp
 import signal
 
 from helper import logger
 from helper import signal as sig
-from simulation.worker import CommuterSimulationZeroMQ
+
+
+def sink(sink_args):
+    import threading as t
+    import simulation.sink as s
+
+    log = logging.getLogger('SINK')
+
+    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    thread = t.Thread(target=s.sink, name='Sink')
+    log.info('Started sink thread.')
+    signal.signal(signal.SIGINT, sig.signal_handler)
+
+    thread.join()
+    log.info('Stopped sink thread.')
 
 
 def worker(worker_args):
+    import multiprocessing as mp
+    from simulation.worker import CommuterSimulationZeroMQ
     number_of_processes = mp.cpu_count()
 
     signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -63,5 +78,7 @@ if __name__ == '__main__':
     parser_server = subparsers.add_parser('server', help='Creates a server instance for worker to pull data.')
     parser_server.add_argument('--mode', choices=['first', 'rerun', 'both'], help='Mode of the server.', required=True)
     parser_server.set_defaults(func=server)
+    parser_sink = subparsers.add_parser('sink', help='Creates a simulation result sink instance for the simulation.')
+    parser_sink.set_defaults(func=sink)
     args = parser.parse_args()
     args.func(args)

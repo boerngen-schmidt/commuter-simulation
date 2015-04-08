@@ -2,6 +2,7 @@
 Description=Commuter Simulation Server
 After=network-online.target
 Wants=network-online.target
+Requires=commuter-simulation-sink.service
 
 [Service]
 Type=simple
