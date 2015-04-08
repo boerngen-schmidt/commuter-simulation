@@ -110,13 +110,11 @@ def calculate_route(start, destination, action):
 
 def _save_route_info(env, route):
     """
-
-    :param commuter_id: Id of the commuter
+    Saves the route information, compressed by street types, into the result of the simulation
     :param env: Simulation environment
     :type env: simulation.environment.SimulationEnvironment
     :param route:
     :type route: simulation.routing.route.Route
-    :return:
     """
     work = (route.action is CommuterAction.ArrivedAtWork)
     # Update the commuter with the route distance
