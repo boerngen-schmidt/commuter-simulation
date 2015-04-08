@@ -4,21 +4,16 @@ Created on 29.09.2014
 @author: Benjamin Börngen-Schmidt
 """
 import logging
+import os
 from contextlib import contextmanager
 from configparser import ConfigParser, NoSectionError
 from threading import RLock
-import os
 
 import atexit
 
 import psycopg2.extensions
 from psycopg2.pool import ThreadedConnectionPool
 from helper.file_finder import find
-
-
-
-
-
 
 
 

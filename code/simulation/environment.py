@@ -157,7 +157,7 @@ class ResultCollector(object):
                 'c_id': c_id,
                 'rerun': rerun,
                 'amount': amount,
-                'price': price,
+                'price': float(price),
                 'refueling_time': str(refueling_time),
                 'station': station,
                 'fuel_type': fuel_type
