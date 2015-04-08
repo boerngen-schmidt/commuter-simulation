@@ -9,9 +9,12 @@ from configparser import ConfigParser, NoSectionError
 from threading import RLock
 import os
 
+import atexit
+
 import psycopg2.extensions
 from psycopg2.pool import ThreadedConnectionPool
 from helper.file_finder import find
+
 
 
 

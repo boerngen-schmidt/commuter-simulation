@@ -26,6 +26,7 @@ def sink(sink_args):
 
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     thread = t.Thread(target=s.sink, name='Sink')
+    thread.start()
     log.info('Started sink thread.')
     signal.signal(signal.SIGINT, sig.signal_handler)
 
