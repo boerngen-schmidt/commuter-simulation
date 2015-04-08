@@ -41,7 +41,7 @@ class Commuter(object):
         ''':type : simulation.routing.route.Route'''
         self._home_route = None
         ''':type : simulation.routing.route.Route'''
-        self._setup_routes(commuter_id)
+        self._setup_routes()
 
     def _safe_commuter_info(self):
         # Save Information into DB
@@ -62,12 +62,12 @@ class Commuter(object):
                 args)
             conn.commit()
 
-    def _setup_routes(self, route_id):
+    def _setup_routes(self):
         """Initializes the two main routes the commuter drives."""
         from simulation import rc
         try:
-            self._home_route = rc.route_home(route_id, self.env.rerun)
-            self._work_route = rc.route_to_work(route_id, self.env.rerun)
+            self._home_route = rc.route_home(self.env)
+            self._work_route = rc.route_to_work(self.env)
         except:
             raise
         else:

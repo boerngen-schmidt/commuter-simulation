@@ -14,8 +14,11 @@ dijkstra_sql = 'SELECT id, source, target, cost FROM de_2po_4pgr, ' \
                '  ) as box WHERE geom_way && box.box'
 
 
-def route_to_work(route_id, rerun):
-    """Alias for calculate_route with pre set start and destination points"""
+def route_to_work(env):
+    """Alias for calculate_route with pre set start and destination points
+    :param env: Simulation environment
+    :type env: simulation.environment.SimulationEnvironment
+    """
     with db.get_connection() as conn:
         sql = '  WITH info AS (SELECT end_point AS start, start_point AS dest FROM de_sim_routes WHERE id = %(id)s) ' \
               'SELECT d.id, s.id FROM ' \
@@ -25,20 +28,22 @@ def route_to_work(route_id, rerun):
               '   (SELECT geom FROM de_sim_points WHERE id = (SELECT dest FROM info)) LIMIT 1) AS d '
         cur = conn.cursor()
         try:
-            cur.execute(sql, dict(id=route_id))
+            cur.execute(sql, dict(id=env.commuter.id))
         except Exception:
             sql_log.exception(cur.query)
             conn.rollback()
             raise NoRoutingPointsError
         start, destination = cur.fetchone()
-    # TODO replace with ResultCollector
     route = calculate_route(start, destination, CommuterAction.ArrivedAtWork)
-    _save_route_info(route_id, rerun, route)
+    _save_route_info(env, route)
     return route
 
 
-def route_home(route_id, rerun):
-    """Alias for calculate_route with pre set start and destination points"""
+def route_home(env):
+    """Alias for calculate_route with pre set start and destination points
+    :param env: Simulation environment
+    :type env: simulation.environment.SimulationEnvironment
+    """
     with db.get_connection() as conn:
         sql = 'WITH info AS (SELECT end_point AS start, start_point AS dest FROM de_sim_routes WHERE id = %(id)s) ' \
               'SELECT s.id, d.id FROM ' \
@@ -48,15 +53,14 @@ def route_home(route_id, rerun):
               '   (SELECT geom FROM de_sim_points WHERE id = (SELECT dest FROM info)) LIMIT 1) AS d '
         cur = conn.cursor()
         try:
-            cur.execute(sql, dict(id=route_id))
+            cur.execute(sql, dict(id=env.commuter.id))
         except Exception:
             sql_log.exception(cur.query)
             conn.rollback()
             raise NoRoutingPointsError
         start, destination = cur.fetchone()
     route = calculate_route(start, destination, CommuterAction.ArrivedAtHome)
-    # TODO replace with ResultCollector
-    _save_route_info(route_id, rerun, route)
+    _save_route_info(env, route)
     return route
 
 
@@ -104,36 +108,37 @@ def calculate_route(start, destination, action):
     return Route(start, destination, fragments, action, line, distance)
 
 
-def _save_route_info(commuter_id, rerun, route):
-    with db.get_connection() as conn:
-        cur = conn.cursor()
-        work = (route.action is CommuterAction.ArrivedAtWork)
-        # Update the commuter with the route distance
-        if work:
-            sql = 'UPDATE de_sim_data_commuter SET route_work_distance = %s WHERE c_id = %s AND rerun = %s'
+def _save_route_info(env, route):
+    """
+
+    :param commuter_id: Id of the commuter
+    :param env: Simulation environment
+    :type env: simulation.environment.SimulationEnvironment
+    :param route:
+    :type route: simulation.routing.route.Route
+    :return:
+    """
+    work = (route.action is CommuterAction.ArrivedAtWork)
+    # Update the commuter with the route distance
+    if work:
+        env.result.set_commuter_route_work_distance(route.distance)
+    else:
+        env.result.set_commuter_route_home_distance(route.distance)
+
+    # Safe the route info
+    km = dict()
+    kmh = dict()
+    for s in route:
+        assert isinstance(s, RouteFragment)
+        if s.road_type in km:
+            km[s.road_type].append(s.length)
         else:
-            sql = 'UPDATE de_sim_data_commuter SET route_home_distance = %s WHERE c_id = %s AND rerun = %s'
-        cur.execute(sql, (route.distance, commuter_id, rerun))
-        conn.commit()
+            km[s.road_type] = [s.length]
 
-        # Safe the route info
-        km = dict()
-        kmh = dict()
-        for s in route:
-            assert isinstance(s, RouteFragment)
-            if s.road_type in km:
-                km[s.road_type].append(s.length)
-            else:
-                km[s.road_type] = [s.length]
+        if s.road_type in kmh:
+            kmh[s.road_type].append(s.speed_limit)
+        else:
+            kmh[s.road_type] = [s.speed_limit]
 
-            if s.road_type in kmh:
-                kmh[s.road_type].append(s.speed_limit)
-            else:
-                kmh[s.road_type] = [s.speed_limit]
-
-        for key in km.keys():
-            # TODO replace with ResultCollector
-            sql = 'INSERT INTO de_sim_data_routes (c_id, rerun, clazz, avg_kmh, km, work_route) ' \
-                  'VALUES (%s, %s, %s, %s, %s, %s)'
-            cur.execute(sql, (commuter_id, rerun, key.value, sum(kmh[key])/len(kmh[key]), sum(km[key]), work))
-        conn.commit()
+    for key in km.keys():
+        env.result.add_route(env.commuter.id, env.rerun, key.value, sum(kmh[key])/len(kmh[key]), sum(km[key]), work)

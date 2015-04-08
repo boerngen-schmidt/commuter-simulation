@@ -151,11 +151,30 @@ class ResultCollector(object):
         self.refill = []
         self.route = []
 
-    def add_refill(self):
-        pass
+    def add_refill(self, c_id, rerun, amount, price, refueling_time, station, fuel_type):
+        self.refill.append(
+            {
+                'c_id': c_id,
+                'rerun': rerun,
+                'amount': amount,
+                'price': price,
+                'refueling_time': str(refueling_time),
+                'station': station,
+                'fuel_type': fuel_type
+            }
+        )
 
-    def add_route(self):
-        pass
+    def add_route(self, commuter_id, rerun, clazz, avg_kmh, km, work):
+        self.route.append(
+            {
+                'commuter_id': commuter_id,
+                'rerun': rerun,
+                'clazz': clazz,
+                'avg_kmh': avg_kmh,
+                'km': km,
+                'work_route': work
+            }
+        )
 
     def set_commuter(self, c_id, rerun, leaving_time, route_home, route_work, fuel_type, tank_filling, error):
         self.commuter = {
@@ -178,6 +197,6 @@ class ResultCollector(object):
     def set_commuter_error(self, error):
         self.commuter['error'] = error
 
-    def dump(self):
+    def to_json(self):
         import json
         return json.dumps({'commuter': self.commuter, 'route': self.route, 'refill': self.refill})

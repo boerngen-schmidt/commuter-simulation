@@ -127,11 +127,17 @@ class BaseRefillStrategy(metaclass=ABCMeta):
                 price = self.calculate_proxy_price(self.env.car.fuel_type)
 
             refill_amount = self.env.car.tank_size - self.env.car.current_filling
-            # TODO replace with ResultCollector
-            cur.execute('INSERT INTO de_sim_data_refill '
-                        '(c_id, rerun, amount, price, refueling_time, station, fuel_type) '
-                        'VALUES (%s, %s, %s, %s, %s, %s, %s)',
-                (self.env.commuter.id, self.env.rerun, refill_amount, price, self.env.now, self._target_station, self.env.car.fuel_type))
+
+            # add to the result of the simulation
+            self.env.result.add_refill(
+                self.env.commuter.id,
+                self.env.rerun,
+                refill_amount,
+                price,
+                self.env.now,
+                self._target_station,
+                self.env.car.fuel_type
+            )
             conn.commit()
         self.env.car.refilled()         # Car has been refilled.
         self._target_station = None     # Since the station has been used reset it.

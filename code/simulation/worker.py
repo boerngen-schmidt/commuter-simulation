@@ -125,12 +125,16 @@ class CommuterSimulationZeroMQThread(threading.Thread):
             while env.now < self.end_time:
                 action = sm.state.run()
                 sm.state = sm.state.next(action)
-        except (FillingStationNotReachableError, NoFillingStationError, NoRouteError, NoRoutingPointsError, NoPriceError) as e:
+        except (
+                FillingStationNotReachableError, NoFillingStationError, NoPriceError,
+                NoRouteError, NoRoutingPointsError
+                ) as e:
             logging.error(e)
-            self._insert_error(c_id, e)
+            env.result.set_commuter_error(e.__class__.__name__)
         else:
             self.log.info('Finished (%d) commuter in %.2f', c_id, time.time()-start)
         finally:
+            self.sink.send_json(env.result.to_json())
             del env
 
     def setup_environment(self, c_id, env, rerun):
@@ -163,10 +167,3 @@ class CommuterSimulationZeroMQThread(threading.Thread):
                 DieselCar(c_id, env)
             Commuter(c_id, env)
             SimpleRefillStrategy(env)
-
-    def _insert_error(self, commuter_id, error):
-        with db.get_connection() as conn:
-            cur = conn.cursor()
-            args = dict(error=error.__class__.__name__, id=commuter_id)
-            cur.execute('UPDATE de_sim_data_commuter SET error = %(error)s WHERE c_id = %(id)s', args)
-            conn.commit()
