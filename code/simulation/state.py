@@ -161,7 +161,7 @@ class CommuterAction(Enum):
 CommuterState = threading.local()
 
 
-def initialize_states(env):
+def initialize_states():
     CommuterState.Start = Initialize()
     CommuterState.Finish = End()
     CommuterState.Drive = Driving()
@@ -169,6 +169,9 @@ def initialize_states(env):
     CommuterState.Work = Work()
     CommuterState.Refill = Refill()
     CommuterState.Search = SearchingFillingStation()
+
+
+def initialize_states_environment(env):
     CommuterState.Start.set_environment(env)
     CommuterState.Finish.set_environment(env)
     CommuterState.Drive.set_environment(env)

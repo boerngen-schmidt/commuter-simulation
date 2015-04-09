@@ -8,7 +8,7 @@ import time
 from simulation.car import PetrolCar, DieselCar
 from simulation.commuter import Commuter
 from simulation.routing.route import NoRouteError, NoRoutingPointsError
-from simulation.state import CommuterState, initialize_states
+from simulation.state import CommuterState, initialize_states, initialize_states_environment
 from simulation.environment import SimulationEnvironment
 from simulation.state_machine import StateMachine
 from simulation.strategy import SimpleRefillStrategy, CheapestRefillStrategy, NoFillingStationError, NoPriceError, \
@@ -94,6 +94,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
 
     def run(self):
         self.log = logging.getLogger(self.name)
+        initialize_states()
         while True:
             socks = dict(self.poller.poll(1000))
 
@@ -119,7 +120,7 @@ class CommuterSimulationZeroMQThread(threading.Thread):
             self.setup_environment(c_id, env, rerun)
 
             # Set the environment for every state
-            initialize_states(env)
+            initialize_states_environment(env)
 
             sm = StateMachine(CommuterState.Start)
             while env.now < self.end_time:
@@ -135,7 +136,6 @@ class CommuterSimulationZeroMQThread(threading.Thread):
             self.log.info('Finished (%d) commuter in %.2f', c_id, time.time()-start)
         finally:
             self.sink.send_json(env.result.to_json())
-            del env
 
     def setup_environment(self, c_id, env, rerun):
         if rerun:
@@ -155,11 +155,6 @@ class CommuterSimulationZeroMQThread(threading.Thread):
                     commuter = Commuter(c_id, env)
                     commuter.override_parameters(result.leaving_time)
                     CheapestRefillStrategy(env)
-
-                # Fix commuter
-                cur.execute('UPDATE de_sim_data_commuter SET leaving_time = %s WHERE c_id = %s AND rerun',
-                            (result.leaving_time, c_id))
-                conn.commit()
         else:
             if random.random() > 0.5:
                 PetrolCar(c_id, env)

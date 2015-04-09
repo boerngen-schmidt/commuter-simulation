@@ -34,13 +34,18 @@ class BaseRefillStrategy(metaclass=ABCMeta):
 
         with db.get_connection() as conn:
             cur = conn.cursor(cursor_factory=NamedTupleCursor)
-            cur.execute(sql, dict(distance=distance_meter, route=self.env.route.geom_line))
+            try:
+                cur.execute(sql, dict(distance=distance_meter, route=self.env.route.geom_line))
+            except Exception:
+                log = logging.getLogger('sql_error')
+                log.exception('Could not execute query.')
+                raise NoFillingStationError('No filling station was found for commuter %s' % self.env.commuter.id)
+
             stations = cur.fetchall()
             if cur.rowcount == 0:
-                conn.rollback()
                 raise NoFillingStationError('No filling station was found for commuter %s' % self.env.commuter.id)
-            else:
-                conn.commit()
+
+            conn.commit()
 
         for station in stations:
             self._refillstations.append(FillingStation(target=station.target, id=station.station_id))

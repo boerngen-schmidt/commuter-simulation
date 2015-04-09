@@ -10,10 +10,10 @@ from configparser import ConfigParser, NoSectionError
 from threading import RLock
 
 import atexit
-
 import psycopg2.extensions
 from psycopg2.pool import ThreadedConnectionPool
 from helper.file_finder import find
+
 
 
 
@@ -28,7 +28,7 @@ DEFAULT_DATABASE_CONFIGURATION_FILE_NAME='database.conf'
 :type DEFAULT_DATABASE_CONFIGURATION_FILE_NAME: string
 """
 
-_logger = logging.getLogger('helper.database')
+_logger = logging.getLogger('DATABASE')
 
 _database_config_lock = RLock()
 

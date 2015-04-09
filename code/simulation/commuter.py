@@ -11,8 +11,6 @@ A Commuter has the following properties
 import random
 import datetime as dt
 
-from database import connection as db
-
 
 tz = dt.timezone(dt.timedelta(hours=1))
 
@@ -34,8 +32,6 @@ class Commuter(object):
 
         # Generate a random leaving time between 6 and 9 o'clock with a 5min interval
         self._leave = dt.timedelta(seconds=random.randrange(6 * 60 * 60, 9 * 60 * 60, 5 * 60))
-        # TODO replace with ResultCollector
-        self._safe_commuter_info()
 
         self._work_route = None
         ''':type : simulation.routing.route.Route'''
@@ -43,24 +39,16 @@ class Commuter(object):
         ''':type : simulation.routing.route.Route'''
         self._setup_routes()
 
-    def _safe_commuter_info(self):
-        # Save Information into DB
-        args = dict(
-            id=self._id,
-            rerun=self.env.rerun,
-            leave_time=self._leave,
-            fuel_type=self.env.car.fuel_type,
-            filling=self.env.car.current_filling
+        # Init done save to simulation result
+        self.env.result.set_commuter(
+            self._id,
+            self.env.rerun,
+            self._leave,
+            self._home_route.distance,
+            self._work_route.distance,
+            self.env.car.fuel_type,
+            self.env.car.current_filling
         )
-
-        with db.get_connection() as conn:
-            cur = conn.cursor()
-            cur.execute(
-                'INSERT INTO de_sim_data_commuter'
-                '(c_id, rerun, leaving_time, route_home_distance, route_work_distance, fuel_type, tank_filling) '
-                'VALUES (%(id)s, %(rerun)s, %(leave_time)s, 0, 0, %(fuel_type)s, %(filling)s)',
-                args)
-            conn.commit()
 
     def _setup_routes(self):
         """Initializes the two main routes the commuter drives."""

@@ -117,13 +117,8 @@ def _save_route_info(env, route):
     :type route: simulation.routing.route.Route
     """
     work = (route.action is CommuterAction.ArrivedAtWork)
-    # Update the commuter with the route distance
-    if work:
-        env.result.set_commuter_route_work_distance(route.distance)
-    else:
-        env.result.set_commuter_route_home_distance(route.distance)
 
-    # Safe the route info
+    # Save the route info
     km = dict()
     kmh = dict()
     for s in route:
