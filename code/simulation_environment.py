@@ -12,6 +12,7 @@ from builder.actions.match_revised import match_points
 # from builder.actions.match import match_points
 from builder.actions.point_creation import create_points
 from builder.actions.route_calculation import generate_routes
+from builder.actions.sample_commuters import sample_commuters
 from helper import logger
 
 
@@ -29,6 +30,8 @@ def main(args):
         match_points()
     if args.generate_routes:
         generate_routes()
+    if args.sample_commuters:
+        sample_commuters()
 
 
 if __name__ == "__main__":
@@ -48,9 +51,11 @@ if __name__ == "__main__":
                                action='store_true')
     actions_group.add_argument('--generate-routes', help='generates routs from previously matched points',
                                action='store_true')
-    arguments = parser.parse_args()
-    if not any([arguments.create_points, arguments.generate_routes, arguments.match_points]):
+    actions_group.add_argument('--sample-commuters', help='samples commuters from already matched routes',
+                               action='store_true')
+    ze_args = parser.parse_args()
+    if not any([ze_args.create_points, ze_args.generate_routes, ze_args.match_points, ze_args.sample_commuters]):
         parser.print_help()
         quit()
 
-    main(arguments)
+    main(ze_args)
