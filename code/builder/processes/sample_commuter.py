@@ -88,7 +88,10 @@ class SampleCommuterProcess(Process):
                     if distributed_commuters[rs[:2]][i] < commuters:
                         commuters = distributed_commuters[rs[:2]][i]
                     cur.execute(sample_sql, dict(limit=commuters))
-                    result.append((cur.rowcount / commuters))
+                    try:
+                        result.append((cur.rowcount / commuters))
+                    except ZeroDivisionError:
+                        result.append(0.0)
                     conn.commit()
 
                 '''Within sampling'''
@@ -115,8 +118,8 @@ class SampleCommuterProcess(Process):
             self.logging.info('(%4d/%d) Finished sampling for %12s in %.2f with: %s ',
                               count, self.counter.maximum,
                               rs,
-                              ', '.join(['{:.2%}'.format(x) for x in result]),
-                              time.time() - start_time)
+                              time.time() - start_time,
+                              ', '.join(['{:.2%}'.format(x) for x in result]))
 
         '''Clean the queue in case of an exit event'''
         if self.exit_event.is_set:

@@ -15,7 +15,7 @@ if [ ! $(ynQuestion "Install system Packages?") ]; then
 			sudo apt-get -q -y install $PACKAGES
 			;;
 		$DIST_GENTOO)
-			PACKAGES="postgresql postgis pgrouting mysql virtualenv dev-python/pip"
+			PACKAGES="postgresql postgis pgrouting mysql virtualenv dev-python/pip net-libs/zeromq"
 			doemerge $PACKAGES
 			infoMsg "Set login path for mySQL"
 			mysql_config_editor set --login-path=local --host=localhost --user=username --password

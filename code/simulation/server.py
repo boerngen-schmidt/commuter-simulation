@@ -6,17 +6,15 @@ import signal
 import threading
 import time
 
+import zmq
+
 from database import connection as db
 from helper import signal as sig
 from helper.file_finder import find
-import zmq
 
 
 def first_simulation():
-    """
-
-    :return:
-    """
+    """First simulation run with a simple refill strategy, which refuels at the closest filling station."""
     sql = 'SELECT id FROM de_sim_routes r WHERE NOT EXISTS ' \
           '(SELECT 1 FROM de_sim_data_commuter c WHERE c.c_id = r.id AND NOT rerun)'
     zmq_feeder = threading.Thread(target=_zeromq_feeder, args=(sql, msg_send_socket, sig.exit_event, 500, False))
@@ -28,10 +26,7 @@ def first_simulation():
 
 
 def rerun_simulation():
-    '''
-    Runs the simulation again, but this time with a different refilling strategy
-    :return:
-    '''
+    """Runs the simulation again, but this time with a different refilling strategy."""
     sql = 'SELECT id FROM de_sim_routes r WHERE EXISTS ' \
           '(SELECT 1 FROM de_sim_data_commuter c WHERE c.c_id = r.id AND NOT rerun) ' \
           'AND NOT EXISTS (SELECT 1 FROM de_sim_data_commuter c WHERE c.c_id = r.id AND rerun)'
