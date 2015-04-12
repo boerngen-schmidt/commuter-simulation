@@ -37,7 +37,7 @@ class BaseRefillStrategy(metaclass=ABCMeta):
             try:
                 cur.execute(sql, dict(distance=distance_meter, route=self.env.route.geom_line))
             except Exception:
-                log = logging.getLogger('sql_error')
+                log = logging.getLogger('database')
                 log.exception('Could not execute query.')
                 raise NoFillingStationError('No filling station was found for commuter %s' % self.env.commuter.id)
 
@@ -162,7 +162,7 @@ class SimpleRefillStrategy(BaseRefillStrategy):
 
     def find_closest_station_to_route(self):
         sql = 'CREATE TEMP TABLE filling (target integer, station_id character varying(38)) ON COMMIT DROP; ' \
-              'INSERT INTO filling (station_id) SELECT id FROM de_tt_stations ORDER BY geom <-> ST_GEomFromEWKB(%(route)s) LIMIT 1; ' \
+              'INSERT INTO filling (station_id) SELECT id FROM de_tt_stations ORDER BY geom <-> ST_GeomFromEWKB(%(route)s) LIMIT 1; ' \
               'UPDATE filling SET target = (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> (SELECT geom FROM de_tt_stations WHERE id = filling.station_id) LIMIT 1); ' \
               'SELECT station_id, target FROM filling;'
         self._lookup_filling_stations(0, sql)
@@ -189,7 +189,7 @@ class SimpleRefillStrategy(BaseRefillStrategy):
                 cur.execute(sql, args)
                 station = cur.fetchone()
             except Exception as e:
-                log = logging.getLogger('sql_error')
+                log = logging.getLogger('database')
                 log.critical(cur.query)
                 conn.rollback()
                 raise NoFillingStationError(e)
@@ -253,7 +253,7 @@ class CheapestRefillStrategy(BaseRefillStrategy):
             try:
                 cur.execute(sql.format(values=values), args)
             except Exception:
-                log = logging.getLogger('sql_error')
+                log = logging.getLogger('database')
                 log.error(cur.query)
                 conn.rollback()
                 raise FillingStationNotReachableError('Could not reach filling station for commuter %s.' % self.env.commuter.id)

@@ -17,6 +17,7 @@ from helper.file_finder import find
 
 
 
+
 # module Stuff
 databaseConfig = None
 """ Holds the configuration
@@ -28,7 +29,7 @@ DEFAULT_DATABASE_CONFIGURATION_FILE_NAME='database.conf'
 :type DEFAULT_DATABASE_CONFIGURATION_FILE_NAME: string
 """
 
-_logger = logging.getLogger('DATABASE')
+_logger = logging.getLogger('database')
 
 _database_config_lock = RLock()
 

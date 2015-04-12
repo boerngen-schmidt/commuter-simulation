@@ -6,7 +6,7 @@ from simulation import CommuterAction, RouteFragment, Route
 from simulation.routing.route import NoRouteError, NoRoutingPointsError
 
 log = logging.getLogger('routing')
-sql_log = logging.getLogger('sql_error')
+sql_log = logging.getLogger('database')
 
 dijkstra_sql = 'SELECT id, source, target, cost FROM de_2po_4pgr, ' \
                '  (SELECT ST_Expand(ST_Extent(geom_vertex),10000) as box FROM de_2po_vertex ' \

@@ -7,7 +7,6 @@ import threading
 import time
 
 import zmq
-
 from database import connection as db
 from helper import signal as sig
 from helper.file_finder import find
@@ -40,7 +39,7 @@ def rerun_simulation():
     start = time.time()
     logging.info('Starting second simulation run')
     zmq_feeder.join()
-    logging.info('Finished first run in %.2f seconds', time.time() - start)
+    logging.info('Finished second run in %.2f seconds', time.time() - start)
 
 
 def _zeromq_feeder(sql, socket, exit_event, size=500, rerun=False):
