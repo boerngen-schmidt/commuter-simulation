@@ -4,7 +4,6 @@ import json
 import logging
 
 import zmq
-
 from helper.file_finder import find
 from helper.signal import exit_event
 import database.connection as db
@@ -59,7 +58,7 @@ def sink():
         if exit_event.is_set():
             break
     insert_data(data)
-    log.info('Inserted commuters: %d' % k*n+i)
+    log.info('Inserted commuters: %d', k*n+i)
 
 
 def insert_data(data):
