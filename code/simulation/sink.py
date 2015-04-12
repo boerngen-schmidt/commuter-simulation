@@ -16,6 +16,7 @@ ro_sql = 'INSERT INTO de_sim_data_routes (c_id, rerun, clazz, avg_kmh, km, work_
          'VALUES (%(c_id)s, %(rerun)s, %(clazz)s, %(avg_kmh)s, %(km)s, %(work_route)s)'
 re_sql = 'INSERT INTO de_sim_data_refill (c_id, rerun, amount, price, refueling_time, station, fuel_type) ' \
          'VALUES (%(c_id)s, %(rerun)s, %(amount)s, %(price)s, %(refueling_time)s, %(station)s, %(fuel_type)s)'
+log = logging.getLogger('SINK')
 
 
 def sink():
@@ -25,8 +26,6 @@ def sink():
     conn_str = 'tcp://{host!s}:{port!s}'
     if not config.has_section(section):
         raise configparser.NoSectionError('Missing section %s' % section)
-
-    log = logging.getLogger('SINK')
 
     context = zmq.Context()
 
@@ -55,6 +54,7 @@ def sink():
                 insert_data(data)
                 log.info('Inserted commuters: %d', k*n)
                 i = 0
+                data = []
 
         if exit_event.is_set():
             break
