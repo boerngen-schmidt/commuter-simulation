@@ -41,8 +41,8 @@ elif [ $(currentDistribution) == $DIST_GENTOO ]; then
 fi
 
 infoMsg "Installing Packages"
-pip install psycopg2 simpy PyYaml numpy Shapely matplotlib
-pip install --global-option=build_ext --global-option="-I/usr/include/gdal" gdal
+pip install psycopg2 PyYaml numpy Shapely cython
+# pip install --global-option=build_ext --global-option="-I/usr/include/gdal" gdal
 
 infoMsg "Exiting Python 3 Virtual Environment"
 deactivate
