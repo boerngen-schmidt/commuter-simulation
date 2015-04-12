@@ -22,7 +22,7 @@ def match_points():
     Matches start and end points with a randomized order of the districts
     :return:
     """
-    number_of_matchers = 8
+    number_of_matchers = mp.cpu_count()
     matching_queue = mp.Queue()
 
     logging.info('Start matching points for routes.')
