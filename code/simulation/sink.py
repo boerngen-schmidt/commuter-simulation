@@ -1,15 +1,17 @@
 import configparser
 import datetime as dt
+import json
 import logging
 
 import zmq
+
 from helper.file_finder import find
 from helper.signal import exit_event
 import database.connection as db
 
 
 c_sql = 'INSERT INTO de_sim_data_commuter (c_id, rerun, leaving_time, route_home_distance, route_work_distance, fuel_type, tank_filling, error) ' \
-        'VALUES (%(c_id)s, %(rerun)s, %(leaving_time)s, %(route_home_distance)s, %(route_work_distance)s, %(fuel_type)s, %(filling)s, %(error)s)'
+        'VALUES (%(c_id)s, %(rerun)s, %(leaving_time)s, %(route_home_distance)s, %(route_work_distance)s, %(fuel_type)s, %(tank_filling)s, %(error)s)'
 ro_sql = 'INSERT INTO de_sim_data_routes (c_id, rerun, clazz, avg_kmh, km, work_route) ' \
          'VALUES (%(c_id)s, %(rerun)s, %(clazz)s, %(avg_kmh)s, %(km)s, %(work_route)s)'
 re_sql = 'INSERT INTO de_sim_data_refill (c_id, rerun, amount, price, refueling_time, station, fuel_type) ' \
@@ -64,12 +66,14 @@ def insert_data(data):
     with db.get_connection() as conn:
         cur = conn.cursor()
         for d in data:
+            d = json.loads(d)
             # First the commuter
-            d['commuter']['leaving_time'] = dt.datetime.strptime(d['commuter']['leaving_time'], '%H:%M:%S') - dt.datetime.strptime('0:00:00', '%H:%M:%S')
+            d['commuter']['leaving_time'] = \
+                dt.datetime.strptime(d['commuter']['leaving_time'], '%H:%M:%S') \
+                - dt.datetime.strptime('0:00:00', '%H:%M:%S')
             cur.execute(c_sql, d['commuter'])
 
             # Then the route
-            cur.execute()
             for ro_data in d['route']:
                 cur.execute(ro_sql, ro_data)
 

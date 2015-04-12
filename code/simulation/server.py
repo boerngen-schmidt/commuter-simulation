@@ -15,8 +15,11 @@ from helper.file_finder import find
 
 def first_simulation():
     """First simulation run with a simple refill strategy, which refuels at the closest filling station."""
-    sql = 'SELECT id FROM de_sim_routes r WHERE NOT EXISTS ' \
-          '(SELECT 1 FROM de_sim_data_commuter c WHERE c.c_id = r.id AND NOT rerun)'
+    sql = 'SELECT * FROM de_sim_routes_outgoing_sampled r ' \
+          '  WHERE NOT EXISTS (SELECT 1 FROM de_sim_data_commuter c WHERE c.c_id = r.commuter AND NOT rerun) ' \
+          'UNION  ' \
+          'SELECT * FROM de_sim_routes_within_sampled r ' \
+          '  WHERE NOT EXISTS (SELECT 1 FROM de_sim_data_commuter c WHERE c.c_id = r.commuter AND NOT rerun)'
     zmq_feeder = threading.Thread(target=_zeromq_feeder, args=(sql, msg_send_socket, sig.exit_event, 500, False))
     zmq_feeder.start()
     start = time.time()
@@ -27,9 +30,11 @@ def first_simulation():
 
 def rerun_simulation():
     """Runs the simulation again, but this time with a different refilling strategy."""
-    sql = 'SELECT id FROM de_sim_routes r WHERE EXISTS ' \
-          '(SELECT 1 FROM de_sim_data_commuter c WHERE c.c_id = r.id AND NOT rerun) ' \
-          'AND NOT EXISTS (SELECT 1 FROM de_sim_data_commuter c WHERE c.c_id = r.id AND rerun)'
+    sql = 'SELECT * FROM de_sim_routes_outgoing_sampled r ' \
+          '  WHERE NOT EXISTS (SELECT 1 FROM de_sim_data_commuter c WHERE c.c_id = r.commuter AND  rerun) ' \
+          'UNION  ' \
+          'SELECT * FROM de_sim_routes_within_sampled r ' \
+          '  WHERE NOT EXISTS (SELECT 1 FROM de_sim_data_commuter c WHERE c.c_id = r.commuter AND  rerun)'
     zmq_feeder = threading.Thread(target=_zeromq_feeder, args=(sql, msg_send_socket, sig.exit_event, 500, True))
     zmq_feeder.start()
     start = time.time()

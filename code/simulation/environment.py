@@ -167,7 +167,7 @@ class ResultCollector(object):
     def add_route(self, commuter_id, rerun, clazz, avg_kmh, km, work):
         self.route.append(
             {
-                'commuter_id': commuter_id,
+                'c_id': commuter_id,
                 'rerun': rerun,
                 'clazz': clazz,
                 'avg_kmh': avg_kmh,
