@@ -105,7 +105,7 @@ class SampleCommuterProcess(Process):
                       'INSERT INTO de_sim_routes_within_sampled ' \
                       'SELECT commuter FROM possible_commuters WHERE i IN ( ' \
                       '  SELECT round(random() * (SELECT COUNT(i) FROM possible_commuters)) :: INTEGER AS n ' \
-                      '  FROM generate_series(1, (1.2 * %(limit)s)) ' \
+                      '  FROM generate_series(1, (1.5 * %(limit)s)) ' \
                       '  GROUP BY n ' \
                       ') ' \
                       'LIMIT %(limit)s'
@@ -120,9 +120,4 @@ class SampleCommuterProcess(Process):
                               rs,
                               time.time() - start_time,
                               ', '.join(['{:.2%}'.format(x) for x in result]))
-
-        '''Clean the queue in case of an exit event'''
-        if self.exit_event.is_set:
-            while not self.mq.empty():
-                self.mq.get()
         self.logging.info('Exiting sampling process: %s', self.name)
