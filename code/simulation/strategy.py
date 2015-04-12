@@ -222,8 +222,10 @@ class CheapestRefillStrategy(BaseRefillStrategy):
         try:
             self._lookup_filling_stations(2000, sql)
         except NoFillingStationError:
-            raise NoFillingStationError('Extended search for filling stations did not yield any results for commuter: %s'
-                                        % self.env.commuter.id)
+            raise NoFillingStationError(
+                'Extended search for filling stations did not yield any results for commuter: %s',
+                self.env.commuter.id
+            )
 
     def find_filling_station(self):
         """
