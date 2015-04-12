@@ -256,7 +256,7 @@ class CheapestRefillStrategy(BaseRefillStrategy):
                 log = logging.getLogger('database')
                 log.error(cur.query)
                 conn.rollback()
-                raise FillingStationNotReachableError('Could not reach filling station for commuter %s.' % self.env.commuter.id)
+                raise FillingStationNotReachableError('Could not reach filling station for commuter %s.', self.env.commuter.id)
             else:
                 conn.commit()
             result = cur.fetchone()
