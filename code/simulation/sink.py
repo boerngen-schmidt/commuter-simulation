@@ -79,6 +79,6 @@ def insert_data(data):
 
             # and last the refill events
             for re_data in d['refill']:
-                re_data['refueling_time'] = dt.datetime.strptime(re_data['refueling_time'], '%Y-%m-%d %H:%M:%S')
+                re_data['refueling_time'] = dt.datetime.strptime(re_data['refueling_time'], '%Y-%m-%d %H:%M:%S%z')
                 cur.execute(re_sql, re_data)
         conn.commit()

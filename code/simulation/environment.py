@@ -158,7 +158,7 @@ class ResultCollector(object):
                 'rerun': rerun,
                 'amount': amount,
                 'price': float(price),
-                'refueling_time': str(refueling_time),
+                'refueling_time': refueling_time.strftime('%Y-%m-%d %H:%M:%S%z'),
                 'station': station,
                 'fuel_type': fuel_type
             }
