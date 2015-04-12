@@ -18,6 +18,7 @@ from helper.file_finder import find
 
 
 
+
 # module Stuff
 databaseConfig = None
 """ Holds the configuration
@@ -174,7 +175,7 @@ def get_connection(key=None):
         yield conn
     except Exception:
         conn.rollback()
-        _logger.error('Transaction for connection with key "%s" was rolled back.' % (key,))
+        _logger.exception('Transaction for connection with key "%s" was rolled back.' % (key,))
         raise
     else:
         conn.commit()
