@@ -53,7 +53,7 @@ def sink():
             if i >= n:
                 k += 1
                 insert_data(data)
-                log.info('Inserted commuters: %d' % k*n)
+                log.info('Inserted commuters: %d', k*n)
                 i = 0
 
         if exit_event.is_set():
