@@ -13,7 +13,7 @@ from builder.commuter_distribution import commuter_distribution, commuting_dista
 
 
 '''Calculate points to match'''
-n = 100
+n = 10
 distributed_commuters = dict()
 for key, value in commuter_distribution.items():
     distributed_commuters[key] = tuple([round(z * round(n / min(value))) for z in value])

@@ -20,7 +20,7 @@ def route_to_work(env):
     :type env: simulation.environment.SimulationEnvironment
     """
     with db.get_connection() as conn:
-        sql = '  WITH info AS (SELECT end_point AS start, start_point AS dest FROM de_sim_routes WHERE id = %(id)s) ' \
+        sql = 'WITH info AS (SELECT end_point AS start, start_point AS dest FROM de_sim_routes WHERE id = %(id)s) ' \
               'SELECT d.id, s.id FROM ' \
               ' (SELECT id::integer FROM de_2po_vertex ORDER BY geom_vertex <-> ' \
               '   (SELECT geom FROM de_sim_points WHERE id = (SELECT start FROM info)) LIMIT 1) AS s, ' \

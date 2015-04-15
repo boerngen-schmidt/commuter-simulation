@@ -146,7 +146,7 @@ class ResultCollector(object):
             'route_work_distance': None,
             'fuel_type': None,
             'tank_filling': None,
-            'error': ''
+            'error': None
         }
         self.refill = []
         self.route = []
@@ -185,7 +185,7 @@ class ResultCollector(object):
             'route_work_distance': route_work,
             'fuel_type': fuel_type,
             'tank_filling': tank_filling,
-            'error': ''
+            'error': None
         }
 
     def set_commuter_error(self, error):
