@@ -76,7 +76,7 @@ class SampleCommuterProcess(Process):
                              'FROM possible_commuters ' \
                              'WHERE i IN ( ' \
                              '  SELECT round(random() * (SELECT COUNT(i) FROM possible_commuters)) :: INTEGER AS n ' \
-                             '  FROM generate_series(1, (1.2 * %(limit)s)) ' \
+                             '  FROM generate_series(1, (1.5 * %(limit)s)::integer) ' \
                              '  GROUP BY n ' \
                              ') ' \
                              'LIMIT %(limit)s'
@@ -105,7 +105,7 @@ class SampleCommuterProcess(Process):
                       'INSERT INTO de_sim_routes_within_sampled ' \
                       'SELECT commuter FROM possible_commuters WHERE i IN ( ' \
                       '  SELECT round(random() * (SELECT COUNT(i) FROM possible_commuters)) :: INTEGER AS n ' \
-                      '  FROM generate_series(1, (1.5 * %(limit)s)) ' \
+                      '  FROM generate_series(1, (1.5 * %(limit)s)::integer) ' \
                       '  GROUP BY n ' \
                       ') ' \
                       'LIMIT %(limit)s'

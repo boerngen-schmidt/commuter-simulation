@@ -36,19 +36,19 @@ class BaseRefillStrategy(metaclass=ABCMeta):
             cur = conn.cursor(cursor_factory=NamedTupleCursor)
             try:
                 cur.execute(sql, dict(distance=distance_meter, route=self.env.route.geom_line))
+                stations = cur.fetchall()
             except Exception:
                 log = logging.getLogger('database')
                 log.exception('Could not execute query.')
-                raise NoFillingStationError('No filling station was found for commuter %s' % self.env.commuter.id)
-
-            stations = cur.fetchall()
-            if cur.rowcount == 0:
-                raise NoFillingStationError('No filling station was found for commuter %s' % self.env.commuter.id)
-
-            conn.commit()
-
-        for station in stations:
-            self._refillstations.append(FillingStation(target=station.target, id=station.station_id))
+                conn.rollback()
+                raise NoFillingStationError('No filling station was found for commuter %s', self.env.commuter.id)
+            else:
+                conn.commit()
+                if cur.rowcount == 0:
+                    raise NoFillingStationError('No filling station was found for commuter %s', self.env.commuter.id)
+                else:
+                    for station in stations:
+                        self._refillstations.append(FillingStation(target=station.target, id=station.station_id))
 
     def calculate_proxy_price(self, fuel_type):
         """
@@ -190,7 +190,7 @@ class SimpleRefillStrategy(BaseRefillStrategy):
                 station = cur.fetchone()
             except Exception as e:
                 log = logging.getLogger('database')
-                log.critical(cur.query)
+                log.exception(cur.query)
                 conn.rollback()
                 raise NoFillingStationError(e)
             else:
