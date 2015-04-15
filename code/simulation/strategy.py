@@ -39,16 +39,16 @@ class BaseRefillStrategy(metaclass=ABCMeta):
                 stations = cur.fetchall()
             except Exception:
                 log = logging.getLogger('database')
-                log.exception('Could not execute query.')
+                log.exception('Could not execute query. "%s"', cur.query)
                 conn.rollback()
-                raise NoFillingStationError('No filling station was found for commuter %s', self.env.commuter.id)
+                raise
             else:
                 conn.commit()
-                if cur.rowcount == 0:
-                    raise NoFillingStationError('No filling station was found for commuter %s', self.env.commuter.id)
-                else:
-                    for station in stations:
-                        self._refillstations.append(FillingStation(target=station.target, id=station.station_id))
+        if len(stations) == 0:
+            raise NoFillingStationError('No filling station was found for commuter %s', self.env.commuter.id)
+        else:
+            for station in stations:
+                self._refillstations.append(FillingStation(target=station.target, id=station.station_id))
 
     def calculate_proxy_price(self, fuel_type):
         """

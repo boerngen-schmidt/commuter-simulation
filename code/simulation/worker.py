@@ -132,6 +132,11 @@ class CommuterSimulationZeroMQThread(threading.Thread):
                 ) as e:
             logging.error(e)
             env.result.set_commuter_error(e.__class__.__name__)
+        except Exception as e:
+            logging.error(e)
+            log = logging.getLogger('exceptions')
+            log.exception('Something went wrong.')
+            env.result.set_commuter_error('Exception')
         else:
             self.log.info('Finished (%d) commuter in %.2f', c_id, time.time()-start)
         finally:
