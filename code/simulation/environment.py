@@ -146,7 +146,8 @@ class ResultCollector(object):
             'route_work_distance': None,
             'fuel_type': None,
             'tank_filling': None,
-            'error': None
+            'error': None,
+            'filling_stations': None
         }
         self.refill = []
         self.route = []
@@ -187,6 +188,14 @@ class ResultCollector(object):
             'tank_filling': tank_filling,
             'error': None
         }
+
+    def set_commuter_filling_stations(self, stations):
+        """Add filling stations to commuter
+
+        :param stations: list with stations
+        :type stations: list
+        """
+        self.commuter['filling_stations'] = stations
 
     def set_commuter_error(self, error):
         self.commuter['error'] = error

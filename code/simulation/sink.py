@@ -9,8 +9,8 @@ from helper.signal import exit_event
 import database.connection as db
 
 
-c_sql = 'INSERT INTO de_sim_data_commuter (c_id, rerun, leaving_time, route_home_distance, route_work_distance, fuel_type, tank_filling, error) ' \
-        'VALUES (%(c_id)s, %(rerun)s, %(leaving_time)s, %(route_home_distance)s, %(route_work_distance)s, %(fuel_type)s, %(tank_filling)s, %(error)s)'
+c_sql = 'INSERT INTO de_sim_data_commuter (c_id, rerun, leaving_time, route_home_distance, route_work_distance, fuel_type, tank_filling, error, filling_stations) ' \
+        'VALUES (%(c_id)s, %(rerun)s, %(leaving_time)s, %(route_home_distance)s, %(route_work_distance)s, %(fuel_type)s, %(tank_filling)s, %(error)s, %(filling_stations)s)'
 ro_sql = 'INSERT INTO de_sim_data_routes (c_id, rerun, clazz, avg_kmh, km, work_route) ' \
          'VALUES (%(c_id)s, %(rerun)s, %(clazz)s, %(avg_kmh)s, %(km)s, %(work_route)s)'
 re_sql = 'INSERT INTO de_sim_data_refill (c_id, rerun, amount, price, refueling_time, station, fuel_type) ' \
