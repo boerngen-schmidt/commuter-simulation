@@ -49,7 +49,7 @@ class BaseRefillStrategy(metaclass=ABCMeta):
         else:
             for station in stations:
                 self._refillstations.append(FillingStation(target=station.target, id=station.station_id))
-            self.env.result.set_commuter_filling_stations(self.stations_ids)
+        self.env.result.set_commuter_filling_stations(self.stations_ids)
 
     def calculate_proxy_price(self, fuel_type):
         """
