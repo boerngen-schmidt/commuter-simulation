@@ -2,12 +2,12 @@ import configparser
 import datetime as dt
 import json
 import logging
+from psycopg2 import IntegrityError
 
 import zmq
 from helper.file_finder import find
 from helper.signal import exit_event
 import database.connection as db
-
 
 c_sql = 'INSERT INTO de_sim_data_commuter (c_id, rerun, leaving_time, route_home_distance, route_work_distance, fuel_type, tank_filling, error, filling_stations) ' \
         'VALUES (%(c_id)s, %(rerun)s, %(leaving_time)s, %(route_home_distance)s, %(route_work_distance)s, %(fuel_type)s, %(tank_filling)s, %(error)s, %(filling_stations)s)'
@@ -63,14 +63,19 @@ def sink():
 
 def insert_data(data):
     with db.get_connection() as conn:
-        cur = conn.cursor()
         for d in data:
+            cur = conn.cursor()
             d = json.loads(d)
             # First the commuter
             d['commuter']['leaving_time'] = \
                 dt.datetime.strptime(d['commuter']['leaving_time'], '%H:%M:%S') \
                 - dt.datetime.strptime('0:00:00', '%H:%M:%S')
-            cur.execute(c_sql, d['commuter'])
+            try:
+                cur.execute(c_sql, d['commuter'])
+            except IntegrityError:
+                log.error('Commuter (%s, %s) has already been simulated. Not inserting.', d['commuter']['c_id'], d['commuter']['rerun'])
+                conn.rollback()
+                continue
 
             # Then the route
             for ro_data in d['route']:
@@ -80,4 +85,4 @@ def insert_data(data):
             for re_data in d['refill']:
                 re_data['refueling_time'] = dt.datetime.strptime(re_data['refueling_time'], '%Y-%m-%d %H:%M:%S%z')
                 cur.execute(re_sql, re_data)
-        conn.commit()
+            conn.commit()

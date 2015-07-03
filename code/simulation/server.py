@@ -3,7 +3,6 @@ __author__ = 'benjamin'
 import configparser
 import logging
 import signal
-import threading
 import time
 
 import zmq
@@ -19,11 +18,12 @@ def first_simulation():
           'UNION  ' \
           'SELECT * FROM de_sim_routes_within_sampled r ' \
           '  WHERE NOT EXISTS (SELECT 1 FROM de_sim_data_commuter c WHERE c.c_id = r.commuter AND NOT rerun)'
-    zmq_feeder = threading.Thread(target=_zeromq_feeder, args=(sql, msg_send_socket, sig.exit_event, 500, False))
-    zmq_feeder.start()
+    #zmq_feeder = threading.Thread(target=_zeromq_feeder, args=(sql, msg_send_socket, sig.exit_event, 500, False))
+    #zmq_feeder.start()
     start = time.time()
     logging.info('Starting first simulation run')
-    zmq_feeder.join()
+    _feeder(sql, msg_send_socket, sig.exit_event, False)
+    #zmq_feeder.join()
     logging.info('Finished first run in %.2f seconds', time.time() - start)
 
 
@@ -34,12 +34,25 @@ def rerun_simulation():
           'UNION  ' \
           'SELECT * FROM de_sim_routes_within_sampled r ' \
           '  WHERE NOT EXISTS (SELECT 1 FROM de_sim_data_commuter c WHERE c.c_id = r.commuter AND  rerun)'
-    zmq_feeder = threading.Thread(target=_zeromq_feeder, args=(sql, msg_send_socket, sig.exit_event, 500, True))
-    zmq_feeder.start()
+    #zmq_feeder = threading.Thread(target=_zeromq_feeder, args=(sql, msg_send_socket, sig.exit_event, 500, True))
+    #zmq_feeder.start()
     start = time.time()
     logging.info('Starting second simulation run')
-    zmq_feeder.join()
+    _feeder(sql, msg_send_socket, sig.exit_event, True)
+    #zmq_feeder.join()
     logging.info('Finished second run in %.2f seconds', time.time() - start)
+
+
+def _feeder(sql, socket, exit_event, rerun=False):
+    with db.get_connection() as conn:
+        cur = conn.cursor()
+        cur.execute(sql)
+        results = cur.fetchall()
+    for rec in results:
+        if exit_event.is_set():
+            break
+        socket.send_json(dict(c_id=rec[0], rerun=rerun))
+    socket.setsockopt(zmq.LINGER, 0)
 
 
 def _zeromq_feeder(sql, socket, exit_event, size=500, rerun=False):
