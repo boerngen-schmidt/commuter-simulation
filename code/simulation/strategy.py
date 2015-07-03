@@ -5,7 +5,6 @@ from collections import namedtuple
 from psycopg2.extras import NamedTupleCursor, RealDictCursor
 from database import connection as db
 
-
 FillingStation = namedtuple('FillingStation', ['id', 'target'])
 
 
@@ -269,6 +268,15 @@ class CheapestRefillStrategy(BaseRefillStrategy):
             else:
                 raise NoFillingStationError('No filling station found for commuter: %s, having %s stations' %
                                             (self.env.commuter.id, len(self.stations_ids)))
+
+
+class PricePerformanceRatioStrategy(BaseRefillStrategy):
+    def __init__(self, env):
+        super().__init__(env)
+        pass
+
+    def find_filling_station(self):
+        pass
 
 
 class FillingStationNotReachableError(Exception):
