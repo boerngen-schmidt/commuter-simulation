@@ -13,6 +13,11 @@ dijkstra_sql = 'SELECT id, source, target, cost FROM de_2po_4pgr, ' \
                '    WHERE id = %(start)s OR id = %(dest)s ' \
                '  ) as box WHERE geom_way && box.box'
 
+astar_sql = 'SELECT id, source, target, cost, x1, y1, x2, y2 FROM de_2po_4pgr, ' \
+            '  (SELECT ST_Expand(ST_Extent(geom_vertex),10000) as box FROM de_2po_vertex ' \
+            '    WHERE id = %(start)s OR id = %(dest)s ' \
+            '  ) as box WHERE geom_way && box.box'
+
 
 def route_to_work(env):
     """Alias for calculate_route with pre set start and destination points
