@@ -12,7 +12,7 @@
 #node,way	access							text	linear
 #node,way	admin_level 					int4	linear
 #node,way	amenity							text	polygon
-node,way 	area							text	# hard coded support for area=1/yes => polygon is in osm2pgsql
+node,way	area							text	# hard coded support for area=1/yes => polygon is in osm2pgsql
 #way		boundary						text	polygon
 #node,way	building						text	polygon
 #way		de:amtlicher_gemeindeschluessel	text	polygon

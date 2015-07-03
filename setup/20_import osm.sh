@@ -60,7 +60,7 @@ done
 
 OSM2PGSQL_OPTIONS="-c -s -d $DATABASE -U $USER -p de_osm -C 8192 --drop --unlogged --number-processes 8 -S $STYLEFILE -l -E 25832 $OSM_OPTS"
 
-if [ -e $BASE/bin/osm2pgsql && $(ynQuestion "Do you want to run local version of osm2pgsql?") ]; then
+if [[ -e $BASE/bin/osm2pgsql && $(ynQuestion "Do you want to run local version of osm2pgsql?") ]]; then
 	infoMsg "Runnung local version of osm2pgsql"
 	time $BASE/bin/osm2pgsql $OSM2PGSQL_OPTIONS $OSMFILE
 else

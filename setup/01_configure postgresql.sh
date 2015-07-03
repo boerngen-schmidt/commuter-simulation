@@ -8,8 +8,16 @@ echo; echo;
 infoMsg "Stoping PostgreSQL Server"
 PostgresService stop
 
-postgres_conf=$(sudo find /etc/ -name postgresql.conf)
+infoMsg "Select configuration file to configure"
+pgconf_choices=( $(sudo find /etc/ -name postgresql.conf) )
+select choice in ${pgconf_choices[@]}
+do
+	postgres_conf=$choice
+	break
+done
+
 postgres_dir=$(dirname $postgres_conf)
+
 infoMsg "Copying configuration files"
 if ! sudo grep -q postgresql.conf.include $postgres_conf; then
 	echo -e "\n\ninclude = 'postgresql.conf.include'" | sudo tee --append $postgres_conf >/dev/null

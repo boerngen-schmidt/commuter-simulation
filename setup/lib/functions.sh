@@ -72,13 +72,13 @@ function PostgresService {
 function PostgresServiceGentoo {
 	case $1 in
 		start)
-			sudo systemctl start postgresql-9.3.service
+			sudo systemctl start postgresql-9.5.service
 			;;
 		stop)
-			sudo systemctl stop postgresql-9.3.service
+			sudo systemctl stop postgresql-9.5.service
 			;;
 		restart)
-			sudo systemctl restart postgresql-9.3.service
+			sudo systemctl restart postgresql-9.5.service
 			;;
 	esac
 }

@@ -28,21 +28,22 @@ if [ ! $(ynQuestion "Install system Packages?") ]; then
 fi
 
 infoMsg "Fetching OSM data"
-if [ $(ynQuestion "Download latest OSM Germany Map?") ]; then
+if [ $(ynQuestion "Download latest OSM Germany Map? (PBF Format)") ]; then
 	wget http://download.geofabrik.de/europe/germany-latest.osm.pbf -P $BASE/data/osm -N
+else
+	warnMsg "Skipped downloading OSM Data (PBF)"
+fi
+
+if [ $(ynQuestion "Download latest OSM Germany Map? (BZ2 Format)") ]; then
 	wget http://download.geofabrik.de/europe/germany-latest.osm.bz2 -P $BASE/data/osm -N
 else
-	warnMsg "Skipped downloading OSM Data"
+	warnMsg "Skipped downloading OSM Data (BZ2)"
 fi
 
 infoMsg "Downloading OSM2PO"
 if [ -d $BASE/bin/osm2po ]; then
 	rm -rf $BASE/bin/osm2po
 fi
-#wget -P $TMPDIR "http://osm2po.de/download.php?lnk=osm2po-4.9.1.zip" --referer http://osm2po.de --content-disposition -N
-#unzip -q $TMPDIR/osm2po-4.9.1.zip -d $BASE/bin/osm2po
-#wget -P $TMPDIR "http://osm2po.de/download.php?lnk=osm2po-4.8.8.zip" --referer http://osm2po.de --content-disposition -N
-#unzip -q $TMPDIR/osm2po-4.8.8.zip -d $BASE/bin/osm2po
 wget -P $TMPDIR "http://osm2po.de/dld/osm2po-5.0.0.zip" --referer http://osm2po.de --content-disposition -N
 unzip -q $TMPDIR/osm2po-5.0.0.zip -d $BASE/bin/osm2po
 cd $BASE/bin/osm2po
