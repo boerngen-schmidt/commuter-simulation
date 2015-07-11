@@ -26,7 +26,6 @@ BEGIN;
         refueling_time TIMESTAMP,
         station VARCHAR(38),
         fuel_type VARCHAR(6),
-        CONSTRAINT de_sim_data_refill_pkey PRIMARY KEY (id),
         CONSTRAINT de_sim_data_refill_fkey FOREIGN KEY (c_id, rerun)
           REFERENCES de_sim_data_commuter (c_id, rerun) MATCH SIMPLE
           ON UPDATE NO ACTION ON DELETE CASCADE
