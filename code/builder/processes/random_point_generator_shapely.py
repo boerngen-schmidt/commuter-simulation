@@ -100,7 +100,7 @@ class PointCreatorProcess(Process):
                       'INNER JOIN de_shp_{shp!s} s ON (s.rs = %(rs)s AND (ST_Within(p.way, s.geom) OR ST_Intersects(p.way , s.geom))) ' \
                       'WHERE landuse IN ({landuse!s})'
 
-                args = dict(rs=cmd.rs, w=0.5)
+                args = dict(rs=cmd.rs, w=0.15)
                 cur.execute(sql.format(shp=shp, landuse=landuse), args)  # created temporary table
 
                 # Update areas temp table with correct area
