@@ -13,7 +13,6 @@ from builder.processes.random_point_generator_shapely import PointCreatorProcess
 from psycopg2.extras import NamedTupleCursor
 from database import connection
 
-
 __author__ = 'benjamin'
 
 
@@ -100,7 +99,7 @@ def create_points():
              'INSERT INTO de_sim_points_within_end (rs, geom, lookup) '
              'VALUES($1, ST_GeomFromWKB(ST_SetSRID($2, 25832)), $3)']
     insert_process = PointInsertingProcess(insert_queue, plans, sig.exit_event)
-    insert_process.set_batch_size(5000)
+    insert_process.set_batch_size(10000)
     insert_process.set_insert_threads(1)
     insert_process.start()
 

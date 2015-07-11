@@ -135,7 +135,6 @@ class PointInsertingThread(Thread):
                     continue
                 else:
                     self.q.task_done()
-                    time.sleep(0.5)
 
             # TODO remove after test?!
             self.log.warn('Cleaning %d elements from Queue ... ', self.q.qsize())
