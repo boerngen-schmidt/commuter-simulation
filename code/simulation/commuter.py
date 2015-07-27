@@ -63,6 +63,16 @@ class Commuter(object):
 
     def override_parameters(self, leave_time):
         self._leave = leave_time
+        # Also overwrite the result set to comply with the overwritten parameters
+        self.env.result.set_commuter(
+            self._id,
+            self.env.rerun,
+            self._leave,
+            self._home_route.distance,
+            self._work_route.distance,
+            self.env.car.fuel_type,
+            self.env.car.current_filling
+        )
 
     @property
     def id(self):

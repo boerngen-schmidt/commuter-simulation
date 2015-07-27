@@ -1,7 +1,7 @@
 import datetime as dt
 
 
-class SimulationEnvironment():
+class SimulationEnvironment:
     """Simulation environment is also the context of the StateMachine"""
     def __init__(self, initial_time, rerun):
         """
