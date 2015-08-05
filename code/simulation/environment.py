@@ -4,18 +4,18 @@ import datetime as dt
 class SimulationEnvironment:
     """Simulation environment is also the context of the StateMachine"""
     def __init__(self, initial_time, rerun):
-        """
+        """Initialization of the SimulationEnvironment.
 
         :param initial_time: Start time of the SimulationEnvironment
         :type initial_time: datetime.datetime
-        :return:
+        :param rerun: Indicator if the commuter is simulated again with a different strategy
+        :type rerun: bool
         """
         self._current_route = None
         self._commuter = None
         self._car = None
         self._refill_strategy = None
         self._time = initial_time
-        ''':type : datetime.datetime'''
         self._to_work = True
         self._rerun = rerun
         self._result = ResultCollector()
@@ -46,11 +46,10 @@ class SimulationEnvironment:
         return self._to_work
 
     def consume_time(self, amount):
-        """
+        """Consumes an amount of time in the simulation
 
         :param amount: The amount of time to consume
         :type amount: datetime.timedelta
-        :return:
         """
         self._time += amount
 
@@ -65,7 +64,7 @@ class SimulationEnvironment:
         :type delta: datetime.timedelta
         :return:
         """
-        self._time = self._time.replace(hour=to_hour, minute=to_minute) + delta
+        self._time = self.now.replace(hour=to_hour, minute=to_minute) + delta
 
     @property
     def commuter(self):
