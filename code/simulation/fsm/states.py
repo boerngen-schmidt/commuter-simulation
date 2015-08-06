@@ -150,8 +150,7 @@ class SearchFillingStation(State):
         destination = self.fsm.env.refilling_strategy.find_filling_station()
 
         from simulation.routing import calculation as rc
-        from simulation.state import CommuterAction
-        self.fsm.env.route = rc.calculate_route(start, destination, CommuterAction.ArrivedAtFillingStation)
+        self.fsm.env.route = rc.calculate_route(start, destination)
 
         self.fsm.set_transition(Transitions.DriveToFillingStation)
 
