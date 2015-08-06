@@ -10,22 +10,21 @@ import datetime
 
 class BaseCar(metaclass=ABCMeta):
     """
-    Represents a car
+    Represents the fundamentals of a car
     """
-    def __init__(self, commuter_id, env, tank_size):
+    def __init__(self, env, tank_size):
         """
         Constructor
         :type tank_size: int
         :type env: simulation.environment.SimulationEnvironment
-        :type commuter_id: int
         """
         env.car = self
         self.env = env
-        self.id = commuter_id
         self._tankSize = float(tank_size)
         self._tankFilling = BaseCar._random_tank_filling(self._tankSize)
         self._current_position = None
         self._fuel_type = 'e5'
+        self._driven_distance = float(0)
         # self.log = logging.getLogger('spritsim.Car' + commuter_id)
 
     @staticmethod
@@ -48,7 +47,21 @@ class BaseCar(metaclass=ABCMeta):
         return self._current_position
 
     @property
+    def driven_distance(self):
+        """
+        The car's odometer
+        :return: The total distance the car has traveled
+        :rtype: float
+        """
+        return self._driven_distance
+
+    @property
     def fuel_type(self):
+        """
+        The car's fuel type
+        :return: Type of fuel (e5|diesel)
+        :rtype: str
+        """
         return self._fuel_type
 
     @property
@@ -69,9 +82,15 @@ class BaseCar(metaclass=ABCMeta):
         """
         return self._tankFilling
 
-    @abstractmethod
     def consume_fuel(self, speed, distance, road_type):
-        pass
+        """
+
+        :param int speed: Maximum allowed speed
+        :param float distance: Length of the segment
+        :param simulation.routing.route.RouteClazz road_type: The type of the road
+        :return:
+        """
+        self._tankFilling -= self.consumption_per_km * distance
 
     @property
     @abstractmethod
@@ -95,16 +114,22 @@ class BaseCar(metaclass=ABCMeta):
         """Car has been refilled at a filling station"""
         self._tankFilling = self._tankSize
 
-    @abstractmethod
-    def drive(self):
+    def drive(self, ignore_refill_warning=False):
         """Lets the car drive the given route
 
          On arrival at the destination the a CommuterAction for the route is returned or if the car needs refilling
          the action to search for a refilling station is returned.
-        :return: An action to indicate the result of the driving
-        :rtype: simulation.enums.CommuterAction:
+        :param ignore_refill_warning: Tells the function not to raise a RefillWarning (default: False)
+        :type ignore_refill_warning: bool
+        :raises RefillWarning: If the tank filling is less or equal 5.0 liter
         """
-        pass
+        for segment in self.env.route:
+            self._do_driving(segment)
+            self.env.consume_time(datetime.timedelta(seconds=segment.travel_time))
+
+            # check if driving the segment has
+            if self._tankFilling <= 5.0 and not ignore_refill_warning:
+                raise RefillWarning()
 
     def _do_driving(self, segment):
         """
@@ -117,36 +142,13 @@ class BaseCar(metaclass=ABCMeta):
         :type segment: simulation.routing.route.RouteFragment
         """
         self.consume_fuel(segment.speed_limit, segment.length, segment.road_type)
+        self._driven_distance += segment.length
         self._current_position = segment.target
 
 
-class SimpleCar(BaseCar):
-    def __init__(self, commuter_id, env):
-        super().__init__(commuter_id, env, 50)
-
-    def consume_fuel(self, speed, distance, road_type):
-        self._tankFilling -= self.consumption_per_km * distance
-
-    @property
-    @abstractmethod
-    def consumption_per_km(self):
-        pass
-
-    def drive(self):
-        from simulation import CommuterAction
-        for segment in self.env.route:
-            self._do_driving(segment)
-            self.env.consume_time(datetime.timedelta(seconds=segment.travel_time))
-
-            # check if driving the segment has
-            if self._tankFilling <= 5.0 and self.env.route.action is not CommuterAction.ArrivedAtFillingStation:
-                return CommuterAction.SearchFillingStation
-        return self.env.route.action
-
-
-class PetrolCar(SimpleCar):
-    def __init__(self, commuter_id, env):
-        super().__init__(commuter_id, env)
+class PetrolCar(BaseCar):
+    def __init__(self, env):
+        super().__init__(env, 50)
         self._fuel_type = 'e5'
 
     @property
@@ -159,9 +161,9 @@ class PetrolCar(SimpleCar):
         return 0.1
 
 
-class DieselCar(SimpleCar):
-    def __init__(self, commuter_id, env):
-        super().__init__(commuter_id, env)
+class DieselCar(BaseCar):
+    def __init__(self, env):
+        super().__init__(env, 50)
         self._fuel_type = 'diesel'
 
     @property
@@ -172,3 +174,6 @@ class DieselCar(SimpleCar):
         :rtype: float
         """
         return 0.08
+
+class RefillWarning(Exception):
+    pass

@@ -39,17 +39,6 @@ class Commuter(object):
         ''':type : simulation.routing.route.Route'''
         self._setup_routes()
 
-        # Init done save to simulation result
-        self.env.result.set_commuter(
-            self._id,
-            self.env.rerun,
-            self._leave,
-            self._home_route.distance,
-            self._work_route.distance,
-            self.env.car.fuel_type,
-            self.env.car.current_filling
-        )
-
     def _setup_routes(self):
         """Initializes the two main routes the commuter drives."""
         from simulation import rc
@@ -63,7 +52,12 @@ class Commuter(object):
 
     def override_parameters(self, leave_time):
         self._leave = leave_time
-        # Also overwrite the result set to comply with the overwritten parameters
+
+    def save_result(self):
+        """
+        Saves the final information of the commuter to the simulation.environment.ResultCollector.
+        :return:
+        """
         self.env.result.set_commuter(
             self._id,
             self.env.rerun,

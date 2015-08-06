@@ -2,7 +2,7 @@ import logging
 
 from psycopg2.extras import DictCursor
 from database import connection as db
-from simulation import CommuterAction, RouteFragment, Route
+from simulation import Route, RouteFragment, RouteType
 from simulation.routing.route import NoRouteError, NoRoutingPointsError
 
 log = logging.getLogger('routing')
@@ -38,10 +38,11 @@ def route_to_work(env):
             sql_log.exception(cur.query)
             conn.rollback()
             raise NoRoutingPointsError
-        start, destination = cur.fetchone()
-    route = calculate_route(start, destination, CommuterAction.ArrivedAtWork)
-    _save_route_info(env, route)
-    return route
+        else:
+            start, destination = cur.fetchone()
+            route = calculate_route(start, destination, RouteType.Work)
+            _save_route_info(env, route)
+            return route
 
 
 def route_home(env):
@@ -63,13 +64,14 @@ def route_home(env):
             sql_log.exception(cur.query)
             conn.rollback()
             raise NoRoutingPointsError
-        start, destination = cur.fetchone()
-    route = calculate_route(start, destination, CommuterAction.ArrivedAtHome)
-    _save_route_info(env, route)
-    return route
+        else:
+            start, destination = cur.fetchone()
+            route = calculate_route(start, destination, RouteType.Home)
+            _save_route_info(env, route)
+            return route
 
 
-def calculate_route(start, destination, action):
+def calculate_route(start, destination, route_type=RouteType.Other):
     """Calculates the route and returns its fragments
 
     Route will be calculated from the start point, which have to be part of the generated points for the simulation, to
@@ -77,7 +79,7 @@ def calculate_route(start, destination, action):
 
     :param int start: Id of a point in table de_2po_4pgr
     :param int destination: Id of a point in table de_2po_4pgr
-    :param simulation.state.CommuterAction action: Action returned after driving the route
+    :param simulation.routing.route.RouteType route_type: The type of the route
     :return: simulation.routing.route.Route
     """
     with db.get_connection() as conn:
@@ -110,7 +112,7 @@ def calculate_route(start, destination, action):
         distance, = cur.fetchone()
 
         conn.commit()
-    return Route(start, destination, fragments, action, line, distance)
+    return Route(start, destination, fragments, route_type, line, distance)
 
 
 def _save_route_info(env, route):
@@ -121,7 +123,7 @@ def _save_route_info(env, route):
     :param route:
     :type route: simulation.routing.route.Route
     """
-    work = (route.action is CommuterAction.ArrivedAtWork)
+    work = (route.route_type is RouteType.Work)
 
     # Save the route info
     km = dict()

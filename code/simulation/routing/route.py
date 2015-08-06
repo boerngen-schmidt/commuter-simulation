@@ -5,20 +5,34 @@ Module for information about routes
 """
 from enum import Enum
 
-from simulation import CommuterAction
-
 
 class Route(object):
     """Route for a commuter
 
     The Route class encapsulates the route fragments and makes the route itself iterable.
     """
-    def __init__(self, start, destination, fragments, action: CommuterAction, geom_line, distance):
+    def __init__(self, start, destination, fragments, route_type, geom_line, distance):
+        """
+
+        :param start: Start Vertex
+        :type start: int
+        :param destination: Destination Vertex
+        :type start: int
+        :param fragments: The fragments of the route in order
+        :type fragments: list[RouteFragment]
+        :param route_type: The type of the route (home|work|other)
+        :type route_type: RouteType
+        :param geom_line: EWKB presentation of the route
+        :type geom_line: buffer
+        :param distance: The total length of the route
+        :type distance: float
+        :return:
+        """
         self._fragments = fragments
         self._index = 0
         self._start = start
         self._dest = destination
-        self._action = action
+        self._route_type = route_type
         self._line = geom_line
         self._distance = distance
 
@@ -37,8 +51,8 @@ class Route(object):
         self._index = 0
 
     @property
-    def action(self):
-        return self._action
+    def route_type(self):
+        return self._route_type
 
     @property
     def start(self):
@@ -128,6 +142,12 @@ class RouteClazz(Enum):
     unclassified =   43
     service =        51
     living_street =  63
+
+
+class RouteType(Enum):
+    Home = 'home'
+    Work = 'work'
+    Other = 'other'
 
 
 class NoRouteError(Exception):

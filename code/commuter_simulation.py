@@ -20,7 +20,7 @@ from helper import signal as sig
 
 def sink(sink_args):
     import threading as t
-    import simulation.sink as s
+    import simulation.processes.sink as s
 
     log = logging.getLogger('SINK')
 
@@ -36,7 +36,7 @@ def sink(sink_args):
 
 def worker(worker_args):
     import multiprocessing as mp
-    from simulation.worker import CommuterSimulationZeroMQ
+    from simulation.processes.worker import CommuterSimulationZeroMQ
     number_of_processes = mp.cpu_count()
 
     signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -60,7 +60,7 @@ def server(server_args):
     a ZeroMQ Push socket. The Clients can connect to the server's socket an pull the commuter.
     :return:
     """
-    import simulation.server as srv
+    import simulation.processes.server as srv
     if server_args.mode == 'first':
         srv.first_simulation()
     elif server_args.mode == 'rerun':

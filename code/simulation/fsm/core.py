@@ -5,25 +5,46 @@ class SimulationFSM(object):
     def __init__(self):
         self._states = dict()
         self._transitions = dict()
+        self._env = None
         self.curState = None
-        """:type : simulation.fsm.states.State"""
+        """:type : State"""
         self.prevState = None
-        """:type : simulation.fsm.states.State"""
+        """:type : State"""
         self.transition = None
-        """:type : simulation.fsm.transitions.Transition"""
+        """:type : Transition"""
 
-    def add_state(self, stateName, state):
-        self._states[stateName] = state
+    @property
+    def env(self):
+        """
+        :return: The environment of the simulation
+        :rtype: simulation.environment.SimulationEnvironment
+        """
+        return self._env
 
-    def add_transition(self, transName, transition):
-        self._transitions[transName] = transition
+    @env.setter
+    def env(self, environment):
+        self._env = environment
 
-    def set_state(self, stateName):
+    def add_state(self, state_name, state):
+        state.name = state_name
+        self._states[state_name] = state
+
+    def add_transition(self, trans_name, transition):
+        transition.name = trans_name
+        self._transitions[trans_name] = transition
+
+    def set_state(self, state_name):
         self.prevState = self.curState
-        self.curState = self._states[stateName]
+        self.curState = self._states[state_name]
 
-    def set_transition(self, transName):
-        self.transition = self._transitions[transName]
+    def set_transition(self, trans_name):
+        self.transition = self._transitions[trans_name]
+
+    def unlink(self):
+        """Remove circular references to objects no longer required."""
+        for state in self._states.values():
+            state.unlink()
+        self._states = None
 
     def execute(self):
         if self.transition is not None:
@@ -36,13 +57,42 @@ class SimulationFSM(object):
 
 
 class State(object):
-    def __init__(self, FSM):
+    def __init__(self, fsm):
         """
+        Constructor
+        :param fsm: The simulation's finite state machine
+        :type fsm: SimulationFSM
+        """
+        self._fsm = fsm
+        self._name = None
 
-        :param FSM: The simulation's finite state machine
-        :type FSM: simulation.fsm.fsm.SimulationFSM
+    @property
+    def name(self):
         """
-        self._fsm = FSM
+        :return: The name of the State
+        :rtype: simulation.fsm.States
+        """
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        """
+        :param name: Setter for the name
+        :type name: simulation.fsm.States
+        """
+        self._name = name
+
+    @property
+    def fsm(self):
+        """
+        :return: Instance of the Finite State Machine
+        :rtype: SimulationFSM
+        """
+        return self._fsm
+
+    def unlink(self):
+        """Remove circular references to objects no longer required."""
+        self._fsm = None
 
     def enter(self):
         pass
@@ -55,14 +105,31 @@ class State(object):
 
 
 class Transition(object):
-    def __init__(self, toState):
+    def __init__(self, to_state):
         """
+        Constructor
+        :param to_state:
+        :type to_state: simulation.fsm.States
+        """
+        self.toState = to_state
+        self._name = None
+        self._data = dict()
 
-        :param toState:
-        :type toState: simulation.fsm.states.State
-        :return:
+    @property
+    def name(self):
         """
-        self.toState = toState
+        :return: The name of the Transition
+        :rtype: simulation.fsm.Transitions
+        """
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        """
+        :param name: Setter for the name
+        :type name: simulation.fsm.Transitions
+        """
+        self._name = name
 
     def execute(self):
         pass

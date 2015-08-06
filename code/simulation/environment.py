@@ -1,24 +1,28 @@
 import datetime as dt
 
+from simulation.commuter import Commuter
+
 
 class SimulationEnvironment:
     """Simulation environment is also the context of the StateMachine"""
-    def __init__(self, initial_time, rerun):
+    def __init__(self, start_time, commuter_id, rerun):
         """Initialization of the SimulationEnvironment.
 
-        :param initial_time: Start time of the SimulationEnvironment
-        :type initial_time: datetime.datetime
+        :param start_time: Start time of the SimulationEnvironment
+        :type start_time: datetime.datetime
         :param rerun: Indicator if the commuter is simulated again with a different strategy
         :type rerun: bool
         """
+        self._result = ResultCollector()
         self._current_route = None
-        self._commuter = None
         self._car = None
         self._refill_strategy = None
-        self._time = initial_time
+        self._time = start_time
         self._to_work = True
         self._rerun = rerun
-        self._result = ResultCollector()
+
+        # Initialize the commuter
+        self._commuter = Commuter(commuter_id, self)
 
     @property
     def result(self):
@@ -99,10 +103,10 @@ class SimulationEnvironment:
         :param route: The route to drive on
         :type route: simulation.routing.route.Route
         """
-        from simulation import CommuterAction
-        if route.action is CommuterAction.ArrivedAtWork:
+        from simulation.routing.route import RouteType
+        if route.route_type is RouteType.Work:
             self._to_work = True
-        elif route.action is CommuterAction.ArrivedAtHome:
+        elif route.route_type is RouteType.Home:
             self._to_work = False
         self._current_route = route
 
