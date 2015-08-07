@@ -181,17 +181,14 @@ class ResultCollector(object):
         )
 
     def set_commuter(self, c_id, rerun, leaving_time, route_home, route_work, fuel_type, tank_filling, driven_distance):
-        self.commuter = {
-            'c_id': c_id,
-            'rerun': rerun,
-            'leaving_time': str(leaving_time),
-            'route_home_distance': route_home,
-            'route_work_distance': route_work,
-            'fuel_type': fuel_type,
-            'tank_filling': tank_filling,
-            'driven_distance': driven_distance,
-            'error': None
-        }
+        self.commuter['c_id'] = c_id
+        self.commuter['rerun'] = rerun
+        self.commuter['leaving_time'] = str(leaving_time)
+        self.commuter['route_home_distance'] = route_home
+        self.commuter['route_work_distance'] = route_work
+        self.commuter['fuel_type'] = fuel_type
+        self.commuter['tank_filling'] = tank_filling
+        self.commuter['driven_distance'] = driven_distance
 
     def set_commuter_filling_stations(self, stations):
         """Add filling stations to commuter
