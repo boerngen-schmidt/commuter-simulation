@@ -9,6 +9,7 @@ BEGIN;
         route_work_distance DOUBLE PRECISION,
         fuel_type VARCHAR(6),
         tank_filling DOUBLE PRECISION,
+        driven_distance DOUBLE PRECISION,
         error VARCHAR(128),
         filling_stations character varying[],
         CONSTRAINT de_sim_data_commuter_pkey PRIMARY KEY (c_id, rerun)

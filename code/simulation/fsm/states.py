@@ -7,7 +7,7 @@ class Start(State):
         self._setup_environment()
 
     def execute(self):
-        self.fsm.set_transition(Transitions.Start)
+        self.fsm.set_transition(Transitions.ArriveAtHome)
 
     def _setup_environment(self):
         import random
@@ -44,7 +44,8 @@ class End(State):
         self.fsm.env.commuter.save_result()
 
     def execute(self):
-        raise StopIteration
+        # raise StopIteration
+        pass
 
 
 class Home(State):

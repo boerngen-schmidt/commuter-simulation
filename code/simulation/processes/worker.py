@@ -3,7 +3,6 @@ import logging
 import multiprocessing as mp
 import threading
 import time
-from queue import Queue
 
 import zmq
 import simulation.fsm as fsm
@@ -26,6 +25,37 @@ class CommuterSimulationZeroMQ(mp.Process):
         self.log = logging.getLogger()
         self._exit_event = exit_event
 
+    def run(self):
+        self.log.info('Starting Threads ...')
+        num_threads = 2
+        threads = []
+        for i in range(num_threads):
+            threads.append(CommuterSimulationThread(self.name + 'T%d' % i, self._exit_event))
+            threads[-1].start()
+
+        for t in threads:
+            t.join()
+
+        self.log.info('Threads for %s finished working.' % self.name)
+
+
+class CommuterSimulationThread(threading.Thread):
+    def __init__(self, name, exit_event):
+        """
+
+        :param name: The name of the Thread
+        :type name: str
+        :param queue: Work queue
+        :type queue: queue.Queue
+        """
+        super().__init__()
+        self.name = name
+        self._exit_event = exit_event
+        self.log = logging.getLogger(self.name)
+        self.fsm = None
+        """:type : simulation.fsm.core.SimulationFSM"""
+
+        # Initialize ZMQ
         self.context = zmq.Context()
 
         # Configuration
@@ -71,54 +101,6 @@ class CommuterSimulationZeroMQ(mp.Process):
         self.poller = zmq.Poller()
         self.poller.register(self.receiver, zmq.POLLIN)
         self.poller.register(self.controller, zmq.POLLIN)
-
-    def run(self):
-        self.log.info('Starting Threads ...')
-        num_threads = 2
-        threads = []
-        queue = Queue(maxsize=2000)
-        for i in range(num_threads):
-            threads.append(CommuterSimulationThread(self.name + 'T%d' % i, queue, self.sink))
-            threads[-1].start()
-
-        while True:
-            socks = dict(self.poller.poll(1000))
-
-            if socks.get(self.receiver) == zmq.POLLIN:
-                message = self.receiver.recv_json()
-                queue.put(message)
-
-            if self._exit_event.is_set():
-                while not queue.empty():
-                    queue.get()
-                    queue.task_done()
-
-                for i in range(num_threads):
-                    queue.put(None)
-
-        for t in threads:
-            t.join()
-
-        self.context.destroy(linger=0)
-        self.log.info('Threads for %s finished working.' % self.name)
-
-
-class CommuterSimulationThread(threading.Thread):
-    def __init__(self, name, queue, sink):
-        """
-
-        :param name: The name of the Thread
-        :type name: str
-        :param queue: Work queue
-        :type queue: queue.Queue
-        """
-        super().__init__()
-        self.name = name
-        self.q = queue
-        self.sink = sink
-        self.log = logging.getLogger(self.name)
-        self.fsm = None
-        """:type : simulation.fsm.core.SimulationFSM"""
         
         # Build the finite state machine for the thread
         self._initialize_fsm()
@@ -142,7 +124,7 @@ class CommuterSimulationThread(threading.Thread):
 
         self.fsm.add_transition(
             fsm.Transitions.Start,
-            t.Start(fsm.States.Home))
+            t.Start(fsm.States.Start))
         self.fsm.add_transition(
             fsm.Transitions.End,
             t.End(fsm.States.End))
@@ -170,20 +152,21 @@ class CommuterSimulationThread(threading.Thread):
 
     def run(self):
         while True:
-            message = self.q.get()
+            socks = dict(self.poller.poll(1000))
 
-            if message is None:
-                self.q.task_done()
+            if socks.get(self.receiver) == zmq.POLLIN:
+                message = self.receiver.recv_json()
+                try:
+                    self.simulate(message['c_id'], message['rerun'])
+                except Exception:
+                    log = logging.getLogger('exception')
+                    log.exception('Simulation of commuter %d failed.', message['c_id'])
+
+            if self._exit_event.is_set():
                 break
 
-            try:
-                self.simulate(message['c_id'], message['rerun'])
-            except Exception:
-                log = logging.getLogger('exception')
-                log.exception('Simulation of commuter %d failed.', message['c_id'])
-            finally:
-                self.q.task_done()  # indicate that the task was done
-
+        # Destroy ZMQ Context and do not linger messages
+        self.context.destroy(linger=0)
         self.log.info('Exiting %s', self.name)
 
     def simulate(self, c_id, rerun):
@@ -193,11 +176,15 @@ class CommuterSimulationThread(threading.Thread):
         try:
             # Setup FSM
             self.fsm.env = env
-            self.fsm.set_state(s.Start)
+            self.fsm.set_transition(fsm.Transitions.Start)
 
             # Execute FSM
             while env.now < self.end_time:
                 self.fsm.execute()
+
+            # Manual transition to End state
+            self.fsm.set_transition(fsm.Transitions.End)
+            self.fsm.execute()
             
         except (
                 FillingStationNotReachableError, NoFillingStationError, NoPriceError,

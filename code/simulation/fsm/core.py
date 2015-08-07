@@ -6,7 +6,7 @@ class SimulationFSM(object):
         self._states = dict()
         self._transitions = dict()
         self._env = None
-        self.curState = None
+        self.curState = State(self)
         """:type : State"""
         self.prevState = None
         """:type : State"""

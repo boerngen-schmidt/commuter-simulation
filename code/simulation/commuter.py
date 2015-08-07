@@ -65,7 +65,8 @@ class Commuter(object):
             self._home_route.distance,
             self._work_route.distance,
             self.env.car.fuel_type,
-            self.env.car.current_filling
+            self.env.car.current_filling,
+            self.env.car.driven_distance
         )
 
     @property

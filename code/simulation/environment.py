@@ -180,7 +180,7 @@ class ResultCollector(object):
             }
         )
 
-    def set_commuter(self, c_id, rerun, leaving_time, route_home, route_work, fuel_type, tank_filling):
+    def set_commuter(self, c_id, rerun, leaving_time, route_home, route_work, fuel_type, tank_filling, driven_distance):
         self.commuter = {
             'c_id': c_id,
             'rerun': rerun,
@@ -189,6 +189,7 @@ class ResultCollector(object):
             'route_work_distance': route_work,
             'fuel_type': fuel_type,
             'tank_filling': tank_filling,
+            'driven_distance': driven_distance,
             'error': None
         }
 
