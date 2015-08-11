@@ -54,7 +54,7 @@ class CommuterSimulationThread(threading.Thread):
         self._exit_event = exit_event
         self.log = logging.getLogger(self.name)
         self.fsm = None
-        """:type : simulation.fsm.core.SimulationFSM"""
+        """:type fsm: simulation.fsm.core.SimulationFSM"""
 
         # Initialize ZMQ
         self.context = zmq.Context()
@@ -103,9 +103,6 @@ class CommuterSimulationThread(threading.Thread):
         self.poller.register(self.receiver, zmq.POLLIN)
         self.poller.register(self.controller, zmq.POLLIN)
         
-        # Build the finite state machine for the thread
-        self._initialize_fsm()
-
         # Simulation parameters
         tz = datetime.timezone(datetime.timedelta(hours=1))
         self.start_time = datetime.datetime(2014, 6, 1, 0, 0, 0, 0, tz)
@@ -172,11 +169,11 @@ class CommuterSimulationThread(threading.Thread):
 
     def simulate(self, c_id, rerun):
         start = time.time()
+        self._initialize_fsm()
         env = SimulationEnvironment(self.start_time, c_id, rerun)
 
         try:
             # Setup FSM
-            self.fsm.reset()
             self.fsm.env = env
             self.fsm.set_transition(fsm.Transitions.Start)
 
