@@ -6,6 +6,7 @@ import time
 
 import zmq
 import simulation.fsm as fsm
+from simulation.fsm import UnknownTransitionCondition
 import simulation.fsm.states as s
 import simulation.fsm.transitions as t
 from simulation.routing import NoRouteError, NoRoutingPointsError
@@ -189,7 +190,7 @@ class CommuterSimulationThread(threading.Thread):
             
         except (
                 FillingStationNotReachableError, NoFillingStationError, NoPriceError,
-                NoRouteError, NoRoutingPointsError
+                NoRouteError, NoRoutingPointsError, UnknownTransitionCondition
                 ) as e:
             logging.error(e)
             env.result.set_commuter_error(e.__class__.__name__)

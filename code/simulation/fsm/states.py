@@ -106,26 +106,23 @@ class Drive(State):
         """
         from simulation.car import RefillWarning
 
-        if self._prev_transition is Transitions.DriveToFillingStation:
-            ignore_refill_warning = True
-        else:
-            ignore_refill_warning = False
-
+        ignore_refill_warning = False
         transition = None
+
+        if self._prev_transition is Transitions.DriveToFillingStation:
+            transition = Transitions.ArriveAtFillingStation
+            ignore_refill_warning = True
+        elif self._prev_transition is Transitions.DriveToHome:
+            transition = Transitions.ArriveAtHome
+        elif self._prev_transition is Transitions.DriveToWork:
+            transition = Transitions.ArriveAtWork
+        else:
+            raise UnknownTransitionCondition("Unknown transition condition: %s" % self._prev_transition)
 
         try:
             self.fsm.env.car.drive(ignore_refill_warning)
         except RefillWarning:
             transition = Transitions.SearchFillingStation
-        else:
-            if self._prev_transition is Transitions.DriveToFillingStation:
-                transition = Transitions.ArriveAtFillingStation
-            elif self._prev_transition is Transitions.DriveToHome:
-                transition = Transitions.ArriveAtHome
-            elif self._prev_transition is Transitions.DriveToWork:
-                transition = Transitions.ArriveAtWork
-            else:
-                raise UnknownTransitionCondition("Unknown transition condition: %s" % self._prev_transition)
         finally:
             self.fsm.set_transition(transition)
 
