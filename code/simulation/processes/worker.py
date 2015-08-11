@@ -14,7 +14,7 @@ from simulation.strategy import FillingStationNotReachableError, NoFillingStatio
 
 
 class CommuterSimulationZeroMQ(mp.Process):
-    def __init__(self, name, exit_event):
+    def __init__(self, exit_event):
         """
 
         :param exit_event: Event to terminate the Process
@@ -22,10 +22,36 @@ class CommuterSimulationZeroMQ(mp.Process):
         :return:
         """
         super().__init__()
-        self.name = name
-        self.log = logging.getLogger(self.name)
+        self.log = logging.getLogger()
         self._exit_event = exit_event
 
+    def run(self):
+        self.log.info('Starting Threads ...')
+        num_threads = 2
+        threads = []
+        for i in range(num_threads):
+            threads.append(CommuterSimulationThread(self.name + 'T%d' % i, self._exit_event))
+            threads[-1].start()
+
+        for t in threads:
+            t.join()
+
+        self.log.info('Threads for %s finished working.' % self.name)
+
+
+class CommuterSimulationThread(threading.Thread):
+    def __init__(self, name, exit_event):
+        """
+
+        :param name: The name of the Thread
+        :type name: str
+        :param queue: Work queue
+        :type queue: queue.Queue
+        """
+        super().__init__()
+        self.name = name
+        self._exit_event = exit_event
+        self.log = logging.getLogger(self.name)
         self.fsm = None
         """:type : simulation.fsm.core.SimulationFSM"""
 
@@ -75,7 +101,7 @@ class CommuterSimulationZeroMQ(mp.Process):
         self.poller = zmq.Poller()
         self.poller.register(self.receiver, zmq.POLLIN)
         self.poller.register(self.controller, zmq.POLLIN)
-
+        
         # Build the finite state machine for the thread
         self._initialize_fsm()
 
@@ -159,7 +185,7 @@ class CommuterSimulationZeroMQ(mp.Process):
             # Manual transition to End state
             self.fsm.set_transition(fsm.Transitions.End)
             self.fsm.execute()
-
+            
         except (
                 FillingStationNotReachableError, NoFillingStationError, NoPriceError,
                 NoRouteError, NoRoutingPointsError
