@@ -27,7 +27,7 @@ class CommuterSimulationZeroMQ(mp.Process):
 
     def run(self):
         self.log.info('Starting Threads ...')
-        num_threads = 2
+        num_threads = 1
         threads = []
         for i in range(num_threads):
             threads.append(CommuterSimulationThread(self.name + 'T%d' % i, self._exit_event))
@@ -175,6 +175,7 @@ class CommuterSimulationThread(threading.Thread):
 
         try:
             # Setup FSM
+            self.fsm.reset()
             self.fsm.env = env
             self.fsm.set_transition(fsm.Transitions.Start)
 

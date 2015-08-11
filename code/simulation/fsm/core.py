@@ -13,6 +13,12 @@ class SimulationFSM(object):
         self.transition = None
         """:type : Transition"""
 
+    def reset(self):
+        self.prevState = None
+        self.curState = State(self)
+        self.transition = None
+        self._env = None
+
     @property
     def env(self):
         """
