@@ -99,7 +99,7 @@ class CheapestRefillStrategy(BaseRefillStrategy):
                   'LEFT JOIN (SELECT seq, id1 as start, id2 as target, cost as distance FROM ' \
                   '  pgr_kdijkstraCost(\'SELECT id, source, target, km as cost FROM de_2po_4pgr, (SELECT ST_Expand(ST_Extent(geom_vertex),10000) as box FROM de_2po_vertex WHERE id = ANY(%(box)s) LIMIT 1) as box WHERE geom_way && box.box\', ' \
                   '  %(start)s, %(destinations)s, false, false) AS result) as p1 USING(target)' \
-                  'WHERE distance <= %(reachable)s ORDER BY e5, distance LIMIT 1'
+                  'WHERE distance <= %(reachable)s ORDER BY {fuel_type!s}, distance LIMIT 1'
             values = ', '.join(str(x) for x in zip(self.stations_ids, self.stations_destinations))
             box = []
             box += self.stations_destinations
@@ -110,12 +110,12 @@ class CheapestRefillStrategy(BaseRefillStrategy):
                         destinations=self.stations_destinations,
                         box=box)
             try:
-                cur.execute(sql.format(values=values), args)
-            except Exception:
+                cur.execute(sql.format(values=values, fuel_type=self.env.car.fuel_type), args)
+            except Exception as e:
                 log = logging.getLogger('database')
                 log.error(cur.query)
                 conn.rollback()
-                raise FillingStationNotReachableError('Could not reach filling station for commuter %s.', self.env.commuter.id)
+                raise e
             else:
                 conn.commit()
             result = cur.fetchone()
@@ -123,8 +123,7 @@ class CheapestRefillStrategy(BaseRefillStrategy):
                 self._target_station = result.station_id
                 return result.target
             else:
-                raise NoFillingStationError('No filling station found for commuter: %s, having %s stations' %
-                                            (self.env.commuter.id, len(self.stations_ids)))
+                raise FillingStationNotReachableError('Could not reach filling station for commuter %s.', self.env.commuter.id)
 
 
 class PricePerformanceRatioStrategy(BaseRefillStrategy):
