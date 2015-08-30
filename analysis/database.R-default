@@ -1,0 +1,4 @@
+db.host <- "localhost"
+db.user <- ""
+db.pass <- ""
+db.name <- ""
