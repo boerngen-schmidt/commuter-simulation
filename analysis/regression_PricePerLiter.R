@@ -1,12 +1,7 @@
 setwd("~/workspace/commuter-simulation/analysis")
 
-library(RPostgreSQL)
-library(xts)
-
+#library(xts)
 source("database.R")
-
-drv <- dbDriver("PostgreSQL")
-con <- dbConnect(drv, host=db.host, dbname=db.name, user=db.user, password=db.pass)
 
 # Database 
 dbSendQuery(con, "BEGIN")
@@ -23,10 +18,14 @@ dbSendQuery(con, "CREATE TEMP TABLE brands AS
 rs <- dbSendQuery(con, "
 SELECT
   r.c_id,
-  r.refueling_time, 
-  r.rerun::int,
-  price,
-  ROUND(c.route_work_distance::numeric, 1) AS route_length,
+  EXTRACT(isodow FROM r.refueling_time) as day,
+  EXTRACT(HOUR FROM r.refueling_time)+1 as hour,
+  o.price as oilprice,
+  r.rerun::int as app,
+  CASE WHEN r.fuel_type = 'e5' 
+    THEN ROUND((r.price-0.6545-(r.price-(r.price/1.19)))::numeric, 4)
+    ELSE ROUND((r.price-0.4704-(r.price-(r.price/1.19)))::numeric, 4)
+  END AS price,
   CASE WHEN EXISTS(SELECT 1 FROM bab_stations WHERE id = r.station)
     THEN 1
     ELSE 0
@@ -39,27 +38,42 @@ SELECT
     THEN 1 
     ELSE 0 
   END AS fuel_type,
-  CASE WHEN EXISTS(SELECT 1 FROM de_sim_routes_within_sampled WHERE commuter = r.c_id)
-    THEN 1 
-    ELSE 0 
-  END AS within
+  SUBSTRING(s.rs FOR 5) AS rs_station,
+  p.rs_start,
+  p.rs_end
 FROM de_sim_data_refill r
-LEFT JOIN de_sim_data_commuter c USING(c_id)
-ORDER BY refueling_time")
+LEFT JOIN de_tt_stations_modified s ON (s.id = r.station)
+LEFT JOIN LATERAL (
+  SELECT price FROM de_sim_data_oilprice op
+  WHERE op.day <= r.refueling_time::date 
+  ORDER BY op.day DESC LIMIT 1
+) o ON TRUE
+LEFT JOIN LATERAL (
+  SELECT start_rs, end_rs FROM de_sim_routes_outgoing ro
+  LEFT JOIN LATERAL (SELECT SUBSTRING(rs FOR 5) as rs_start FROM de_sim_points WHERE id = ro.start_point LIMIT 1) s ON TRUE
+  LEFT JOIN LATERAL (SELECT SUBSTRING(rs FOR 5) as rs_end FROM de_sim_points WHERE id = ro.end_point LIMIT 1) e ON TRUE
+  WHERE ro.id = r.c_id
+  LIMIT 1
+) p ON TRUE")
 
-data <- fetch(rs, n = -1)
+observations <- fetch(rs, n = -1)
 dbClearResult(rs)
 dbCommit(con)
 dbDisconnect(con)
 
 # Create eXtended Time Series from queried data
-xts.1 <- xts(x=data[c("price", "bab_station", "rerun", "fuel_type", "within", "route_length", "brand")], order.by=data$refueling_time, unique=FALSE)
+#xts.1 <- xts(x=data[c("price", "bab_station", "rerun", "fuel_type", "within", "route_length", "brand")], order.by=data$refueling_time, unique=FALSE)
 
 # remove not needed objects from environment
-rm(con, drv, rs, data) 
+rm(con, drv, rs)
+
+observations$rs_end <- factor(observations$rs_end)
+observations$rs_station <- factor(observations$rs_station)
+observations$rs_start <- factor(observations$rs_start)
 
 # Linear Regression with time series
-lm1 <- lm(price ~ bab_station + rerun + fuel_type + route_length + within + brand, data=xts.1)
+#lm1 <- lm(price ~ app + oilprice + hour + day + fuel_type + brand + factor(start_rs) + factor(end_rs) + factor(station), data=data)
+lm1 <- felm(price ~ app + oilprice + hour + day + fuel_type + brand | rs_start + rs_station + rs_end, data=observations)
 
 # Save Information
 sink(file="lm1.txt", append=FALSE)
