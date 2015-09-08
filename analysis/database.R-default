@@ -1,4 +1,12 @@
+library(RPostgreSQL)
+
 db.host <- "localhost"
 db.user <- ""
 db.pass <- ""
 db.name <- ""
+
+## loads the PostgreSQL driver
+drv <- dbDriver("PostgreSQL")
+
+## Open a connection
+con <- dbConnect(drv, host=db.host, dbname=db.name, user=db.user, password=db.pass)
