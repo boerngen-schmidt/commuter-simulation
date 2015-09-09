@@ -112,9 +112,6 @@ dbClearResult(rs)
 dbCommit(con)
 dbDisconnect(con)
 
-# Create eXtended Time Series from queried data
-#xts.1 <- xts(x=observations[c("price", "bab_station", "app", "fuel_type", "brand", "oilprice")], order.by=observations$refueling_time)
-
 # remove not needed objects from environment
 rm(con, drv, rs)
 
@@ -122,12 +119,12 @@ rm(con, drv, rs)
 z.rs_end <- factor(observations$rs_end)
 z.rs_station <- factor(observations$rs_station)
 z.rs_start <- factor(observations$rs_start)
-lm1 <- felm(price ~ app + morning+midday+afternoon+night + mon+tue+wed+thu+fri + bab_station + brand + oilprice + fuel_type | z.rs_start + z.rs_end + z.rs_station, data=observations, exactDOF="rM")
+lm1 <- felm(price ~ app + morning+midday+afternoon+night + mon+tue+wed+thu+fri + bab_station + brand + oilprice + fuel_type | rs_start + rs_end + rs_station, data=observations, exactDOF="rM")
 
 # Linear Regression over part of the dataset
 #obs.noapp <- subset(observations, app == 0)[1:100000, ]
 #obs.app <- subset(observations, app == 1)[1:100000, ]
-obs.merged <- rbind(subset(observations, app == 1)[1:60000, ], subset(observations, app == 0)[1:0000, ])
+obs.merged <- rbind(subset(observations, app == 1)[1:50000, ], subset(observations, app == 0)[1:50000, ])
 #z2.rs_end <- factor(obs.merged$rs_end, exclude = NULL)
 #z2.rs_station <- factor(obs.merged$rs_station, exclude = NULL)
 #z2.rs_start <- factor(obs.merged$rs_start, exclude = NULL)
@@ -135,7 +132,6 @@ lm2 <- lm(price ~ app + morning+midday+afternoon+night + mon+tue+wed+thu+fri + b
 lm3 <- lm(price ~ app + morning+midday+afternoon+night + mon+tue+wed+thu+fri + bab_station + brand + oilprice + fuel_type + rs_start, data=obs.merged)
 # Save Information
 zz <- file(paste("results/","fit-PricePerLiter_",format(Sys.time(), "%Y-%m-%d %H-%M"), ".txt", sep=""), open = "wt")
-sink(zz)
 sink(zz, split=TRUE)
 
 cat("### Summary ###\n\n")
