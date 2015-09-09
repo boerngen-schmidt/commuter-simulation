@@ -1,7 +1,6 @@
 setwd("~/workspace/commuter-simulation/analysis")
 
 library(RPostgreSQL)
-library(xts)
 
 source("database.R")
 

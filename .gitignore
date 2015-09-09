@@ -54,3 +54,4 @@ tmp/
 /python2-venv/
 
 code/test_stuff
+.Rproj.user
