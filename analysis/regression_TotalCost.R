@@ -1,3 +1,7 @@
+library(lfe)
+library(car)
+library(lmtest)
+
 # Database 
 source("database.R")
 sqlFile <- 'SQL/TotalCost.sql'
@@ -11,7 +15,7 @@ dbDisconnect(con)
 rm(con, drv, rs)
 
 # Linear Regression over full dataset
-library(lfe)
+
 z.rs_end <- factor(observations$rs_end)
 z.rs_station <- factor(observations$rs_station)
 z.rs_start <- factor(observations$rs_start)
@@ -49,14 +53,11 @@ vcov(lm1) # covariance matrix for model parameters
 
 cat("\n### Tests for Model ###\n#######################\n\n")
 cat("### Summaries ###\n\n")
-summary(lm2)
 
 cat("\n### Variance Inflation Factor ###\n\n")
-library(car)
 vif(lm2)
 
 cat("\n### Hetroskedasticity ###\n\n")
-library(lmtest)
 bptest(lm2)
 
 cat("\n### Autocorrelation ###\n\n")

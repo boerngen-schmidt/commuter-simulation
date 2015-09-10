@@ -1,0 +1,1002 @@
+### Summary ###
+
+
+Call:
+   felm(formula = cost ~ app + route + driven_distance + filling_stations +      fuel_type + morning + midday + afternoon + night + mon +      tue + wed + thu + fri + +bab_station + brand | rs_start +      rs_end, data = observations, exactDOF = "rM") 
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-6454.7   -62.2    -6.1    49.5 14759.1 
+
+Coefficients:
+                   Estimate Std. Error t value Pr(>|t|)    
+app               5.867e+00  3.604e-01   16.28   <2e-16 ***
+route            -1.386e+01  1.330e-01 -104.24   <2e-16 ***
+driven_distance   5.469e-02  4.968e-04  110.09   <2e-16 ***
+filling_stations -4.971e-01  3.711e-02  -13.39   <2e-16 ***
+fuel_type         1.317e+02  4.019e-01  327.68   <2e-16 ***
+morning           3.294e+01  7.362e-02  447.41   <2e-16 ***
+midday            7.096e+00  3.535e-02  200.75   <2e-16 ***
+afternoon         3.211e+01  7.231e-02  444.12   <2e-16 ***
+night             1.637e+01  5.960e-01   27.47   <2e-16 ***
+mon               3.030e+01  1.072e-01  282.69   <2e-16 ***
+tue               4.727e+01  1.263e-01  374.32   <2e-16 ***
+wed               4.919e+01  1.271e-01  387.10   <2e-16 ***
+thu               4.632e+01  1.244e-01  372.40   <2e-16 ***
+fri               2.972e+01  1.038e-01  286.40   <2e-16 ***
+bab_station       1.345e+00  7.183e-02   18.72   <2e-16 ***
+brand             2.228e+00  2.757e-02   80.81   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 144.3 on 727287 degrees of freedom
+  (11966 observations deleted due to missingness)
+Multiple R-squared(full model): 0.9842   Adjusted R-squared: 0.9842 
+Multiple R-squared(proj model): 0.974   Adjusted R-squared: 0.974 
+F-statistic(full model):5.412e+04 on 838 and 727287 DF, p-value: < 2.2e-16 
+F-statistic(proj model): 1.706e+06 on 16 and 727287 DF, p-value: < 2.2e-16 
+
+
+
+### The group fixed effects ###
+
+                     effect   obs comp       fe   idx
+rs_start.01001   24.3382098   384    1 rs_start 01001
+rs_start.01002    5.2508736   368    1 rs_start 01002
+rs_start.01003  154.7014306   386    1 rs_start 01003
+rs_start.01004   -0.7772597   390    1 rs_start 01004
+rs_start.01051  -31.1836524  1032    1 rs_start 01051
+rs_start.01053  -21.0662340  1990    1 rs_start 01053
+rs_start.01054    9.3453698   996    1 rs_start 01054
+rs_start.01055  169.6415223  2812    1 rs_start 01055
+rs_start.01056  -89.2424927  3656    1 rs_start 01056
+rs_start.01057   57.4053972  1282    1 rs_start 01057
+rs_start.01058   10.4215585  1516    1 rs_start 01058
+rs_start.01059   45.0857662  1086    1 rs_start 01059
+rs_start.01060  -46.7209565  2142    1 rs_start 01060
+rs_start.01061  -44.8350693  1048    1 rs_start 01061
+rs_start.01062 -111.5775578  2356    1 rs_start 01062
+rs_start.02000  -87.6428401  1340    1 rs_start 02000
+rs_start.03101  -66.1944215   420    1 rs_start 03101
+rs_start.03102  -74.1890209   384    1 rs_start 03102
+rs_start.03103  -61.2779656   414    1 rs_start 03103
+rs_start.03151  -72.5807969  1666    1 rs_start 03151
+rs_start.03152  -81.4210584  2602    1 rs_start 03152
+rs_start.03153  -86.4890051  2778    1 rs_start 03153
+rs_start.03154  -68.2683315  1882    1 rs_start 03154
+rs_start.03155  -94.2055699  2004    1 rs_start 03155
+rs_start.03156  -94.7817157  1190    1 rs_start 03156
+rs_start.03157  -77.1047184  3116    1 rs_start 03157
+rs_start.03158  -90.8912961  1240    1 rs_start 03158
+rs_start.03241  -59.7049600  8238    1 rs_start 03241
+rs_start.03251    5.3020566  2728    1 rs_start 03251
+rs_start.03252  -65.3243434  2942    1 rs_start 03252
+rs_start.03254  -86.6038643  2962    1 rs_start 03254
+rs_start.03255  -84.9485013   494    1 rs_start 03255
+rs_start.03256  -38.0316813  1126    1 rs_start 03256
+rs_start.03257  -43.3215244  1784    1 rs_start 03257
+rs_start.03351  -72.8329058  2070    1 rs_start 03351
+rs_start.03352  -60.1233723  1898    1 rs_start 03352
+rs_start.03353 -103.4135531  2876    1 rs_start 03353
+rs_start.03354  -47.0089091   270    1 rs_start 03354
+rs_start.03355  -41.8837479  1156    1 rs_start 03355
+rs_start.03356  -55.3157783  1880    1 rs_start 03356
+rs_start.03357  -59.0248950  2270    1 rs_start 03357
+rs_start.03358  -80.5165930  1752    1 rs_start 03358
+rs_start.03359  -92.3133874  1850    1 rs_start 03359
+rs_start.03360  -66.0063620   750    1 rs_start 03360
+rs_start.03361  -51.3181785  2720    1 rs_start 03361
+rs_start.03401  -32.9876651   420    1 rs_start 03401
+rs_start.03402  -32.6459283   276    1 rs_start 03402
+rs_start.03403  -35.4074377   420    1 rs_start 03403
+rs_start.03404  -47.5794749   390    1 rs_start 03404
+rs_start.03405  -44.7477626   362    1 rs_start 03405
+rs_start.03451  -47.4448394  2014    1 rs_start 03451
+rs_start.03452  -55.6990698  3050    1 rs_start 03452
+rs_start.03453  -32.8751324  2876    1 rs_start 03453
+rs_start.03454  -34.9227548  2702    1 rs_start 03454
+rs_start.03455  -57.4980803  1762    1 rs_start 03455
+rs_start.03456  -40.5309222  1944    1 rs_start 03456
+rs_start.03457  -43.5742857  2798    1 rs_start 03457
+rs_start.03458  -40.5002531  2280    1 rs_start 03458
+rs_start.03459  -39.6856224  4870    1 rs_start 03459
+rs_start.03460    2.9344618  1980    1 rs_start 03460
+rs_start.03461  -58.0241819   860    1 rs_start 03461
+rs_start.03462  -75.3285550  1106    1 rs_start 03462
+rs_start.04011  -39.8257095   440    1 rs_start 04011
+rs_start.04012  -54.9038094   528    1 rs_start 04012
+rs_start.05111  -44.8445423   468    1 rs_start 05111
+rs_start.05112  -40.4671027   470    1 rs_start 05112
+rs_start.05113  -52.2295061   472    1 rs_start 05113
+rs_start.05114  -60.1422992   472    1 rs_start 05114
+rs_start.05116  -65.4189744   466    1 rs_start 05116
+rs_start.05117  -55.3788528   472    1 rs_start 05117
+rs_start.05119  -58.4580644   472    1 rs_start 05119
+rs_start.05120  -37.3700484   462    1 rs_start 05120
+rs_start.05122  -36.4370366   468    1 rs_start 05122
+rs_start.05124  -47.3910807   474    1 rs_start 05124
+rs_start.05154  -63.4204733  5958    1 rs_start 05154
+rs_start.05158  -49.9915604  4252    1 rs_start 05158
+rs_start.05162  -59.9480691  3574    1 rs_start 05162
+rs_start.05166  -70.7138740  4096    1 rs_start 05166
+rs_start.05170  -48.1786959  5802    1 rs_start 05170
+rs_start.05314  -36.5704806   474    1 rs_start 05314
+rs_start.05315  -65.1657983   470    1 rs_start 05315
+rs_start.05316  -35.4322536   468    1 rs_start 05316
+rs_start.05334  -68.7963454  4542    1 rs_start 05334
+rs_start.05358  -73.3465259  4282    1 rs_start 05358
+rs_start.05362  -65.3500031  4626    1 rs_start 05362
+rs_start.05366  -61.3326791  3738    1 rs_start 05366
+rs_start.05370  -74.8958643  4410    1 rs_start 05370
+rs_start.05374  -50.9420317  5918    1 rs_start 05374
+rs_start.05378  -48.0148872  3500    1 rs_start 05378
+rs_start.05382  -50.7100336  8424    1 rs_start 05382
+rs_start.05512  -50.5568402   466    1 rs_start 05512
+rs_start.05513  -46.6169675   472    1 rs_start 05513
+rs_start.05515  -50.3837585   398    1 rs_start 05515
+rs_start.05554  -55.9428876  5706    1 rs_start 05554
+rs_start.05558  -47.8878416  4324    1 rs_start 05558
+rs_start.05562  -46.5763480  4542    1 rs_start 05562
+rs_start.05566  -60.5159992  6016    1 rs_start 05566
+rs_start.05570  -44.5376188  5124    1 rs_start 05570
+rs_start.05711  -34.1991766   472    1 rs_start 05711
+rs_start.05754  -31.8536319  5074    1 rs_start 05754
+rs_start.05758  -26.7646389  3592    1 rs_start 05758
+rs_start.05762  -66.3472678  2546    1 rs_start 05762
+rs_start.05766  -38.3259973  5012    1 rs_start 05766
+rs_start.05770  -20.8079142  4898    1 rs_start 05770
+rs_start.05774  -36.6825320  4132    1 rs_start 05774
+rs_start.05911  -39.4558211   472    1 rs_start 05911
+rs_start.05913  -56.2076931   472    1 rs_start 05913
+rs_start.05914  -49.7742790   468    1 rs_start 05914
+rs_start.05915  -54.9170135   468    1 rs_start 05915
+rs_start.05916  -55.3377010   468    1 rs_start 05916
+rs_start.05954  -52.0345656  4094    1 rs_start 05954
+rs_start.05958  -41.8101357  4006    1 rs_start 05958
+rs_start.05962  -45.9417274  6274    1 rs_start 05962
+rs_start.05966  -48.6200225  3192    1 rs_start 05966
+rs_start.05970  -52.8042252  4416    1 rs_start 05970
+rs_start.05974  -51.2584338  5832    1 rs_start 05974
+rs_start.05978  -48.3279037  4554    1 rs_start 05978
+rs_start.06411  -51.1813765   326    1 rs_start 06411
+rs_start.06412  -64.8200505   402    1 rs_start 06412
+rs_start.06413  -66.7519594   402    1 rs_start 06413
+rs_start.06414  -57.8769759   400    1 rs_start 06414
+rs_start.06431  -86.6490411  3194    1 rs_start 06431
+rs_start.06432  -72.9506387  4902    1 rs_start 06432
+rs_start.06433  -66.8881254  4152    1 rs_start 06433
+rs_start.06434  -60.9959912  2706    1 rs_start 06434
+rs_start.06435  -82.1318308  5732    1 rs_start 06435
+rs_start.06436  -59.5640835  4134    1 rs_start 06436
+rs_start.06437  -75.6624954  1198    1 rs_start 06437
+rs_start.06438  -70.5143941  4572    1 rs_start 06438
+rs_start.06439  -81.0473154  2886    1 rs_start 06439
+rs_start.06440  -62.3403156  3664    1 rs_start 06440
+rs_start.06531  -89.1409125  4494    1 rs_start 06531
+rs_start.06532  -84.9782108  3766    1 rs_start 06532
+rs_start.06533  -71.2573320  1688    1 rs_start 06533
+rs_start.06534  -76.1934605  2594    1 rs_start 06534
+rs_start.06535  -35.5977110  1098    1 rs_start 06535
+rs_start.06611  -86.1838645   394    1 rs_start 06611
+rs_start.06631 -100.6766188  2530    1 rs_start 06631
+rs_start.06632  -93.7412947  1452    1 rs_start 06632
+rs_start.06633  -85.1872388  3302    1 rs_start 06633
+rs_start.06634  -88.6149585  2452    1 rs_start 06634
+rs_start.06635  -64.8719201  1509    1 rs_start 06635
+rs_start.06636  -89.6285426  1486    1 rs_start 06636
+rs_start.07111  -54.2163497   290    1 rs_start 07111
+rs_start.07131  -56.9378885  1520    1 rs_start 07131
+rs_start.07132  -51.2662262   598    1 rs_start 07132
+rs_start.07133  -84.4329851   578    1 rs_start 07133
+rs_start.07134  -73.6519778   644    1 rs_start 07134
+rs_start.07135  -81.1454840   242    1 rs_start 07135
+rs_start.07137  -47.4383156  1538    1 rs_start 07137
+rs_start.07138  -51.9481603   604    1 rs_start 07138
+rs_start.07140  -59.7552147   498    1 rs_start 07140
+rs_start.07141  -61.8078316   906    1 rs_start 07141
+rs_start.07143  -70.2186500   638    1 rs_start 07143
+rs_start.07211 -106.6519188   216    1 rs_start 07211
+rs_start.07231  -91.3161215   920    1 rs_start 07231
+rs_start.07232  -93.8211623   630    1 rs_start 07232
+rs_start.07233  -81.9940903   258    1 rs_start 07233
+rs_start.07235  -77.9288771   648    1 rs_start 07235
+rs_start.07311  -79.7089266   326    1 rs_start 07311
+rs_start.07312  -87.4761160   192    1 rs_start 07312
+rs_start.07313 -105.0551189    70    1 rs_start 07313
+rs_start.07314  -68.3130802   326    1 rs_start 07314
+rs_start.07315  -94.8025176   318    1 rs_start 07315
+rs_start.07316  -75.9494759   324    1 rs_start 07316
+rs_start.07317  -67.4711235   328    1 rs_start 07317
+rs_start.07318  -92.2684928   236    1 rs_start 07318
+rs_start.07319  -93.8207861   210    1 rs_start 07319
+rs_start.07320  -77.5679619   328    1 rs_start 07320
+rs_start.07331  -76.8739756   650    1 rs_start 07331
+rs_start.07332  -62.9116728  1182    1 rs_start 07332
+rs_start.07333  -70.1662468   328    1 rs_start 07333
+rs_start.07334  -73.6696801   854    1 rs_start 07334
+rs_start.07335  -45.5948778   278    1 rs_start 07335
+rs_start.07336  -60.1924179   326    1 rs_start 07336
+rs_start.07337  -63.9349178   448    1 rs_start 07337
+rs_start.07338  -82.8852045  1522    1 rs_start 07338
+rs_start.07339  -67.1289601   940    1 rs_start 07339
+rs_start.07340  -43.9873444   326    1 rs_start 07340
+rs_start.08111  -66.3357154   574    1 rs_start 08111
+rs_start.08115  -79.3152837  5022    1 rs_start 08115
+rs_start.08116  -78.1290819  6986    1 rs_start 08116
+rs_start.08117  -58.0869433  3976    1 rs_start 08117
+rs_start.08118  -68.4266049 10480    1 rs_start 08118
+rs_start.08119  -53.3464337  6804    1 rs_start 08119
+rs_start.08121  -57.6429866   590    1 rs_start 08121
+rs_start.08125  -63.4534996  5754    1 rs_start 08125
+rs_start.08126  -56.4583773  2200    1 rs_start 08126
+rs_start.08127  -56.8785983  2334    1 rs_start 08127
+rs_start.08128  -86.7141604  2706    1 rs_start 08128
+rs_start.08135  -41.6213977  2032    1 rs_start 08135
+rs_start.08136  -57.8738558  3958    1 rs_start 08136
+rs_start.08211  -78.1477588   578    1 rs_start 08211
+rs_start.08212  -74.8760418   592    1 rs_start 08212
+rs_start.08215  -67.4168791 11042    1 rs_start 08215
+rs_start.08216  -74.4424094  3640    1 rs_start 08216
+rs_start.08221  -84.1656967   566    1 rs_start 08221
+rs_start.08222  -79.5697217   522    1 rs_start 08222
+rs_start.08225  -70.4918046  1474    1 rs_start 08225
+rs_start.08226  -75.3458700 12006    1 rs_start 08226
+rs_start.08231  -66.6292497   592    1 rs_start 08231
+rs_start.08235  -88.2531720  2570    1 rs_start 08235
+rs_start.08236  -76.4628165  3254    1 rs_start 08236
+rs_start.08237  -73.5676567  2254    1 rs_start 08237
+rs_start.08311  -75.0734838   585    1 rs_start 08311
+rs_start.08315  -80.6833447  3894    1 rs_start 08315
+rs_start.08316  -88.8394890  2624    1 rs_start 08316
+rs_start.08317  -85.9389501  5034    1 rs_start 08317
+rs_start.08325  -79.2493423  2838    1 rs_start 08325
+rs_start.08326  -78.6375536  2806    1 rs_start 08326
+rs_start.08327  -71.4301429  1666    1 rs_start 08327
+rs_start.08335  -64.1781158  3756    1 rs_start 08335
+rs_start.08336  -79.1732322  4108    1 rs_start 08336
+rs_start.08337  -68.3318054  2318    1 rs_start 08337
+rs_start.08415  -79.1698824  3056    1 rs_start 08415
+rs_start.08416  -81.7170510  2560    1 rs_start 08416
+rs_start.08417  -70.6018072  2682    1 rs_start 08417
+rs_start.08421  -69.9283615   590    1 rs_start 08421
+rs_start.08425  -57.7796474  3784    1 rs_start 08425
+rs_start.08426  -62.1099734  2054    1 rs_start 08426
+rs_start.08435  -62.1246863  3413    1 rs_start 08435
+rs_start.08436  -59.1328464  4152    1 rs_start 08436
+rs_start.08437  -59.7041021  1784    1 rs_start 08437
+rs_start.09161  -46.0335840   410    1 rs_start 09161
+rs_start.09162  -94.7806455   412    1 rs_start 09162
+rs_start.09163  -81.5468351   410    1 rs_start 09163
+rs_start.09171  -60.6195552  1164    1 rs_start 09171
+rs_start.09172  -34.1861674  1020    1 rs_start 09172
+rs_start.09173  -67.0199107  1354    1 rs_start 09173
+rs_start.09174  -67.4115912  1144    1 rs_start 09174
+rs_start.09175  -79.9596117  2356    1 rs_start 09175
+rs_start.09176  -57.2988717  1158    1 rs_start 09176
+rs_start.09177  -91.7644085  1082    1 rs_start 09177
+rs_start.09178  -58.8805400  2018    1 rs_start 09178
+rs_start.09179  -82.2556834  3216    1 rs_start 09179
+rs_start.09180  -50.1376089   918    1 rs_start 09180
+rs_start.09181  -62.6395747  1102    1 rs_start 09181
+rs_start.09182  -67.6213834  1092    1 rs_start 09182
+rs_start.09183 -109.2921285   922    1 rs_start 09183
+rs_start.09184  -66.6621761  5868    1 rs_start 09184
+rs_start.09185  -76.3858291   952    1 rs_start 09185
+rs_start.09186  -63.1953692  1550    1 rs_start 09186
+rs_start.09187  -71.4352637  2670    1 rs_start 09187
+rs_start.09188  -57.9085835  1842    1 rs_start 09188
+rs_start.09189  -49.7012263  1568    1 rs_start 09189
+rs_start.09190  -66.1317732  2388    1 rs_start 09190
+rs_start.09261  -67.3393587   400    1 rs_start 09261
+rs_start.09262  -68.3913619   412    1 rs_start 09262
+rs_start.09263  -96.7280770   380    1 rs_start 09263
+rs_start.09271  -82.7190909  1636    1 rs_start 09271
+rs_start.09272  -68.9766983   812    1 rs_start 09272
+rs_start.09273  -75.4377249  2052    1 rs_start 09273
+rs_start.09274  -73.5036575  1982    1 rs_start 09274
+rs_start.09275  -79.9946890  1524    1 rs_start 09275
+rs_start.09276  -81.5844664   818    1 rs_start 09276
+rs_start.09277  -43.5842394  1148    1 rs_start 09277
+rs_start.09278  -94.3488914   614    1 rs_start 09278
+rs_start.09279  -58.8764978  1210    1 rs_start 09279
+rs_start.09361  -65.0494310   294    1 rs_start 09361
+rs_start.09362  -86.9181839   410    1 rs_start 09362
+rs_start.09363 -124.8731448   328    1 rs_start 09363
+rs_start.09371  -71.9424534   808    1 rs_start 09371
+rs_start.09372 -101.2772710  1210    1 rs_start 09372
+rs_start.09373  -86.1595458   822    1 rs_start 09373
+rs_start.09374 -100.3993178   260    1 rs_start 09374
+rs_start.09375  -69.6401067  1534    1 rs_start 09375
+rs_start.09376  -92.7028005  1608    1 rs_start 09376
+rs_start.09377  -94.2937415   408    1 rs_start 09377
+rs_start.09461  -99.6446595   278    1 rs_start 09461
+rs_start.09462  -83.8894979   268    1 rs_start 09462
+rs_start.09463  -96.4894994   344    1 rs_start 09463
+rs_start.09464 -100.6972547   340    1 rs_start 09464
+rs_start.09471  -87.2740254   680    1 rs_start 09471
+rs_start.09472  -78.5801934   622    1 rs_start 09472
+rs_start.09473  -98.7954994   918    1 rs_start 09473
+rs_start.09474  -98.6176941   820    1 rs_start 09474
+rs_start.09475  -98.9797241   624    1 rs_start 09475
+rs_start.09476  -98.8293698   822    1 rs_start 09476
+rs_start.09477 -109.7344710   518    1 rs_start 09477
+rs_start.09478  -99.4532662  1212    1 rs_start 09478
+rs_start.09479  -78.0137696  1136    1 rs_start 09479
+rs_start.09561  -86.0900695   408    1 rs_start 09561
+rs_start.09562  -78.8142947   404    1 rs_start 09562
+rs_start.09563  -80.9448824   406    1 rs_start 09563
+rs_start.09564  -61.7585575   408    1 rs_start 09564
+rs_start.09565  -78.7908387   412    1 rs_start 09565
+rs_start.09571  -69.0514022  1394    1 rs_start 09571
+rs_start.09572  -77.8359290  1332    1 rs_start 09572
+rs_start.09573  -79.7845391  2412    1 rs_start 09573
+rs_start.09574  -72.2318369  2558    1 rs_start 09574
+rs_start.09575  -96.2596383   988    1 rs_start 09575
+rs_start.09576  -70.7823189  1560    1 rs_start 09576
+rs_start.09577  -76.8894753  1542    1 rs_start 09577
+rs_start.09661  -38.8449785   216    1 rs_start 09661
+rs_start.09662  -83.9729209   412    1 rs_start 09662
+rs_start.09663  -77.3012691   404    1 rs_start 09663
+rs_start.09671  -74.1480313  1916    1 rs_start 09671
+rs_start.09672  -92.7861570  1212    1 rs_start 09672
+rs_start.09673  -91.7152200   672    1 rs_start 09673
+rs_start.09674  -84.6515712   772    1 rs_start 09674
+rs_start.09675  -67.9118802   818    1 rs_start 09675
+rs_start.09676  -63.7273683   412    1 rs_start 09676
+rs_start.09677  -99.8944700  1958    1 rs_start 09677
+rs_start.09678  -88.0399232   684    1 rs_start 09678
+rs_start.09679  -76.8556628   772    1 rs_start 09679
+rs_start.09761  -39.4751068   408    1 rs_start 09761
+rs_start.09762  -45.9585999   398    1 rs_start 09762
+rs_start.09763  -52.4366244   334    1 rs_start 09763
+rs_start.09764  -62.8969194   336    1 rs_start 09764
+rs_start.09771  -82.0242039  1922    1 rs_start 09771
+rs_start.09772  -66.7652926  3034    1 rs_start 09772
+rs_start.09773  -66.5009977   716    1 rs_start 09773
+rs_start.09774  -59.5025652  1202    1 rs_start 09774
+rs_start.09775  -57.2814018  2383    1 rs_start 09775
+rs_start.09776  -67.9993076  1048    1 rs_start 09776
+rs_start.09777  -37.5336798  1520    1 rs_start 09777
+rs_start.09778  -47.3272458  1126    1 rs_start 09778
+rs_start.09779  -83.0679766   594    1 rs_start 09779
+rs_start.09780  -63.7876916  1166    1 rs_start 09780
+rs_start.10041  -76.1648337  4476    1 rs_start 10041
+rs_start.10042  -76.5179228  2762    1 rs_start 10042
+rs_start.10043  -97.3945666  3010    1 rs_start 10043
+rs_start.10044  -81.1273825  4158    1 rs_start 10044
+rs_start.10045  -82.9731345  3066    1 rs_start 10045
+rs_start.10046   55.7583987  2146    1 rs_start 10046
+rs_start.11000  -29.9167925  1186    1 rs_start 11000
+rs_start.12051  -85.3935497   165    1 rs_start 12051
+rs_start.12052  -41.6675173   282    1 rs_start 12052
+rs_start.12053  -11.2665302   248    1 rs_start 12053
+rs_start.12054  -38.9700487   274    1 rs_start 12054
+rs_start.12060  -38.7796889  1934    1 rs_start 12060
+rs_start.12061  -31.7188803  1522    1 rs_start 12061
+rs_start.12062  -39.7735622   842    1 rs_start 12062
+rs_start.12063  -65.1045258  1280    1 rs_start 12063
+rs_start.12064  -23.7987088  2228    1 rs_start 12064
+rs_start.12065  -51.4516053  2201    1 rs_start 12065
+rs_start.12066  -48.2809316  1274    1 rs_start 12066
+rs_start.12067  -29.2979589  1263    1 rs_start 12067
+rs_start.12068  -28.1271611   689    1 rs_start 12068
+rs_start.12069  -57.7893534  2617    1 rs_start 12069
+rs_start.12070  -22.9767740   989    1 rs_start 12070
+rs_start.12071  -64.9393326   702    1 rs_start 12071
+rs_start.12072  -38.9690116  1893    1 rs_start 12072
+rs_start.12073   -7.6199523  1126    1 rs_start 12073
+rs_start.13001  -88.4201068   248    1 rs_start 13001
+rs_start.13002 -121.3472801   128    1 rs_start 13002
+rs_start.13003  -55.1100298   228    1 rs_start 13003
+rs_start.13004   70.9148230   172    1 rs_start 13004
+rs_start.13005  -78.0541593   236    1 rs_start 13005
+rs_start.13006  -13.8252742   250    1 rs_start 13006
+rs_start.13051  -63.5627009   372    1 rs_start 13051
+rs_start.13052 -107.2139066   481    1 rs_start 13052
+rs_start.13053  -16.6311945   458    1 rs_start 13053
+rs_start.13054   25.7924259   932    1 rs_start 13054
+rs_start.13055  -59.7838815   248    1 rs_start 13055
+rs_start.13056  -55.4024525   318    1 rs_start 13056
+rs_start.13057  -69.0672342   436    1 rs_start 13057
+rs_start.13058  110.1990957   482    1 rs_start 13058
+rs_start.13059  -86.8786001   702    1 rs_start 13059
+rs_start.13060    1.8882507   374    1 rs_start 13060
+rs_start.13061  -32.6820930   434    1 rs_start 13061
+rs_start.13062  -62.9308264   510    1 rs_start 13062
+rs_start.14511 -117.1050818   532    1 rs_start 14511
+rs_start.14521 -104.1158367  4908    1 rs_start 14521
+rs_start.14522 -101.7780766  3450    1 rs_start 14522
+rs_start.14523 -101.2786270  2406    1 rs_start 14523
+rs_start.14524 -103.7151438  5466    1 rs_start 14524
+rs_start.14612  -74.2076419   526    1 rs_start 14612
+rs_start.14625  -64.4491126  2902    1 rs_start 14625
+rs_start.14626  -93.3664864  2594    1 rs_start 14626
+rs_start.14627  -75.8445003  3574    1 rs_start 14627
+rs_start.14628  -89.7862970  3892    1 rs_start 14628
+rs_start.14713  -78.5399234   526    1 rs_start 14713
+rs_start.14729  -84.9875730  3090    1 rs_start 14729
+rs_start.14730  -82.3060610  2602    1 rs_start 14730
+rs_start.15001  -88.9566815   208    1 rs_start 15001
+rs_start.15002  -92.8795722   284    1 rs_start 15002
+rs_start.15003  -72.2830094   272    1 rs_start 15003
+rs_start.15081  -59.1581755   936    1 rs_start 15081
+rs_start.15082  -77.8507829  2232    1 rs_start 15082
+rs_start.15083  -69.4113848  1954    1 rs_start 15083
+rs_start.15084  -94.8800280  1322    1 rs_start 15084
+rs_start.15085  -85.4264771  2311    1 rs_start 15085
+rs_start.15086  -73.7432963  1444    1 rs_start 15086
+rs_start.15087  -87.7795278  1090    1 rs_start 15087
+rs_start.15088  -91.9382854  2998    1 rs_start 15088
+rs_start.15089  -66.1845054  1740    1 rs_start 15089
+rs_start.15090  -38.5342147  1188    1 rs_start 15090
+rs_start.15091  -53.9940963  1220    1 rs_start 15091
+rs_start.16051  -93.5057518   314    1 rs_start 16051
+rs_start.16052  -78.5116582   260    1 rs_start 16052
+rs_start.16053  -78.5356111   344    1 rs_start 16053
+rs_start.16054 -102.9058538   252    1 rs_start 16054
+rs_start.16055 -112.5196211   320    1 rs_start 16055
+rs_start.16056 -104.6369150   386    1 rs_start 16056
+rs_start.16061  -94.9349995  1114    1 rs_start 16061
+rs_start.16062 -103.9206830   776    1 rs_start 16062
+rs_start.16063 -104.0516332   768    1 rs_start 16063
+rs_start.16064  -92.1769504   940    1 rs_start 16064
+rs_start.16065  -78.8264260   458    1 rs_start 16065
+rs_start.16066 -111.3917344  1346    1 rs_start 16066
+rs_start.16067 -103.0582533  1146    1 rs_start 16067
+rs_start.16068  -71.7515528   664    1 rs_start 16068
+rs_start.16069 -105.8542056   478    1 rs_start 16069
+rs_start.16070  -89.1659794  1050    1 rs_start 16070
+rs_start.16071  -88.4617719   740    1 rs_start 16071
+rs_start.16072  -92.9061335   707    1 rs_start 16072
+rs_start.16073  -95.0876628   944    1 rs_start 16073
+rs_start.16074  -78.3403169   748    1 rs_start 16074
+rs_start.16075  -87.6416813   776    1 rs_start 16075
+rs_start.16076 -103.7404560  1154    1 rs_start 16076
+rs_start.16077  -79.4895814  1376    1 rs_start 16077
+rs_end.01001   -101.3975258   980    1   rs_end 01001
+rs_end.01002    -65.2628826  2090    1   rs_end 01002
+rs_end.01003   -253.9108375  2052    1   rs_end 01003
+rs_end.01004    -40.0387921  1066    1   rs_end 01004
+rs_end.01051    -32.0414100   670    1   rs_end 01051
+rs_end.01053    -28.2493092  1826    1   rs_end 01053
+rs_end.01054    -58.5375115  1534    1   rs_end 01054
+rs_end.01055   -257.1769882  1748    1   rs_end 01055
+rs_end.01056     25.2425132  2614    1   rs_end 01056
+rs_end.01057    -97.2118454   530    1   rs_end 01057
+rs_end.01058    -82.2242780  1276    1   rs_end 01058
+rs_end.01059    -93.5059386   302    1   rs_end 01059
+rs_end.01060    -41.9895804  1108    1   rs_end 01060
+rs_end.01061    -26.9433740  1172    1   rs_end 01061
+rs_end.01062     21.1179918  1256    1   rs_end 01062
+rs_end.02000      5.5677978  4974    1   rs_end 02000
+rs_end.03101      7.8949986  2696    1   rs_end 03101
+rs_end.03102    126.7729615   546    1   rs_end 03102
+rs_end.03103     -1.8055468    68    1   rs_end 03103
+rs_end.03151    -15.0887671  1644    1   rs_end 03151
+rs_end.03152     34.6104780  3092    1   rs_end 03152
+rs_end.03153     24.4741691  3378    1   rs_end 03153
+rs_end.03154     12.6156622  1966    1   rs_end 03154
+rs_end.03155     30.0822139  2008    1   rs_end 03155
+rs_end.03156     24.8404714   652    1   rs_end 03156
+rs_end.03157     19.2126500  2092    1   rs_end 03157
+rs_end.03158     84.5163453   828    1   rs_end 03158
+rs_end.03241     15.4573624  7696    1   rs_end 03241
+rs_end.03251    -59.8923794  2006    1   rs_end 03251
+rs_end.03252     -4.5267950  2020    1   rs_end 03252
+rs_end.03254     39.3182013  2282    1   rs_end 03254
+rs_end.03255     26.5499571   690    1   rs_end 03255
+rs_end.03256    -33.2377841   596    1   rs_end 03256
+rs_end.03257    -17.4151644   650    1   rs_end 03257
+rs_end.03351      4.2141286  2472    1   rs_end 03351
+rs_end.03352    -21.0579643  1036    1   rs_end 03352
+rs_end.03353     39.1558653  1378    1   rs_end 03353
+rs_end.03354    -16.5960295    62    1   rs_end 03354
+rs_end.03355    -21.2911808   514    1   rs_end 03355
+rs_end.03356     -8.3770981  1272    1   rs_end 03356
+rs_end.03357      4.4021094  2610    1   rs_end 03357
+rs_end.03358      4.1987452   886    1   rs_end 03358
+rs_end.03359     14.8995208  1380    1   rs_end 03359
+rs_end.03360     -1.3499915  1008    1   rs_end 03360
+rs_end.03361    -13.6685531  3394    1   rs_end 03361
+rs_end.03401    -35.7744436    20    1   rs_end 03401
+rs_end.03402    -14.8076412  1454    1   rs_end 03402
+rs_end.03403    -27.9698076  2568    1   rs_end 03403
+rs_end.03404    -15.1479945  1122    1   rs_end 03404
+rs_end.03405     -8.2424560  1026    1   rs_end 03405
+rs_end.03451    -12.9739575  1700    1   rs_end 03451
+rs_end.03452     -3.5112220  2530    1   rs_end 03452
+rs_end.03453    -21.5086194  2858    1   rs_end 03453
+rs_end.03454    -23.7806635  5830    1   rs_end 03454
+rs_end.03455     -0.1200131   320    1   rs_end 03455
+rs_end.03456    -10.6641769  1764    1   rs_end 03456
+rs_end.03457     21.1268100   586    1   rs_end 03457
+rs_end.03458    -29.2421352   618    1   rs_end 03458
+rs_end.03459    -26.3471839  2124    1   rs_end 03459
+rs_end.03460    -47.1368562  3304    1   rs_end 03460
+rs_end.03461     -4.7903741   522    1   rs_end 03461
+rs_end.03462     15.7588377  1068    1   rs_end 03462
+rs_end.04011    -44.7146437    30    1   rs_end 04011
+rs_end.04012    -28.5634460  2262    1   rs_end 04012
+rs_end.05111    -29.0422829    20    1   rs_end 05111
+rs_end.05112    -36.5771525    64    1   rs_end 05112
+rs_end.05113    -40.0318412  3610    1   rs_end 05113
+rs_end.05114    -10.1635117  1726    1   rs_end 05114
+rs_end.05116      9.1576460  1714    1   rs_end 05116
+rs_end.05117     -8.4207484    20    1   rs_end 05117
+rs_end.05119    -12.9518877   672    1   rs_end 05119
+rs_end.05120    -25.9481369    20    1   rs_end 05120
+rs_end.05122    -22.9360010   562    1   rs_end 05122
+rs_end.05124    -13.1715277  3634    1   rs_end 05124
+rs_end.05154     -1.9909406  5126    1   rs_end 05154
+rs_end.05158    -16.4680850  3646    1   rs_end 05158
+rs_end.05162     -4.4354841  3684    1   rs_end 05162
+rs_end.05166      5.4388964  2798    1   rs_end 05166
+rs_end.05170     -8.2647365  4064    1   rs_end 05170
+rs_end.05314     -6.8889501  3878    1   rs_end 05314
+rs_end.05315     83.6612400    20    1   rs_end 05315
+rs_end.05316    -40.8732004   110    1   rs_end 05316
+rs_end.05334      6.0216474  6554    1   rs_end 05334
+rs_end.05358      2.9220224  1996    1   rs_end 05358
+rs_end.05362     -4.2744904  5170    1   rs_end 05362
+rs_end.05366     11.5792741  3354    1   rs_end 05366
+rs_end.05370      8.9222980  3700    1   rs_end 05370
+rs_end.05374    -10.0175134  4376    1   rs_end 05374
+rs_end.05378    -14.9583369  2632    1   rs_end 05378
+rs_end.05382     -5.0405398  4410    1   rs_end 05382
+rs_end.05512    -12.7253280  1136    1   rs_end 05512
+rs_end.05513    -14.3214911   994    1   rs_end 05513
+rs_end.05515      7.0599661    20    1   rs_end 05515
+rs_end.05554     -3.9856466  4632    1   rs_end 05554
+rs_end.05558    -11.7536075  1746    1   rs_end 05558
+rs_end.05562    -13.4169852  4114    1   rs_end 05562
+rs_end.05566     -1.0783725  7298    1   rs_end 05566
+rs_end.05570    -24.7130830  3942    1   rs_end 05570
+rs_end.05711    -29.5354781  5768    1   rs_end 05711
+rs_end.05754    -40.0614292  5238    1   rs_end 05754
+rs_end.05758    -34.5824039  3866    1   rs_end 05758
+rs_end.05762      4.8911226  1396    1   rs_end 05762
+rs_end.05766    -22.7527815  3590    1   rs_end 05766
+rs_end.05770    -39.7102886  6304    1   rs_end 05770
+rs_end.05774    -20.0615868  5155    1   rs_end 05774
+rs_end.05911    -24.0056028  3502    1   rs_end 05911
+rs_end.05913    -32.2426158   332    1   rs_end 05913
+rs_end.05914      5.0000964    20    1   rs_end 05914
+rs_end.05915    -31.0298485  1926    1   rs_end 05915
+rs_end.05916     -2.8588856    20    1   rs_end 05916
+rs_end.05954    -11.3127219  2472    1   rs_end 05954
+rs_end.05958    -14.0531195  3754    1   rs_end 05958
+rs_end.05962    -26.0811598  5346    1   rs_end 05962
+rs_end.05966    -21.1483377  3088    1   rs_end 05966
+rs_end.05970     -8.3383294  4596    1   rs_end 05970
+rs_end.05974    -19.7570452  4526    1   rs_end 05974
+rs_end.05978    -25.0749178  3270    1   rs_end 05978
+rs_end.06411     -6.1547985   304    1   rs_end 06411
+rs_end.06412      0.0000000 14040    1   rs_end 06412
+rs_end.06413     10.3001456  1668    1   rs_end 06413
+rs_end.06414    -15.0642001  3754    1   rs_end 06414
+rs_end.06431     19.7549037  1922    1   rs_end 06431
+rs_end.06432      7.9284374  3018    1   rs_end 06432
+rs_end.06433     -3.1207377  3338    1   rs_end 06433
+rs_end.06434      0.3164309  2154    1   rs_end 06434
+rs_end.06435     29.8773292  4116    1   rs_end 06435
+rs_end.06436     -2.2524316  1476    1   rs_end 06436
+rs_end.06437     -1.6177041  1036    1   rs_end 06437
+rs_end.06438     12.3441433  2010    1   rs_end 06438
+rs_end.06439      7.8857226  2188    1   rs_end 06439
+rs_end.06440      6.2868202  3200    1   rs_end 06440
+rs_end.06531     30.6112497  3284    1   rs_end 06531
+rs_end.06532     15.5308645  2394    1   rs_end 06532
+rs_end.06533     10.9542289   844    1   rs_end 06533
+rs_end.06534     14.4341773  3796    1   rs_end 06534
+rs_end.06535     61.3893394  1182    1   rs_end 06535
+rs_end.06611     34.8161147  3458    1   rs_end 06611
+rs_end.06631     38.7467942  2516    1   rs_end 06631
+rs_end.06632     30.7028877  1674    1   rs_end 06632
+rs_end.06633     27.3044595   482    1   rs_end 06633
+rs_end.06634     30.5459865  1540    1   rs_end 06634
+rs_end.06635     10.4727364  1386    1   rs_end 06635
+rs_end.06636     14.6977908  1164    1   rs_end 06636
+rs_end.07111    -15.5004783  2090    1   rs_end 07111
+rs_end.07131     -5.4355500  1090    1   rs_end 07131
+rs_end.07132    -14.5541734  2768    1   rs_end 07132
+rs_end.07133     -2.3172918  1170    1   rs_end 07133
+rs_end.07134    -18.8403438   830    1   rs_end 07134
+rs_end.07135     40.5719150    20    1   rs_end 07135
+rs_end.07137    -15.8221869  1628    1   rs_end 07137
+rs_end.07138    -12.7677837   122    1   rs_end 07138
+rs_end.07140    -37.9839110    38    1   rs_end 07140
+rs_end.07141     -3.6346220    58    1   rs_end 07141
+rs_end.07143     24.5222012   468    1   rs_end 07143
+rs_end.07211     23.6727077   162    1   rs_end 07211
+rs_end.07231     22.3295491  1000    1   rs_end 07231
+rs_end.07232     12.0928799  1122    1   rs_end 07232
+rs_end.07233      5.6499578    20    1   rs_end 07233
+rs_end.07235     55.1775382   962    1   rs_end 07235
+rs_end.07311      1.3458402    20    1   rs_end 07311
+rs_end.07312    -16.6052928  1598    1   rs_end 07312
+rs_end.07313     44.2116084    20    1   rs_end 07313
+rs_end.07314     17.6748381  2980    1   rs_end 07314
+rs_end.07315     95.3794572   190    1   rs_end 07315
+rs_end.07316    -35.1163855    20    1   rs_end 07316
+rs_end.07317     -1.2702249   800    1   rs_end 07317
+rs_end.07318     -4.6097522  1154    1   rs_end 07318
+rs_end.07319     34.0583169    20    1   rs_end 07319
+rs_end.07320     19.4031982  1140    1   rs_end 07320
+rs_end.07331     22.5919314   430    1   rs_end 07331
+rs_end.07332     -5.7723090  1100    1   rs_end 07332
+rs_end.07333      1.0255246  1120    1   rs_end 07333
+rs_end.07334      0.5164907   448    1   rs_end 07334
+rs_end.07335    -33.2689706    20    1   rs_end 07335
+rs_end.07336      7.4255193   632    1   rs_end 07336
+rs_end.07337     -7.2148727    40    1   rs_end 07337
+rs_end.07338     23.8493571   504    1   rs_end 07338
+rs_end.07339     -2.8733413  1308    1   rs_end 07339
+rs_end.07340      7.6307884    20    1   rs_end 07340
+rs_end.08111    -25.2163050    20    1   rs_end 08111
+rs_end.08115     16.3779330  3672    1   rs_end 08115
+rs_end.08116     14.4592195  6276    1   rs_end 08116
+rs_end.08117      1.5216845  3308    1   rs_end 08117
+rs_end.08118      6.2035155  6814    1   rs_end 08118
+rs_end.08119     -6.7628208  5636    1   rs_end 08119
+rs_end.08121    -14.6334905    20    1   rs_end 08121
+rs_end.08125     -3.2960830  8860    1   rs_end 08125
+rs_end.08126    -13.5812458  1892    1   rs_end 08126
+rs_end.08127    -13.0596828  3216    1   rs_end 08127
+rs_end.08128     30.7233082  1478    1   rs_end 08128
+rs_end.08135    -16.0303175  1566    1   rs_end 08135
+rs_end.08136      3.2499580  3572    1   rs_end 08136
+rs_end.08211     22.2219259  1888    1   rs_end 08211
+rs_end.08212      0.2494086  1202    1   rs_end 08212
+rs_end.08215      9.0678393  9720    1   rs_end 08215
+rs_end.08216     15.3551712  2092    1   rs_end 08216
+rs_end.08221     11.5833925  5056    1   rs_end 08221
+rs_end.08222     14.1452111    52    1   rs_end 08222
+rs_end.08225      0.2647336  1340    1   rs_end 08225
+rs_end.08226     16.3525239  6288    1   rs_end 08226
+rs_end.08231     19.6323466   380    1   rs_end 08231
+rs_end.08235     17.9791563  4258    1   rs_end 08235
+rs_end.08236     12.5547682  2046    1   rs_end 08236
+rs_end.08237      0.9908584  2774    1   rs_end 08237
+rs_end.08311     15.9357948  3712    1   rs_end 08311
+rs_end.08315     17.5043910  3132    1   rs_end 08315
+rs_end.08316     27.3203337  1356    1   rs_end 08316
+rs_end.08317     30.9701103  4398    1   rs_end 08317
+rs_end.08325     13.6829191  4228    1   rs_end 08325
+rs_end.08326      8.0563297  2855    1   rs_end 08326
+rs_end.08327     -7.1157326  2250    1   rs_end 08327
+rs_end.08335     -1.9515306  4016    1   rs_end 08335
+rs_end.08336     23.9381035  3960    1   rs_end 08336
+rs_end.08337     17.7528359  2148    1   rs_end 08337
+rs_end.08415     17.6852196  1134    1   rs_end 08415
+rs_end.08416      7.9894773  2932    1   rs_end 08416
+rs_end.08417      6.6721834   750    1   rs_end 08417
+rs_end.08421    -17.2197291  1950    1   rs_end 08421
+rs_end.08425     -2.2693563  4194    1   rs_end 08425
+rs_end.08426     -3.2139967  1806    1   rs_end 08426
+rs_end.08435      6.4637423  3770    1   rs_end 08435
+rs_end.08436     -9.0377124  4933    1   rs_end 08436
+rs_end.08437     -7.5247358  2116    1   rs_end 08437
+rs_end.09161    -10.0990564  2694    1   rs_end 09161
+rs_end.09162      2.5241323  2236    1   rs_end 09162
+rs_end.09163     22.7369617    20    1   rs_end 09163
+rs_end.09171    -12.9444611  1142    1   rs_end 09171
+rs_end.09172    -35.0780272   562    1   rs_end 09172
+rs_end.09173      3.5006063  1200    1   rs_end 09173
+rs_end.09174      9.0914287   658    1   rs_end 09174
+rs_end.09175      2.4231923  1710    1   rs_end 09175
+rs_end.09176     -4.5653967   846    1   rs_end 09176
+rs_end.09177     15.6760984   450    1   rs_end 09177
+rs_end.09178     -2.9843766  2474    1   rs_end 09178
+rs_end.09179     11.1399999  1898    1   rs_end 09179
+rs_end.09180    -28.9308546   706    1   rs_end 09180
+rs_end.09181     -2.0138782  2302    1   rs_end 09181
+rs_end.09182      5.0349718  1500    1   rs_end 09182
+rs_end.09183     37.6474948   186    1   rs_end 09183
+rs_end.09184     15.0298050  3968    1   rs_end 09184
+rs_end.09185    -27.1012279   268    1   rs_end 09185
+rs_end.09186     -2.0188150   760    1   rs_end 09186
+rs_end.09187      8.7027905  1790    1   rs_end 09187
+rs_end.09188     -5.0906002  1514    1   rs_end 09188
+rs_end.09189    -12.9882883  2652    1   rs_end 09189
+rs_end.09190    -11.4552901  2536    1   rs_end 09190
+rs_end.09261      1.4789061    20    1   rs_end 09261
+rs_end.09262     20.2836076   964    1   rs_end 09262
+rs_end.09263      5.1131429  1266    1   rs_end 09263
+rs_end.09271     16.3754802  2262    1   rs_end 09271
+rs_end.09272      9.3486520   606    1   rs_end 09272
+rs_end.09273      4.8054394  1202    1   rs_end 09273
+rs_end.09274      2.5831831  2520    1   rs_end 09274
+rs_end.09275     16.3741983   902    1   rs_end 09275
+rs_end.09276     22.8335454  1034    1   rs_end 09276
+rs_end.09277    -23.8690999  1190    1   rs_end 09277
+rs_end.09278     17.5849816    40    1   rs_end 09278
+rs_end.09279    -10.6397340   952    1   rs_end 09279
+rs_end.09361      9.1428528   844    1   rs_end 09361
+rs_end.09362      2.0175946  2958    1   rs_end 09362
+rs_end.09363     66.3556701   144    1   rs_end 09363
+rs_end.09371      7.0123552   330    1   rs_end 09371
+rs_end.09372     31.1154741  1144    1   rs_end 09372
+rs_end.09373     12.9030129   980    1   rs_end 09373
+rs_end.09374    -20.7592040    20    1   rs_end 09374
+rs_end.09375     17.4049028    80    1   rs_end 09375
+rs_end.09376     19.5016409  1762    1   rs_end 09376
+rs_end.09377     20.7104375   712    1   rs_end 09377
+rs_end.09461     25.9823833  1602    1   rs_end 09461
+rs_end.09462     19.5370707  1492    1   rs_end 09462
+rs_end.09463     59.5634496    20    1   rs_end 09463
+rs_end.09464     54.5854577   146    1   rs_end 09464
+rs_end.09471     41.5180050   116    1   rs_end 09471
+rs_end.09472     38.5178434    40    1   rs_end 09472
+rs_end.09473     32.4250052   184    1   rs_end 09473
+rs_end.09474     27.1791198   750    1   rs_end 09474
+rs_end.09475     35.3937917   270    1   rs_end 09475
+rs_end.09476     36.2324043   844    1   rs_end 09476
+rs_end.09477     48.2510348    40    1   rs_end 09477
+rs_end.09478     35.3936635   764    1   rs_end 09478
+rs_end.09479     27.9918583   954    1   rs_end 09479
+rs_end.09561     14.3461677  1150    1   rs_end 09561
+rs_end.09562      6.0068684  1850    1   rs_end 09562
+rs_end.09563    -39.0963117    18    1   rs_end 09563
+rs_end.09564      9.9454498  4994    1   rs_end 09564
+rs_end.09565     45.0480771    62    1   rs_end 09565
+rs_end.09571      0.0902830  1014    1   rs_end 09571
+rs_end.09572     24.6778893   660    1   rs_end 09572
+rs_end.09573     17.2653795   994    1   rs_end 09573
+rs_end.09574     15.6563336  2762    1   rs_end 09574
+rs_end.09575     36.1876554   592    1   rs_end 09575
+rs_end.09576     20.7229622  1306    1   rs_end 09576
+rs_end.09577     11.8370104  1448    1   rs_end 09577
+rs_end.09661     10.5563201    42    1   rs_end 09661
+rs_end.09662     34.1022912  1788    1   rs_end 09662
+rs_end.09663      0.7448671    20    1   rs_end 09663
+rs_end.09671     15.2430089  1622    1   rs_end 09671
+rs_end.09672     46.5185931  1380    1   rs_end 09672
+rs_end.09673     33.3304893   776    1   rs_end 09673
+rs_end.09674     17.5362608  1234    1   rs_end 09674
+rs_end.09675     11.8464476  1360    1   rs_end 09675
+rs_end.09676     -0.4702032  2690    1   rs_end 09676
+rs_end.09677     35.7358127  2414    1   rs_end 09677
+rs_end.09678    -17.0030125    48    1   rs_end 09678
+rs_end.09679      6.4874528  1480    1   rs_end 09679
+rs_end.09761    -76.8546112    20    1   rs_end 09761
+rs_end.09762    -20.4762469    20    1   rs_end 09762
+rs_end.09763    -38.8552369  1193    1   rs_end 09763
+rs_end.09764    -14.1694375   624    1   rs_end 09764
+rs_end.09771     10.1722109  1604    1   rs_end 09771
+rs_end.09772      5.4598489  2326    1   rs_end 09772
+rs_end.09773      5.9267233   102    1   rs_end 09773
+rs_end.09774      5.4225083  1102    1   rs_end 09774
+rs_end.09775     -5.7151460  3376    1   rs_end 09775
+rs_end.09776    -17.5218356   436    1   rs_end 09776
+rs_end.09777    -22.2667109  1366    1   rs_end 09777
+rs_end.09778    -17.9544466  2010    1   rs_end 09778
+rs_end.09779     29.6557384    60    1   rs_end 09779
+rs_end.09780    -29.2849352   898    1   rs_end 09780
+rs_end.10041     18.7667750  2464    1   rs_end 10041
+rs_end.10042     12.3260012  2102    1   rs_end 10042
+rs_end.10043     20.5929982  2432    1   rs_end 10043
+rs_end.10044     15.9927389  1638    1   rs_end 10044
+rs_end.10045     -4.3726428  3986    1   rs_end 10045
+rs_end.10046    158.6085257  2382    1   rs_end 10046
+rs_end.11000    -38.9542622  6114    1   rs_end 11000
+rs_end.12051     -8.0942442    16    1   rs_end 12051
+rs_end.12052    -25.3048408   140    1   rs_end 12052
+rs_end.12053    -49.1360969   272    1   rs_end 12053
+rs_end.12054    -70.0882402   660    1   rs_end 12054
+rs_end.12060    -18.5096867  1634    1   rs_end 12060
+rs_end.12061    -31.3190443  1404    1   rs_end 12061
+rs_end.12062     -7.9613330   492    1   rs_end 12062
+rs_end.12063     -8.1472234   798    1   rs_end 12063
+rs_end.12064    -36.4899271  1744    1   rs_end 12064
+rs_end.12065    -18.3028302   624    1   rs_end 12065
+rs_end.12066    -12.1378827  1896    1   rs_end 12066
+rs_end.12067    -17.5657554   578    1   rs_end 12067
+rs_end.12068    -33.1517668   656    1   rs_end 12068
+rs_end.12069     -3.1765231  1470    1   rs_end 12069
+rs_end.12070    -30.5403613   592    1   rs_end 12070
+rs_end.12071     11.4354053    76    1   rs_end 12071
+rs_end.12072    -19.1348809  1343    1   rs_end 12072
+rs_end.12073    -58.9452368   848    1   rs_end 12073
+rs_end.13001     22.3388259   520    1   rs_end 13001
+rs_end.13002     35.1962652    20    1   rs_end 13002
+rs_end.13003    -17.7794257   911    1   rs_end 13003
+rs_end.13004   -122.7117416    20    1   rs_end 13004
+rs_end.13005     15.0829763   509    1   rs_end 13005
+rs_end.13006    -52.4005744   136    1   rs_end 13006
+rs_end.13051    -64.5598258    40    1   rs_end 13051
+rs_end.13052     40.4016426   968    1   rs_end 13052
+rs_end.13053    -58.9596781   695    1   rs_end 13053
+rs_end.13054    -79.6586226   734    1   rs_end 13054
+rs_end.13055    -11.7103212    40    1   rs_end 13055
+rs_end.13056     -2.0076560   392    1   rs_end 13056
+rs_end.13057     -8.6952884    62    1   rs_end 13057
+rs_end.13058   -191.0823932  1167    1   rs_end 13058
+rs_end.13059     34.7643099   818    1   rs_end 13059
+rs_end.13060    -87.4142615   318    1   rs_end 13060
+rs_end.13061    -31.6335537   344    1   rs_end 13061
+rs_end.13062      5.4274887   440    1   rs_end 13062
+rs_end.14511     25.7797347    20    1   rs_end 14511
+rs_end.14521     37.2833138  3196    1   rs_end 14521
+rs_end.14522     29.1211022  3500    1   rs_end 14522
+rs_end.14523     43.9145496  4122    1   rs_end 14523
+rs_end.14524     38.8771147  6624    1   rs_end 14524
+rs_end.14612     16.2397851    20    1   rs_end 14612
+rs_end.14625     -6.9824956  4264    1   rs_end 14625
+rs_end.14626     18.8518483  2594    1   rs_end 14626
+rs_end.14627     18.4688162  3881    1   rs_end 14627
+rs_end.14628     24.4955542  2860    1   rs_end 14628
+rs_end.14713     39.1317532   708    1   rs_end 14713
+rs_end.14729     27.2218971  3043    1   rs_end 14729
+rs_end.14730     28.2744339  1502    1   rs_end 14730
+rs_end.15001      5.2607662    20    1   rs_end 15001
+rs_end.15002    -10.1757154    20    1   rs_end 15002
+rs_end.15003     -4.8166605    20    1   rs_end 15003
+rs_end.15081    -19.8601113   602    1   rs_end 15081
+rs_end.15082     19.5648762  2770    1   rs_end 15082
+rs_end.15083      5.4333932  1534    1   rs_end 15083
+rs_end.15084     25.0257327  1641    1   rs_end 15084
+rs_end.15085     18.5530054  2482    1   rs_end 15085
+rs_end.15086      6.7056811  1654    1   rs_end 15086
+rs_end.15087     16.0424618  1110    1   rs_end 15087
+rs_end.15088     18.7077285  3206    1   rs_end 15088
+rs_end.15089     20.8623744  1660    1   rs_end 15089
+rs_end.15090    -10.0851038  1194    1   rs_end 15090
+rs_end.15091     -1.0440712  1440    1   rs_end 15091
+rs_end.16051     54.1288290  1326    1   rs_end 16051
+rs_end.16052    -14.2410266    20    1   rs_end 16052
+rs_end.16053     13.1961715    20    1   rs_end 16053
+rs_end.16054     45.7680040   644    1   rs_end 16054
+rs_end.16055     23.8343804   422    1   rs_end 16055
+rs_end.16056     41.9493440   644    1   rs_end 16056
+rs_end.16061     34.6444889  2422    1   rs_end 16061
+rs_end.16062     52.6390440  1258    1   rs_end 16062
+rs_end.16063     45.8120740  1206    1   rs_end 16063
+rs_end.16064     56.1190052   788    1   rs_end 16064
+rs_end.16065     17.1621795   522    1   rs_end 16065
+rs_end.16066     35.2401832  1148    1   rs_end 16066
+rs_end.16067     40.2079055   688    1   rs_end 16067
+rs_end.16068     14.7087776   244    1   rs_end 16068
+rs_end.16069     67.2470404    38    1   rs_end 16069
+rs_end.16070     24.4082193   858    1   rs_end 16070
+rs_end.16071     33.5442189  1034    1   rs_end 16071
+rs_end.16072     35.1909860  1316    1   rs_end 16072
+rs_end.16073     15.7578949   598    1   rs_end 16073
+rs_end.16074     10.6999720  1760    1   rs_end 16074
+rs_end.16075     48.6858068  1644    1   rs_end 16075
+rs_end.16076     51.0976405   628    1   rs_end 16076
+rs_end.16077     15.3240574  1090    1   rs_end 16077
+
+### Model Coefficients ###
+
+             app            route  driven_distance filling_stations        fuel_type          morning           midday        afternoon 
+      5.86678890     -13.85894785       0.05469426      -0.49708921     131.69288658      32.93981732       7.09577136      32.11350356 
+           night              mon              tue              wed              thu              fri      bab_station            brand 
+     16.37055758      30.29802743      47.27487868      49.19140699      46.32086763      29.72108047       1.34460750       2.22789897 
+
+### Confidence Intervals for Model Parameters (level=0.99) ###
+
+                        0.5 %       99.5 %
+app                4.93851273   6.79506508
+route            -14.20141686 -13.51647883
+driven_distance    0.05341451   0.05597401
+filling_stations  -0.59268534  -0.40149308
+fuel_type        130.65768071 132.72809245
+morning           32.75017773  33.12945691
+midday             7.00472599   7.18681674
+afternoon         31.92725075  32.29975637
+night             14.83526511  17.90585004
+mon               30.02195590  30.57409895
+tue               46.94956747  47.60018989
+wed               48.86407825  49.51873573
+thu               46.00047560  46.64125965
+fri               29.45377093  29.98839001
+bab_station        1.15958367   1.52963133
+brand              2.15688742   2.29891052
+
+### Model Residuals ###
+
+             app            route  driven_distance filling_stations        fuel_type          morning           midday        afternoon 
+      5.86678890     -13.85894785       0.05469426      -0.49708921     131.69288658      32.93981732       7.09577136      32.11350356 
+           night              mon              tue              wed              thu              fri      bab_station            brand 
+     16.37055758      30.29802743      47.27487868      49.19140699      46.32086763      29.72108047       1.34460750       2.22789897 
+
+### Calculate Variance-Covariance Matrix for a Fitted Model ###
+
+                           app         route driven_distance filling_stations     fuel_type       morning        midday     afternoon
+app               1.298734e-01  6.959324e-03   -2.714593e-05     2.811328e-05 -1.630443e-03 -6.146189e-04 -8.211411e-05 -5.986039e-04
+route             6.959324e-03  1.767699e-02   -6.309722e-05    -7.744830e-04  4.057050e-03 -4.202555e-04  3.649808e-05 -1.416523e-04
+driven_distance  -2.714593e-05 -6.309722e-05    2.468404e-07     1.822270e-06  1.577258e-05 -3.690307e-06 -1.254560e-06 -4.546624e-06
+filling_stations  2.811328e-05 -7.744830e-04    1.822270e-06     1.377357e-03  1.746422e-05 -4.851593e-05 -1.730502e-05 -4.772526e-05
+fuel_type        -1.630443e-03  4.057050e-03    1.577258e-05     1.746422e-05  1.615174e-01 -7.818007e-03 -1.885103e-03 -7.383001e-03
+morning          -6.146189e-04 -4.202555e-04   -3.690307e-06    -4.851593e-05 -7.818007e-03  5.420306e-03  9.878944e-04  4.668023e-03
+midday           -8.211411e-05  3.649808e-05   -1.254560e-06    -1.730502e-05 -1.885103e-03  9.878944e-04  1.249343e-03  8.548372e-04
+afternoon        -5.986039e-04 -1.416523e-04   -4.546624e-06    -4.772526e-05 -7.383001e-03  4.668023e-03  8.548372e-04  5.228433e-03
+night             1.849772e-03  3.919776e-03   -1.600184e-05    -5.480457e-06 -1.606479e-03  1.948766e-03  7.587677e-05  1.203043e-03
+mon              -8.175471e-04 -1.723553e-04   -3.907395e-06    -3.928089e-05 -7.054973e-03 -2.056568e-03 -4.545855e-04 -2.082047e-03
+tue              -2.608877e-05 -2.149443e-04   -6.442715e-06    -6.347901e-05 -1.116955e-02 -3.162298e-03 -6.985068e-04 -3.109665e-03
+wed               5.035738e-06 -2.345763e-04   -6.687127e-06    -5.424325e-05 -1.162776e-02 -3.275108e-03 -7.416036e-04 -3.238328e-03
+thu               3.858284e-05 -2.517373e-04   -6.140066e-06    -4.946321e-05 -1.094634e-02 -3.126789e-03 -6.983983e-04 -3.077389e-03
+fri               6.615299e-05 -1.357531e-04   -3.934723e-06    -3.189225e-05 -6.885185e-03 -2.050366e-03 -4.668102e-04 -2.039771e-03
+bab_station       6.172056e-04 -4.341472e-04    1.745969e-06    -2.997751e-05  4.579941e-04 -5.645746e-05  9.622459e-06 -3.474004e-05
+brand             2.499168e-03 -8.028281e-04    2.858542e-06     9.895612e-05 -2.405982e-04 -1.746819e-04 -3.980533e-05 -2.046332e-04
+                         night           mon           tue           wed           thu           fri   bab_station         brand
+app               1.849772e-03 -8.175471e-04 -2.608877e-05  5.035738e-06  3.858284e-05  6.615299e-05  6.172056e-04  2.499168e-03
+route             3.919776e-03 -1.723553e-04 -2.149443e-04 -2.345763e-04 -2.517373e-04 -1.357531e-04 -4.341472e-04 -8.028281e-04
+driven_distance  -1.600184e-05 -3.907395e-06 -6.442715e-06 -6.687127e-06 -6.140066e-06 -3.934723e-06  1.745969e-06  2.858542e-06
+filling_stations -5.480457e-06 -3.928089e-05 -6.347901e-05 -5.424325e-05 -4.946321e-05 -3.189225e-05 -2.997751e-05  9.895612e-05
+fuel_type        -1.606479e-03 -7.054973e-03 -1.116955e-02 -1.162776e-02 -1.094634e-02 -6.885185e-03  4.579941e-04 -2.405982e-04
+morning           1.948766e-03 -2.056568e-03 -3.162298e-03 -3.275108e-03 -3.126789e-03 -2.050366e-03 -5.645746e-05 -1.746819e-04
+midday            7.587677e-05 -4.545855e-04 -6.985068e-04 -7.416036e-04 -6.983983e-04 -4.668102e-04  9.622459e-06 -3.980533e-05
+afternoon         1.203043e-03 -2.082047e-03 -3.109665e-03 -3.238328e-03 -3.077389e-03 -2.039771e-03 -3.474004e-05 -2.046332e-04
+night             3.552614e-01 -9.469858e-04 -1.262987e-03 -1.317376e-03 -1.442004e-03 -8.121676e-04  1.830680e-04 -5.782002e-05
+mon              -9.469858e-04  1.148706e-02  7.502192e-03  4.042738e-03  3.107041e-03  9.935919e-04 -4.850725e-05 -1.387482e-04
+tue              -1.262987e-03  7.502192e-03  1.595012e-02  9.803449e-03  5.841096e-03  3.206208e-03 -3.703471e-05 -2.541300e-04
+wed              -1.317376e-03  4.042738e-03  9.803449e-03  1.614857e-02  9.694832e-03  4.325071e-03 -5.056898e-05 -2.650341e-04
+thu              -1.442004e-03  3.107041e-03  5.841096e-03  9.694832e-03  1.547139e-02  7.349759e-03 -1.984674e-05 -2.392671e-04
+fri              -8.121676e-04  9.935919e-04  3.206208e-03  4.325071e-03  7.349759e-03  1.076948e-02  1.370979e-05 -1.513249e-04
+bab_station       1.830680e-04 -4.850725e-05 -3.703471e-05 -5.056898e-05 -1.984674e-05  1.370979e-05  5.159661e-03 -4.431164e-04
+brand            -5.782002e-05 -1.387482e-04 -2.541300e-04 -2.650341e-04 -2.392671e-04 -1.513249e-04 -4.431164e-04  7.600179e-04
+
+### Tests for Model ###
+#######################
+
+### Summaries ###
+
+
+### Variance Inflation Factor ###
+
+                 GVIF  Df GVIF^(1/(2*Df))
+app               NaN   1             NaN
+route             NaN   1             NaN
+driven_distance   NaN   1             NaN
+filling_stations  NaN   1             NaN
+fuel_type         NaN   1             NaN
+morning           NaN   1             NaN
+midday            NaN   1             NaN
+afternoon         NaN   1             NaN
+night             NaN   1             NaN
+mon               NaN   1             NaN
+tue               NaN   1             NaN
+wed               NaN   1             NaN
+thu               NaN   1             NaN
+fri               NaN   1             NaN
+bab_station       NaN   1             NaN
+brand             NaN   1             NaN
+rs_start          NaN 411             NaN
+rs_end            NaN 407             NaN
+
+### Hetroskedasticity ###
+
+
+	studentized Breusch-Pagan test
+
+data:  lm2
+BP = 5959.6, df = 834, p-value < 2.2e-16
+
+
+### Autocorrelation ###
+
+
+	Durbin-Watson test
+
+data:  lm2
+DW = 1.9985, p-value = 0.4064
+alternative hypothesis: true autocorrelation is greater than 0
+
+
+Call:
+lm(formula = lm2$res[-length(lm2$res)] ~ lm2$res[-1])
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-3076.3   -61.9    -6.0    49.6  6338.4 
+
+Coefficients:
+              Estimate Std. Error t value Pr(>|t|)
+(Intercept) -0.0004223  0.4481669  -0.001    0.999
+lm2$res[-1]  0.0007232  0.0031888   0.227    0.821
+
+Residual standard error: 140.5 on 98346 degrees of freedom
+Multiple R-squared:  5.23e-07,	Adjusted R-squared:  -9.645e-06 
+F-statistic: 0.05144 on 1 and 98346 DF,  p-value: 0.8206
+

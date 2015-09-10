@@ -1,3 +1,8 @@
+# Load Packages
+library(lfe)
+library(car)
+library(lmtest)
+
 # Database
 source("database.R")
 sqlFile <- 'SQL/PricePerLiter.sql'
@@ -11,7 +16,6 @@ dbDisconnect(con)
 rm(con, drv, rs)
 
 # Linear Regression over full dataset
-library(lfe)
 z.rs_end <- factor(observations$rs_end)
 z.rs_station <- factor(observations$rs_station)
 z.rs_start <- factor(observations$rs_start)
@@ -23,7 +27,8 @@ obs.merged <- rbind(subset(observations, app == 1)[1:50000, ], subset(observatio
 #z2.rs_station <- factor(obs.merged$rs_station, exclude = NULL)
 #z2.rs_start <- factor(obs.merged$rs_start, exclude = NULL)
 lm2 <- lm(price ~ app + morning+midday+afternoon+night + mon+tue+wed+thu+fri + bab_station + brand + oilprice + fuel_type + rs_start + rs_end + rs_station, data=obs.merged)
-#lm3 <- lm(price ~ app + morning+midday+afternoon+night + mon+tue+wed+thu+fri + bab_station + brand + oilprice + fuel_type + rs_start, data=obs.merged)
+# lm2 contains aliased variables 
+lm3 <- lm(price ~ app + morning+midday+afternoon + mon+tue+wed+thu+fri + bab_station + brand + oilprice + fuel_type + rs_station, data=obs.merged)
 
 # Save Information
 zz <- file(paste("results/","fit-PricePerLiter_",format(Sys.time(), "%Y-%m-%d %H-%M"), ".txt", sep=""), open = "wt")
@@ -55,15 +60,13 @@ cat("### Summaries ###\n\n")
 summary(lm2)
 
 cat("\n### Variance Inflation Factor ###\n\n")
-library(car)
-vif(lm3)
+vif(lm3) # without aliased
 
 cat("\n### Hetroskedasticity ###\n\n")
-library(lmtest)
 bptest(lm2)
 
 cat("\n### Autocorrelation ###\n\n")
-dwtest(lm2)
+dwtest(lm3) # without aliased
 summary(lm(lm2$res[-length(lm2$res)] ~ lm2$res[-1]))
 
 ## back to the console
