@@ -1,11 +1,16 @@
-﻿WITH bab_stations AS(SELECT id 
-                    FROM de_tt_stations_modified 
-                    WHERE LOWER(street) ~  '(a\\d+|a\\s+\\d+|bab|autohof|rasthof|autobahn|^a$)' OR LOWER(name) ~ 'bat'),
-brands AS(SELECT brand, count(brand) 
-                    FROM de_tt_stations_modified 
-                    WHERE LOWER(brand) NOT IN ('bft', 'freie tankstelle')
-                    GROUP BY brand 
-                    HAVING COUNT(brand) > 200)
+WITH
+	bab_stations AS(
+		SELECT id 
+		FROM de_tt_stations_modified 
+		WHERE LOWER(street) ~  '(a\\d+|a\\s+\\d+|bab|autohof|rasthof|autobahn|^a$)' OR LOWER(name) ~ 'bat'
+	),
+	brands AS(
+		SELECT brand, count(brand) 
+		FROM de_tt_stations_modified 
+		WHERE LOWER(brand) NOT IN ('bft', 'freie tankstelle')
+		GROUP BY brand 
+		HAVING COUNT(brand) > 200
+	)
 SELECT * FROM (
 	SELECT 
 		c_id, 
@@ -108,4 +113,3 @@ LEFT JOIN LATERAL (
 		WHERE c.c_id = r.c_id AND c.rerun = r.rerun
 	) r1
 ) r2 ON TRUE
-LIMIT 10
