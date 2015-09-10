@@ -95,16 +95,16 @@ rs <- dbSendQuery(con, "
                   FROM de_sim_data_refill r
                   LEFT JOIN de_tt_stations_modified s ON (s.id = r.station)
                   LEFT JOIN LATERAL (
-                  SELECT price FROM de_sim_data_oilprice op
-                  WHERE op.day <= r.refueling_time::date 
-                  ORDER BY op.day DESC LIMIT 1
+                    SELECT price FROM de_sim_data_oilprice op
+                    WHERE op.day <= r.refueling_time::date 
+                    ORDER BY op.day DESC LIMIT 1
                   ) o ON TRUE
                   LEFT JOIN LATERAL (
-                  SELECT rs_start, rs_end FROM de_sim_routes_outgoing ro
-                  LEFT JOIN LATERAL (SELECT SUBSTRING(rs FOR 5) as rs_start FROM de_sim_points WHERE id = ro.start_point LIMIT 1) s ON TRUE
-                  LEFT JOIN LATERAL (SELECT SUBSTRING(rs FOR 5) as rs_end FROM de_sim_points WHERE id = ro.end_point LIMIT 1) e ON TRUE
-                  WHERE ro.id = r.c_id
-                  LIMIT 1
+                    SELECT rs_start, rs_end FROM de_sim_routes ro
+                    LEFT JOIN LATERAL (SELECT SUBSTRING(rs FOR 5) as rs_start FROM de_sim_points WHERE id = ro.start_point LIMIT 1) s ON TRUE
+                    LEFT JOIN LATERAL (SELECT SUBSTRING(rs FOR 5) as rs_end FROM de_sim_points WHERE id = ro.end_point LIMIT 1) e ON TRUE
+                    WHERE ro.id = r.c_id
+                    LIMIT 1
                   ) p ON TRUE")
 
 observations <- fetch(rs, n = -1)
