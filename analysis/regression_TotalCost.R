@@ -19,11 +19,11 @@ rm(con, drv, rs)
 z.rs_end <- factor(observations$rs_end)
 z.rs_station <- factor(observations$rs_station)
 z.rs_start <- factor(observations$rs_start)
-lm1 <- felm(cost ~ app + route + driven_distance + filling_stations + fuel_type + morning+midday+afternoon+night + mon+tue+wed+thu+fri + + bab_station + brand | rs_start + rs_end, data=observations, exactDOF="rM")
+lm1 <- felm(cost ~ app + route + driven_distance + refill_events + filling_stations + refill_events + fuel_type + morning+midday+afternoon+night + mon+tue+wed+thu+fri + bab_station + brand | rs_start + rs_end, data=observations, exactDOF="rM")
 
 # Linear Regression over part of the dataset
 obs.merged <- rbind(subset(observations, app == 1)[1:50000, ], subset(observations, app == 0)[1:50000, ])
-lm2 <- lm(cost ~ app + route + driven_distance + filling_stations + fuel_type + morning+midday+afternoon+night + mon+tue+wed+thu+fri + bab_station + brand + rs_start + rs_end, data=obs.merged)
+lm2 <- lm(cost ~ app + route + driven_distance + filling_stations + refill_events + fuel_type + morning+midday+afternoon+night + mon+tue+wed+thu+fri + bab_station + brand + rs_start + rs_end, data=obs.merged)
 
 
 # Save Information

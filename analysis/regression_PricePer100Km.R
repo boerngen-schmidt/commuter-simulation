@@ -1,54 +1,70 @@
-setwd("~/workspace/commuter-simulation/analysis")
-
-library(RPostgreSQL)
-
-source("database.R")
-
-drv <- dbDriver("PostgreSQL")
-con <- dbConnect(drv, host=db.host, dbname=db.name, user=db.user, password=db.pass)
+library(lfe)
+library(car)
+library(lmtest)
 
 # Database 
-dbSendQuery(con, "BEGIN")
-dbSendQuery(con, "CREATE TEMP TABLE bab_stations AS SELECT id FROM de_tt_stations_modified WHERE LOWER(street) ~ '(a\\d+|a \\d+|bab|autohof|rasthof)'")
-rs <- dbSendQuery(con, "
-                  SELECT
-                  r.c_id,
-                  r.refueling_time, 
-                  r.rerun::int,
-                  price,
-                  CASE WHEN EXISTS(SELECT 1 FROM bab_stations WHERE id = r.station)
-                  THEN 1
-                  ELSE 0
-                  END as bab_station,
-                  CASE WHEN r.fuel_type = 'e5' THEN 1 ELSE 0 END AS fuel_type,
-                  CASE WHEN EXTRACT(HOUR from refueling_time) < 12 THEN 1 ELSE 0 END AS morning,
-                  ROUND(c.route_work_distance::numeric, 1) AS route_length,
-                  CASE WHEN EXISTS(SELECT 1 FROM de_sim_routes_within_sampled WHERE commuter = r.c_id) THEN 1 ELSE 0 END AS within
-                  FROM de_sim_data_refill r
-                  LEFT JOIN de_sim_data_commuter c USING(c_id)
-                  ORDER BY refueling_time")
-
-data <- fetch(rs, n = -1)
+source("database.R")
+sqlFile <- 'SQL/fit-PricePer100km.sql'
+sql <- readChar(sqlFile, file.info(sqlFile)$size)
+rs <- dbSendQuery(con, sql)
+observations <- fetch(rs, n = -1)
 dbClearResult(rs)
-dbCommit(con)
 dbDisconnect(con)
 
-# Create eXtended Time Series from queried data
-xts.1 <- xts(x=data[c("price", "bab_station", "rerun", "fuel_type", "within", "route_length")], order.by=data$refueling_time, unique=FALSE)
-
 # remove not needed objects from environment
-rm(con, drv, rs, data) 
+rm(con, drv, rs)
 
-# Linear Regression with time series
-lm1 <- lm(price ~ bab_station + rerun + fuel_type + route_length + within, data=xts.1)
+# Linear Regression over full dataset
+
+z.rs_end <- factor(observations$rs_end)
+z.rs_station <- factor(observations$rs_station)
+z.rs_start <- factor(observations$rs_start)
+lm1 <- felm(price100 ~ app + route + filling_stations + fuel_type + morning+midday+afternoon+night + mon+tue+wed+thu+fri+sat + bab_station + brand | rs_start + rs_end, data=observations, exactDOF="rM")
+
+# Linear Regression over part of the dataset
+obs.merged <- rbind(subset(observations, app == 1)[1:50000, ], subset(observations, app == 0)[1:50000, ])
+z2.rs_end <- factor(obs.merged$rs_end)
+z2.rs_start <- factor(obs.merged$rs_start)
+lm2 <- lm(price100 ~ app + route + driven_distance + filling_stations + fuel_type + morning+midday+afternoon+night + mon+tue+wed+thu+fri + bab_station + brand + z2.rs_start + z2.rs_end, data=obs.merged)
+
 
 # Save Information
-sink(file="lm1.txt", append=FALSE)
+zz <- file(paste("results/","fit-PricePer100km_",format(Sys.time(), "%Y-%m-%d %H-%M"), ".txt", sep=""), open = "wt")
+sink(zz, split=TRUE)
+
+cat("### Summary ###\n\n")
 summary(lm1)
+
+cat("\n### The group fixed effects ###\n\n")
+getfe(lm1)
+
+cat("\n### Model Coefficients ###\n\n")
 coefficients(lm1) # model coefficients
-confint(lm1, level=0.995) # CIs for model parameters
-fitted(lm1) # predicted values
+
+cat("\n### Confidence Intervals for Model Parameters (level=0.99) ###\n\n")
+confint(lm1, level=0.99) # CIs for model parameters
+#fitted(lm1) # predicted values
+
+cat("\n### Model Residuals ###\n\n")
 residuals(lm1) # residuals
-anova(lm1) # anova table
+#anova(lm1) # anova table
+
+cat("\n### Calculate Variance-Covariance Matrix for a Fitted Model ###\n\n")
 vcov(lm1) # covariance matrix for model parameters
 #influence(lm1) # regression diagnostics 
+
+cat("\n### Tests for Model ###\n#######################\n\n")
+cat("### Summaries ###\n\n")
+
+cat("\n### Variance Inflation Factor ###\n\n")
+vif(lm2)
+
+cat("\n### Hetroskedasticity ###\n\n")
+bptest(lm2)
+
+cat("\n### Autocorrelation ###\n\n")
+dwtest(lm2)
+summary(lm(lm2$res[-length(lm2$res)] ~ lm2$res[-1]))
+
+## back to the console
+sink()
