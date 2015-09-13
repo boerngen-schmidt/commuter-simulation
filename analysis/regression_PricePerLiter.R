@@ -7,19 +7,11 @@ library(lmtest)
 source("database.R")
 
 # Linear Regression over part of the dataset
-#sqlFile <- 'SQL/fit-PricePerLiter_sampled.sql'
-#sql <- readChar(sqlFile, file.info(sqlFile)$size)
-#rs <- dbSendQuery(con, sql)
-#obs.sample <- fetch(rs, n = -1)
-#dbClearResult(rs)
-#z2.rs_end <- factor(obs.sample$rs_end)
-#z2.rs_start <- factor(obs.sample$rs_start)
-#fit.sample <- lm(price ~ app + morning+midday+afternoon + mon+tue+wed+thu+fri + bab_station + brand + oilprice + fuel_type + rs_station, data=obs.sample)
-
 sqlFile <- 'SQL/fit-PricePerLiter_sampled+factors.sql'
 sql <- readChar(sqlFile, file.info(sqlFile)$size)
 rs <- dbSendQuery(con, sql)
 obs.sample.factors <- fetch(rs, n = -1)
+dbClearResult(rs)
 f.day. <- as.factor(obs.sample.factors$zeday)
 f.time. <- as.factor(x=obs.sample.factors$time_slotted)
 f.station. <- as.factor(obs.sample.factors$rs_station)
@@ -31,10 +23,10 @@ sql <- readChar(sqlFile, file.info(sqlFile)$size)
 rs <- dbSendQuery(con, sql)
 obs.total <- fetch(rs, n = -1)
 dbClearResult(rs)
-ft.day. <- as.factor(obs.total$zeday)
-ft.time. <- as.factor(x=obs.total$time_slotted)
-ft.station. <- as.factor(obs.total$rs_station)
-fit.total <- felm(price ~ app + bab_station + brand + oilprice + fuel_type | ft.time. + ft.day. + ft.station., data=obs.total, exactDOF="rM")
+ft.day <- as.factor(obs.total$zeday)
+ft.time <- as.factor(x=obs.total$time_slotted)
+ft.station <- as.factor(obs.total$rs_station)
+fit.total <- felm(price ~ app + bab_station + brand + oilprice + fuel_type | ft.time + ft.day + ft.station, data=obs.total, exactDOF="rM")
 
 # Disconnect from Database
 dbDisconnect(con)
@@ -80,7 +72,7 @@ vcov(fit.total)
 #influence(lm1) # regression diagnostics
 
 cat("\n### The group fixed effects (Total)###\n\n")
-getfe(fit.total)
+getfe(fit.total, ef="zm", robust=TRUE)
 
 cat("\n### Tests for Model ###\n#######################\n\n")
 cat("### Summaries ###\n\n")
