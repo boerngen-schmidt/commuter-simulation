@@ -4,7 +4,7 @@ library(lmtest)
 
 # Database 
 source("database.R")
-sqlFile <- 'SQL/TotalCost.sql'
+sqlFile <- 'SQL/fit-TotalCost.sql'
 sql <- readChar(sqlFile, file.info(sqlFile)$size)
 rs <- dbSendQuery(con, sql)
 observations <- fetch(rs, n = -1)
@@ -19,11 +19,33 @@ rm(con, drv, rs)
 z.rs_end <- factor(observations$rs_end)
 z.rs_station <- factor(observations$rs_station)
 z.rs_start <- factor(observations$rs_start)
-lm1 <- felm(cost ~ app + route + driven_distance + refill_events + filling_stations + fuel_type + morning+midday+afternoon+night + mon+tue+wed+thu+fri + bab_station + brand | rs_start + rs_end, data=observations, exactDOF="rM")
+lm1 <- felm(cost ~ app + refill_events + filling_stations + fuel_type 
+            + mon_morning+mon_midday+mon_afternoon+mon_night 
+            + tue_morning+tue_midday+tue_afternoon+tue_night 
+            + wed_morning+wed_midday+wed_afternoon 
+            + thu_morning+thu_midday+thu_afternoon+thu_night 
+            + fri_morning+fri_midday+fri_afternoon 
+            + sat_morning+sat_midday+sat_afternoon 
+            + bab_station + brand | rs_start + rs_end, data=observations)
 
 # Linear Regression over part of the dataset
-obs.merged <- rbind(subset(observations, app == 1)[1:50000, ], subset(observations, app == 0)[1:50000, ])
-lm2 <- lm(cost ~ app + route + driven_distance + filling_stations + refill_events + fuel_type + morning+midday+afternoon+night + mon+tue+wed+thu+fri + bab_station + brand + rs_start + rs_end, data=obs.merged)
+source("database.R")
+sqlFile <- 'SQL/fit-TotalCost-time_samped.sql'
+sql <- readChar(sqlFile, file.info(sqlFile)$size)
+rs <- dbSendQuery(con, sql)
+obs <- fetch(rs, n = -1)
+dbClearResult(rs)
+dbDisconnect(con)
+
+#obs.merged <- rbind(subset(observations, app == 1)[1:50000, ], subset(observations, app == 0)[1:50000, ])
+lm2 <- lm(cost ~ app + refill_events + filling_stations + fuel_type 
+          + mon_morning+mon_midday+mon_afternoon
+          + tue_morning+tue_midday+tue_afternoon
+          + wed_morning+wed_midday+wed_afternoon 
+          + thu_morning+thu_midday+thu_afternoon
+          + fri_morning+fri_midday+fri_afternoon 
+          + sat_morning+sat_midday+sat_afternoon 
+          + bab_station + brand + rs_start + rs_end, data=obs)
 
 
 # Save Information
