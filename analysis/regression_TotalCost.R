@@ -4,7 +4,7 @@ library(lmtest)
 
 # Database 
 source("database.R")
-sqlFile <- 'SQL/TotalCost.sql'
+sqlFile <- 'SQL/fit-TotalCost.sql'
 sql <- readChar(sqlFile, file.info(sqlFile)$size)
 rs <- dbSendQuery(con, sql)
 observations <- fetch(rs, n = -1)

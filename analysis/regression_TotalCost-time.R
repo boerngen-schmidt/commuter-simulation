@@ -30,7 +30,7 @@ lm1 <- felm(cost ~ app + refill_events + filling_stations + fuel_type
 
 # Linear Regression over part of the dataset
 source("database.R")
-sqlFile <- 'SQL/fit-TotalCost-time_samped.sql'
+sqlFile <- 'SQL/fit-TotalCost-time_sampled.sql'
 sql <- readChar(sqlFile, file.info(sqlFile)$size)
 rs <- dbSendQuery(con, sql)
 obs <- fetch(rs, n = -1)
@@ -38,14 +38,17 @@ dbClearResult(rs)
 dbDisconnect(con)
 
 #obs.merged <- rbind(subset(observations, app == 1)[1:50000, ], subset(observations, app == 0)[1:50000, ])
-lm2 <- lm(cost ~ app + refill_events + filling_stations + fuel_type 
+z2.rs_end <- factor(obs$rs_end)
+z2.rs_start <- factor(obs$rs_start)
+z2.c_id <- factor(obs$c_id)
+lm2 <- lm(cost ~ app + driven_distance + filling_stations + fuel_type 
           + mon_morning+mon_midday+mon_afternoon
           + tue_morning+tue_midday+tue_afternoon
           + wed_morning+wed_midday+wed_afternoon 
           + thu_morning+thu_midday+thu_afternoon
           + fri_morning+fri_midday+fri_afternoon 
           + sat_morning+sat_midday+sat_afternoon 
-          + bab_station + brand + rs_start + rs_end, data=obs)
+          + bab_station + brand + z2.rs_start, data=obs)
 
 
 # Save Information
