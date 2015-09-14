@@ -17,19 +17,11 @@ SELECT
 	driven_distance,
 	fuel_type,
 	filling_stations,
+	route_length,
 	refill_events,
 	bab_stations::NUMERIC / refill_events as bab_stations,
 	brands::NUMERIC / refill_events as brands,
-  	morning::NUMERIC / refill_events as mornings,
-  	midday::NUMERIC / refill_events as middays,
-  	afternoon::NUMERIC / refill_events as afternoons,
-  	night::NUMERIC / refill_events as nights,
-  	mon::NUMERIC / refill_events as mon,
-	tue::NUMERIC / refill_events as tue,
-  	wed::NUMERIC / refill_events as wed,
-  	thu::NUMERIC / refill_events as thu,
-  	fri::NUMERIC / refill_events as fri,
-  	sat::NUMERIC / refill_events as sat
+  	goodtime::NUMERIC / refill_events as goodtime
 FROM (
 	SELECT
 		c_id,
@@ -46,62 +38,17 @@ FROM (
 ) AS c
 LEFT JOIN LATERAL (
 	SELECT
-		SUM(morning) AS morning,
-		SUM(midday) AS midday,
-		SUM(afternoon) AS afternoon,
-		SUM(night) AS night,
-		SUM(mon) AS mon,
-		SUM(tue) AS tue,
-		SUM(wed) AS wed,
-		SUM(thu) AS thu,
-		SUM(fri) AS fri,
-		SUM(sat) AS sat,
+		SUM(goodtime) AS goodtime,
 		ROUND(SUM(cost)::numeric, 2) AS cost,
 		SUM(bab_station)::int AS bab_stations,
 		SUM(brand)::int AS brands,
 		COUNT(*)::int AS refill_events
 	FROM (
 		SELECT
-			CASE WHEN EXTRACT(HOUR FROM r.refueling_time) BETWEEN 5 AND 10
+			CASE WHEN EXTRACT(HOUR FROM r.refueling_time) BETWEEN 10 AND 21
 				THEN 1
 				ELSE 0
-			END AS morning,
-			CASE WHEN EXTRACT(HOUR FROM r.refueling_time) BETWEEN 11 AND 16
-				THEN 1
-				ELSE 0
-			END AS midday,
-			CASE WHEN EXTRACT(HOUR FROM r.refueling_time) BETWEEN 17 AND 22
-				THEN 1
-				ELSE 0
-			END AS afternoon,
-			CASE WHEN EXTRACT(HOUR FROM r.refueling_time) BETWEEN 23 AND 24 OR  EXTRACT(HOUR FROM r.refueling_time) BETWEEN 0 AND 4
-				THEN 1
-				ELSE 0
-			END AS night,
-			CASE WHEN EXTRACT(isodow FROM r.refueling_time) = 1
-				THEN 1
-				ELSE 0
-			END AS mon,
-			CASE WHEN EXTRACT(isodow FROM r.refueling_time) = 2
-				THEN 1
-				ELSE 0
-			END AS tue,
-			CASE WHEN EXTRACT(isodow FROM r.refueling_time) = 3
-				THEN 1
-				ELSE 0
-			END AS wed,
-			CASE WHEN EXTRACT(isodow FROM r.refueling_time) = 4
-				THEN 1
-				ELSE 0
-			END AS thu,
-			CASE WHEN EXTRACT(isodow FROM r.refueling_time) = 5
-				THEN 1
-				ELSE 0
-			END AS fri,
-			CASE WHEN EXTRACT(isodow FROM r.refueling_time) = 6
-				THEN 1
-				ELSE 0
-			END AS sat,
+			END AS goodtime,
 			r.price * r.amount AS cost,
 			CASE WHEN EXISTS(SELECT 1 FROM bab_stations WHERE id = r.station)
 				THEN 1

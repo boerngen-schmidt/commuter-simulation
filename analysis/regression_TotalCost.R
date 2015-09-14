@@ -8,8 +8,7 @@ source("database.R")
 sqlFile <- 'SQL/fit-TotalCost.sql'
 sql <- readChar(sqlFile, file.info(sqlFile)$size)
 obs.total <- dbGetQuery(con, sql)
-fit.total <- lm(cost ~ 0 + app + fuel_type + driven_distance + filling_stations + bab_stations + brands 
-                + mornings+middays+afternoons, data=obs.total)
+fit.total <- lm(cost ~ 0 + app + fuel_type + driven_distance + filling_stations + bab_stations + brands + goodtime, data=obs.total)
 dbDisconnect(con)
 
 # Save Information
