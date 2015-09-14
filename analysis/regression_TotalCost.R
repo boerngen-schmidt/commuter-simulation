@@ -32,19 +32,20 @@ residuals(fit.total)
 cat("\n### Anova Table ###\n")
 anova(fit.total)
 
-cat("\n### Calculate Variance-Covariance Matrix for a Fitted Model ###\n\n")
+cat("\n### Calculate Variance-Covariance Matrix for a Fitted Model ###\n")
 vcov(fit.total)
 
 cat("\n### Tests for Model ###\n#######################\n\n")
 
-cat("### Variance Inflation Factor ###")
+cat("### Variance Inflation Factor ###\n")
 vif(fit.total)
 
-cat("### Hetroskedasticity ###")
+cat("### Hetroskedasticity ###\n")
 bptest(fit.total)
 
-cat("### Autocorrelation ###")
+cat("### Autocorrelation ###\n")
 dwtest(fit.total)
 
 ## back to the console
 sink()
+rm(zz)

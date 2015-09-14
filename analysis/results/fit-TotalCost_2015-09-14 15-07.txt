@@ -2084,7 +2084,6 @@ Residuals        728112 3.3725e+10 4.6318e+04
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
 ### Calculate Variance-Covariance Matrix for a Fitted Model ###
-
                            app     fuel_type driven_distance filling_stations  bab_stations        brands      mornings       middays
 app               2.810222e-01 -1.677890e-04   -5.058592e-07     5.667783e-04  9.168220e-02  1.003899e-01 -1.960516e-01 -1.937361e-01
 fuel_type        -1.677890e-04  2.544623e-01   -7.875261e-08     8.945326e-07 -4.091048e-04 -7.370032e-04 -1.273879e-01 -1.271170e-01
@@ -2119,17 +2118,20 @@ fri              -1.536430e+00  1.345244e+00  1.565821e+00  1.517180e+00  1.7232
 ### Tests for Model ###
 #######################
 
-### Variance Inflation Factor ###             app        fuel_type  driven_distance filling_stations     bab_stations           brands         mornings          middays 
+### Variance Inflation Factor ###
+             app        fuel_type  driven_distance filling_stations     bab_stations           brands         mornings          middays 
         2.208771         1.997215         4.168481         4.258690         1.059920         3.288366        11.212672         6.072711 
       afternoons              mon              tue              wed              thu              fri 
         6.030310         2.919986         3.297974         3.275881         3.322824         2.956730 
 ### Hetroskedasticity ###
+
 	studentized Breusch-Pagan test
 
 data:  fit.total
 BP = 68902, df = 13, p-value < 2.2e-16
 
 ### Autocorrelation ###
+
 	Durbin-Watson test
 
 data:  fit.total
