@@ -9,9 +9,7 @@ source("database.R")
 # Linear Regression over part of the dataset
 sqlFile <- 'SQL/fit-PricePerLiter_sampled+factors.sql'
 sql <- readChar(sqlFile, file.info(sqlFile)$size)
-rs <- dbSendQuery(con, sql)
-obs.sample.factors <- fetch(rs, n = -1)
-dbClearResult(rs)
+obs.sample.factors <- dbGetQuery(con, sql)
 f.day. <- as.factor(obs.sample.factors$zeday); f.day. <- relevel(f.day., ref="Mon")
 f.time. <- as.factor(x=obs.sample.factors$time_slotted); f.time. <- relevel(f.time., ref="morning")
 f.station. <- as.factor(obs.sample.factors$rs_station)
@@ -20,9 +18,7 @@ fit.sample <- lm(price ~ app + bab_station + brand + oilprice + fuel_type + f.ti
 # Linear Regression over full dataset
 sqlFile <- 'SQL/fit-PricePerLiter+factors.sql'
 sql <- readChar(sqlFile, file.info(sqlFile)$size)
-rs <- dbSendQuery(con, sql)
-obs.total <- fetch(rs, n = -1)
-dbClearResult(rs)
+obs.total <- dbGetQuery(con, sql)
 ft.day <- as.factor(obs.total$zeday); ft.day <- relevel(ft.day, ref="Mon")
 ft.time <- as.factor(x=obs.total$time_slotted); ft.time <- relevel(ft.time, ref="morning")
 ft.station <- as.factor(obs.total$rs_station)
