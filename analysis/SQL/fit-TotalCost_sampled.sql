@@ -17,12 +17,19 @@ SELECT
 	driven_distance,
 	fuel_type,
 	filling_stations,
-	bab_stations::NUMERIC / refilling_events as bab_stations,
-	brands::NUMERIC / refilling_events as brands,
-  morning::NUMERIC / refilling_events as mornings,
-  midday::NUMERIC / refilling_events as middays,
-  afternoon::NUMERIC / refilling_events as afternoos,
-  night::NUMERIC / refilling_events as nigths
+	refill_events,
+	bab_stations::NUMERIC / refill_events as bab_stations,
+	brands::NUMERIC / refill_events as brands,
+  	morning::NUMERIC / refill_events as mornings,
+  	midday::NUMERIC / refill_events as middays,
+  	afternoon::NUMERIC / refill_events as afternoons,
+  	night::NUMERIC / refill_events as nights,
+  	mon::NUMERIC / refill_events as mon,
+	tue::NUMERIC / refill_events as tue,
+  	wed::NUMERIC / refill_events as wed,
+  	thu::NUMERIC / refill_events as thu,
+  	fri::NUMERIC / refill_events as fri,
+  	sat::NUMERIC / refill_events as sat
 FROM (
 	SELECT
 		c_id,
@@ -31,23 +38,11 @@ FROM (
 		ROUND(route_work_distance::numeric, 2) AS route_length,
 		ROUND(driven_distance::numeric, 2) AS driven_distance,
 		array_length(filling_stations, 1) AS filling_stations,
-		p.rs_start,
-		p.rs_end,
 		CASE WHEN fuel_type = 'e5'
 			THEN 1
 			ELSE 0
 		END AS fuel_type
 	FROM de_sim_data_commuter c1
-	LEFT JOIN LATERAL (
-		SELECT
-			rs_start,
-			rs_end
-		FROM de_sim_routes ro
-		LEFT JOIN LATERAL (SELECT SUBSTRING(rs FOR 5) AS rs_start FROM de_sim_points WHERE id = ro.start_point LIMIT 1) s ON TRUE
-		LEFT JOIN LATERAL (SELECT SUBSTRING(rs FOR 5) AS rs_end FROM de_sim_points WHERE id = ro.end_point LIMIT 1) e ON TRUE
-		WHERE ro.id = c1.c_id
-		LIMIT 1
-	) p ON TRUE
 	WHERE c_id IN (SELECT c_id FROM de_sim_data_commuter_sampled)
 ) AS c
 LEFT JOIN LATERAL (
@@ -56,6 +51,12 @@ LEFT JOIN LATERAL (
 		SUM(midday) AS midday,
 		SUM(afternoon) AS afternoon,
 		SUM(night) AS night,
+		SUM(mon) AS mon,
+		SUM(tue) AS tue,
+		SUM(wed) AS wed,
+		SUM(thu) AS thu,
+		SUM(fri) AS fri,
+		SUM(sat) AS sat,
 		ROUND(SUM(cost)::numeric, 2) AS cost,
 		SUM(bab_station)::int AS bab_stations,
 		SUM(brand)::int AS brands,
@@ -78,6 +79,30 @@ LEFT JOIN LATERAL (
 				THEN 1
 				ELSE 0
 			END AS night,
+			CASE WHEN EXTRACT(isodow FROM r.refueling_time) = 1
+				THEN 1
+				ELSE 0
+			END AS mon,
+			CASE WHEN EXTRACT(isodow FROM r.refueling_time) = 2
+				THEN 1
+				ELSE 0
+			END AS tue,
+			CASE WHEN EXTRACT(isodow FROM r.refueling_time) = 3
+				THEN 1
+				ELSE 0
+			END AS wed,
+			CASE WHEN EXTRACT(isodow FROM r.refueling_time) = 4
+				THEN 1
+				ELSE 0
+			END AS thu,
+			CASE WHEN EXTRACT(isodow FROM r.refueling_time) = 5
+				THEN 1
+				ELSE 0
+			END AS fri,
+			CASE WHEN EXTRACT(isodow FROM r.refueling_time) = 6
+				THEN 1
+				ELSE 0
+			END AS sat,
 			r.price * r.amount AS cost,
 			CASE WHEN EXISTS(SELECT 1 FROM bab_stations WHERE id = r.station)
 				THEN 1

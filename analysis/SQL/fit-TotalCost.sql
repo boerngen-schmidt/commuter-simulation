@@ -1,61 +1,83 @@
 WITH
 	bab_stations AS(
-		SELECT id 
-		FROM de_tt_stations_modified 
-		WHERE LOWER(street) ~  '(a\\d+|a\\s+\\d+|bab|autohof|rasthof|autobahn|^a$)' OR LOWER(name) ~ 'bat'
+		SELECT id
+		FROM de_tt_stations_modified
+		WHERE LOWER(street) ~ '(a\\d+|a\\s+\\d+|bab|autohof|rasthof|autobahn|^a$)' OR LOWER(name) ~ 'bat'
 	),
 	brands AS(
-		SELECT brand, count(brand) 
-		FROM de_tt_stations_modified 
+		SELECT brand, count(brand)
+		FROM de_tt_stations_modified
 		WHERE LOWER(brand) NOT IN ('bft', 'freie tankstelle')
-		GROUP BY brand 
+		GROUP BY brand
 		HAVING COUNT(brand) > 200
 	)
-SELECT * FROM (
-	SELECT 
-		c_id, 
-		rerun::int AS app, 
+SELECT
+	cost,
+	app,
+	driven_distance,
+	fuel_type,
+	filling_stations,
+	refill_events,
+	bab_stations::NUMERIC / refill_events as bab_stations,
+	brands::NUMERIC / refill_events as brands,
+  	morning::NUMERIC / refill_events as mornings,
+  	midday::NUMERIC / refill_events as middays,
+  	afternoon::NUMERIC / refill_events as afternoons,
+  	night::NUMERIC / refill_events as nights,
+  	mon::NUMERIC / refill_events as mon,
+	tue::NUMERIC / refill_events as tue,
+  	wed::NUMERIC / refill_events as wed,
+  	thu::NUMERIC / refill_events as thu,
+  	fri::NUMERIC / refill_events as fri,
+  	sat::NUMERIC / refill_events as sat
+FROM (
+	SELECT
+		c_id,
+		rerun::int AS app,
 		rerun,
-		ROUND(route_work_distance::numeric, 2) AS route, 
+		ROUND(route_work_distance::numeric, 2) AS route_length,
 		ROUND(driven_distance::numeric, 2) AS driven_distance,
-		array_length(filling_stations, 1) AS filling_stations, 
-		p.rs_start, 
-		p.rs_end,
-		CASE WHEN fuel_type = 'e5' 
-			THEN 1 
-			ELSE 0 
+		array_length(filling_stations, 1) AS filling_stations,
+		CASE WHEN fuel_type = 'e5'
+			THEN 1
+			ELSE 0
 		END AS fuel_type
 	FROM de_sim_data_commuter c1
-	LEFT JOIN LATERAL (
-		SELECT 
-			rs_start, 
-			rs_end 
-		FROM de_sim_routes ro
-		LEFT JOIN LATERAL (SELECT SUBSTRING(rs FOR 5) AS rs_start FROM de_sim_points WHERE id = ro.start_point LIMIT 1) s ON TRUE
-		LEFT JOIN LATERAL (SELECT SUBSTRING(rs FOR 5) AS rs_end FROM de_sim_points WHERE id = ro.end_point LIMIT 1) e ON TRUE
-		WHERE ro.id = c1.c_id
-		LIMIT 1
-	) p ON TRUE
 ) AS c
 LEFT JOIN LATERAL (
-	SELECT 
-		SUM(mon)::int AS mon, 
-		SUM(tue)::int AS tue, 
-		SUM(wed)::int AS wed, 
-		SUM(thu)::int AS thu, 
-		SUM(fri)::int AS fri, 
-		SUM(sat)::int AS sat, 
-		SUM(sun)::int AS sun, 
-		SUM(morning)::int AS morning, 
-		SUM(midday)::int AS midday, 
-		SUM(afternoon)::int AS afternoon, 
-		SUM(night)::int AS night, 
-		ROUND(SUM(cost)::numeric, 2) AS cost, 
-		SUM(bab_station)::int AS bab_station, 
-		SUM(brand)::int AS brand,
+	SELECT
+		SUM(morning) AS morning,
+		SUM(midday) AS midday,
+		SUM(afternoon) AS afternoon,
+		SUM(night) AS night,
+		SUM(mon) AS mon,
+		SUM(tue) AS tue,
+		SUM(wed) AS wed,
+		SUM(thu) AS thu,
+		SUM(fri) AS fri,
+		SUM(sat) AS sat,
+		ROUND(SUM(cost)::numeric, 2) AS cost,
+		SUM(bab_station)::int AS bab_stations,
+		SUM(brand)::int AS brands,
 		COUNT(*)::int AS refill_events
 	FROM (
 		SELECT
+			CASE WHEN EXTRACT(HOUR FROM r.refueling_time) BETWEEN 5 AND 10
+				THEN 1
+				ELSE 0
+			END AS morning,
+			CASE WHEN EXTRACT(HOUR FROM r.refueling_time) BETWEEN 11 AND 16
+				THEN 1
+				ELSE 0
+			END AS midday,
+			CASE WHEN EXTRACT(HOUR FROM r.refueling_time) BETWEEN 17 AND 22
+				THEN 1
+				ELSE 0
+			END AS afternoon,
+			CASE WHEN EXTRACT(HOUR FROM r.refueling_time) BETWEEN 23 AND 24 OR  EXTRACT(HOUR FROM r.refueling_time) BETWEEN 0 AND 4
+				THEN 1
+				ELSE 0
+			END AS night,
 			CASE WHEN EXTRACT(isodow FROM r.refueling_time) = 1
 				THEN 1
 				ELSE 0
@@ -80,26 +102,6 @@ LEFT JOIN LATERAL (
 				THEN 1
 				ELSE 0
 			END AS sat,
-			CASE WHEN EXTRACT(isodow FROM r.refueling_time) = 7
-				THEN 1
-				ELSE 0
-			END AS sun,
-			CASE WHEN EXTRACT(HOUR FROM r.refueling_time) BETWEEN 4 AND 10
-				THEN 1
-				ELSE 0
-			END AS morning,
-			CASE WHEN EXTRACT(HOUR FROM r.refueling_time) BETWEEN 11 AND 16
-				THEN 1
-				ELSE 0
-			END AS midday,
-			CASE WHEN EXTRACT(HOUR FROM r.refueling_time) BETWEEN 17 AND 22
-				THEN 1
-				ELSE 0
-			END AS afternoon,
-			CASE WHEN EXTRACT(HOUR FROM r.refueling_time) BETWEEN 23 AND 24 OR  EXTRACT(HOUR FROM r.refueling_time) BETWEEN 0 AND 4
-				THEN 1
-				ELSE 0
-			END AS night,
 			r.price * r.amount AS cost,
 			CASE WHEN EXISTS(SELECT 1 FROM bab_stations WHERE id = r.station)
 				THEN 1
