@@ -1,3 +1,4 @@
+library(car)
 library(lmtest)
 
 # Database 
@@ -35,15 +36,14 @@ cat("\n### Calculate Variance-Covariance Matrix for a Fitted Model ###\n\n")
 vcov(fit.total)
 
 cat("\n### Tests for Model ###\n#######################\n\n")
-cat("### Summaries ###\n\n")
 
-cat("\n### Variance Inflation Factor ###\n\n")
+cat("### Variance Inflation Factor ###")
 vif(fit.total)
 
-cat("\n### Hetroskedasticity ###\n\n")
+cat("### Hetroskedasticity ###")
 bptest(fit.total)
 
-cat("\n### Autocorrelation ###\n\n")
+cat("### Autocorrelation ###")
 dwtest(fit.total)
 
 ## back to the console
