@@ -88,15 +88,15 @@ LEFT JOIN LATERAL (
 				THEN 1
 				ELSE 0
 			END AS morning,
-			CASE WHEN EXTRACT(HOUR FROM r.refueling_time) BETWEEN 10 AND 16
+			CASE WHEN EXTRACT(HOUR FROM r.refueling_time) BETWEEN 11 AND 16
 				THEN 1
 				ELSE 0
 			END AS midday,
-			CASE WHEN EXTRACT(HOUR FROM r.refueling_time) BETWEEN 16 AND 22
+			CASE WHEN EXTRACT(HOUR FROM r.refueling_time) BETWEEN 17 AND 22
 				THEN 1
 				ELSE 0
 			END AS afternoon,
-			CASE WHEN EXTRACT(HOUR FROM r.refueling_time) BETWEEN 22 AND 24 OR  EXTRACT(HOUR FROM r.refueling_time) BETWEEN 0 AND 4
+			CASE WHEN EXTRACT(HOUR FROM r.refueling_time) BETWEEN 23 AND 24 OR  EXTRACT(HOUR FROM r.refueling_time) BETWEEN 0 AND 4
 				THEN 1
 				ELSE 0
 			END AS night,
