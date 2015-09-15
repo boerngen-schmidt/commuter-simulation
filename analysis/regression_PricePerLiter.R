@@ -13,7 +13,7 @@ obs.sample.factors <- dbGetQuery(con, sql)
 f.day. <- as.factor(obs.sample.factors$zeday); f.day. <- relevel(f.day., ref="Mon")
 f.time. <- as.factor(x=obs.sample.factors$time_slotted); f.time. <- relevel(f.time., ref="morning")
 f.station. <- as.factor(obs.sample.factors$rs_station)
-fit.sample <- lm(price ~ app + bab_station + brand + oilprice + fuel_type + f.time. + f.day. + f.station., data=obs.sample.factors)
+fit.sample <- lm(price ~ app + bab_station + brand + oilprice + fuel_type + f.day. + f.time. + f.station., data=obs.sample.factors)
 
 # Linear Regression over full dataset
 sqlFile <- 'SQL/fit-PricePerLiter+factors.sql'
@@ -22,7 +22,7 @@ obs.total <- dbGetQuery(con, sql)
 ft.day <- as.factor(obs.total$zeday); ft.day <- relevel(ft.day, ref="Mon")
 ft.time <- as.factor(x=obs.total$time_slotted); ft.time <- relevel(ft.time, ref="morning")
 ft.station <- as.factor(obs.total$rs_station)
-fit.total <- felm(price ~ app + bab_station + brand + oilprice + fuel_type | ft.time + ft.day + ft.station, data=obs.total, exactDOF="rM")
+fit.total <- felm(price ~ app + bab_station + brand + oilprice + fuel_type | ft.day + ft.time + ft.station, data=obs.total, exactDOF="rM")
 
 # Disconnect from Database
 dbDisconnect(con)
@@ -32,13 +32,13 @@ dbDisconnect(con)
 zz <- file(paste("results/","fit-PricePerLiter_",format(Sys.time(), "%Y-%m-%d %H-%M"), ".txt", sep=""), open = "wt")
 sink(zz, split=TRUE)
 
-cat("### Summary (sampled) ###\n\n")
+cat("### Summary (sampled) ###\n")
 summary(fit.sample)
 
-cat("### Summary (total) ###\n\n")
+cat("### Summary (total) ###\n")
 summary(fit.total)
 
-cat("\n### Model Coefficients ###\n\n")
+cat("\n### Model Coefficients ###\n")
 cat("## Sample ##\n")
 coefficients(fit.sample)
 cat("## Total ##\n")
@@ -49,39 +49,37 @@ cat("## Sample ##\n")
 confint(fit.sample, level=0.99)
 cat("## Total ##\n")
 confint(fit.total, level=0.99)
-#fitted(lm1) # predicted values
 
-cat("\n### Model Residuals ###\n\n")
+cat("\n### Model Residuals ###\n")
 cat("## Sample ##\n")
-residuals(fit.total)
+residuals(fit.sample)
 cat("## Total ##\n")
+residuals(fit.total)
 
-cat("\n### Anova Table ###\n\n")
+cat("\n### Anova Table ###\n")
 cat("## Sample ##\n")
 anova(fit.sample)
 
-cat("\n### Calculate Variance-Covariance Matrix for a Fitted Model ###\n\n")
+cat("### Calculate Variance-Covariance Matrix for a Fitted Model ###\n")
 cat("## Sample ##\n")
 vcov(fit.sample)
 cat("## Total ##\n")
 vcov(fit.total)
-#influence(lm1) # regression diagnostics
 
-cat("\n### The group fixed effects (Total)###\n\n")
+cat("### The group fixed effects (Total)###\n")
 getfe(fit.total, ef="zm", robust=TRUE)
 
-cat("\n### Tests for Model ###\n#######################\n\n")
-cat("### Summaries ###\n\n")
+cat("### Tests for Model ###\n#######################\n")
 
-cat("\n### Variance Inflation Factor ###\n\n")
+cat("### Variance Inflation Factor ###\n")
 vif(fit.sample)
 
-cat("\n### Hetroskedasticity ###\n\n")
+cat("### Hetroskedasticity ###\n")
 bptest(fit.sample)
 
-cat("\n### Autocorrelation ###\n\n")
+cat("### Autocorrelation ###\n")
 dwtest(fit.sample)
-#summary(lm(lm2$res[-length(lm2$res)] ~ lm2$res[-1]))
 
 ## back to the console
 sink()
+rm(zz)
